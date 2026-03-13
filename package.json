@@ -1,0 +1,19 @@
+{
+  "name": "asbatechs-crm",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "start": "npm --workspace apps/web run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "kill-port": "^2.0.1",
+    "typescript": "^5.6.3"
+  }
+}
