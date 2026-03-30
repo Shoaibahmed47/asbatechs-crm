@@ -1,50 +1,106 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { assignableUserRoles, isRole } from "@/lib/rbac";
+import { autoAssignLead } from "@/lib/lead-assignment";
+import { logActivity } from "@/lib/audit";
+
+const emptyToUndef = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
 
 const createHotLeadSchema = z.object({
-  clientName: z.string().min(1),
-  phone: z.string().optional(),
-  email: z.string().email().optional(),
-  source: z.string().optional(),
-  departmentId: z.number().nullable().optional(),
-  assignedUserId: z.number().nullable().optional(),
+  clientName: z.string().min(1, "Client name is required"),
+  phone: z.preprocess(emptyToUndef, z.string().optional()),
+  email: z.preprocess(emptyToUndef, z.string().email().optional()),
+  source: z.preprocess(emptyToUndef, z.string().optional()),
+  departmentId: z.union([z.number().int(), z.null()]).optional(),
+  assignedUserId: z.union([z.number().int(), z.null()]).optional(),
   status: z.enum(["New", "Contacted", "Follow Up", "Closed"]).optional(),
-  notes: z.string().optional()
+  notes: z.preprocess(emptyToUndef, z.string().optional())
 });
 
+function serializeHotLead(row: typeof schema.leads.$inferSelect) {
+  const { notesSummary, ...rest } = row;
+  return {
+    ...rest,
+    notes: notesSummary ?? null
+  };
+}
+
 export async function GET(req: NextRequest) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+  if (!payload) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const departmentId = searchParams.get("departmentId");
   const assignedUserId = searchParams.get("assignedUserId");
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim();
 
-  const conditions: any[] = [];
-  if (departmentId) {
-    conditions.push(eq(schema.hotLeads.departmentId, Number(departmentId)));
+  if (!isRole(payload.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (assignedUserId) {
-    conditions.push(eq(schema.hotLeads.assignedUserId, Number(assignedUserId)));
+
+  const conditions: SQL[] = [eq(schema.leads.type, "hot")];
+  conditions.push(eq(schema.leads.isDeleted, false));
+  if (payload.role === "manager") {
+    if (!payload.departmentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    conditions.push(eq(schema.leads.departmentId, payload.departmentId));
+  }
+  if (payload.role === "employee") {
+    conditions.push(eq(schema.leads.assignedUserId, payload.userId));
+  }
+
+  if (payload.role === "employee" && assignedUserId) {
+    const requested = Number(assignedUserId);
+    if (!Number.isNaN(requested) && requested !== payload.userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+  if (payload.role === "manager" && departmentId) {
+    const requested = Number(departmentId);
+    if (
+      !Number.isNaN(requested) &&
+      payload.departmentId &&
+      requested !== payload.departmentId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  if (departmentId && !Number.isNaN(Number(departmentId))) {
+    conditions.push(eq(schema.leads.departmentId, Number(departmentId)));
+  }
+  if (assignedUserId && !Number.isNaN(Number(assignedUserId))) {
+    conditions.push(eq(schema.leads.assignedUserId, Number(assignedUserId)));
   }
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      ilike(schema.hotLeads.clientName, pattern) as any
+      or(
+        ilike(schema.leads.clientName, pattern),
+        ilike(schema.leads.phone, pattern),
+        ilike(schema.leads.email, pattern)
+      )!
     );
   }
 
-  const where =
-    conditions.length === 0 ? undefined : (and as any).apply(null, conditions);
-
-  const leads = await db
+  const rows = await db
     .select()
-    .from(schema.hotLeads)
-    .where(where as any);
+    .from(schema.leads)
+    .where(and(...conditions))
+    .orderBy(desc(schema.leads.createdAt));
 
-  return NextResponse.json({ leads });
+  return NextResponse.json({
+    leads: rows.map(serializeHotLead)
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -65,20 +121,113 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  if (!isRole(payload.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const effectiveDepartmentId = data.departmentId ?? payload.departmentId;
+  if (payload.role !== "admin") {
+    if (!payload.departmentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (data.departmentId != null && data.departmentId !== payload.departmentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+  if (payload.role !== "admin" && !effectiveDepartmentId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const shouldAutoAssign = data.assignedUserId == null;
+
+  let assignedUserId: number | null = null;
+  if (shouldAutoAssign) {
+    assignedUserId = await autoAssignLead({
+      leadType: "hot",
+      departmentId: effectiveDepartmentId ?? null,
+      eligibleRoles: assignableUserRoles
+    });
+
+    // Fallback: ensure non-admin creators always get a valid owner.
+    if (assignedUserId == null && payload.role !== "admin") {
+      assignedUserId = payload.userId;
+    }
+  } else {
+    // Manual assignment requires authorization.
+    const requestedAssigned = data.assignedUserId;
+    if (typeof requestedAssigned !== "number") {
+      return NextResponse.json({ error: "Invalid assignedUserId" }, { status: 400 });
+    }
+
+    if (payload.role === "employee") {
+      if (requestedAssigned !== payload.userId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      assignedUserId = requestedAssigned;
+    } else if (payload.role === "manager") {
+      if (!payload.departmentId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const [targetUser] = await db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.id, requestedAssigned),
+            eq(schema.users.departmentId, payload.departmentId)
+          )
+        );
+
+      if (!targetUser) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      assignedUserId = requestedAssigned;
+    } else {
+      // admin
+      assignedUserId = requestedAssigned;
+    }
+  }
+
   const [lead] = await db
-    .insert(schema.hotLeads)
+    .insert(schema.leads)
     .values({
+      type: "hot",
       clientName: data.clientName,
       phone: data.phone ?? null,
       email: data.email ?? null,
       source: data.source ?? null,
-      departmentId: data.departmentId ?? null,
-      assignedUserId: data.assignedUserId ?? payload.userId,
+      departmentId: effectiveDepartmentId ?? null,
+      assignedUserId,
       status: data.status ?? "New",
-      notesSummary: data.notes ?? null
+      notesSummary: data.notes ?? null,
+      saleAmount: null,
+      servicePurchased: null,
+      saleDate: null
     })
     .returning();
 
-  return NextResponse.json({ lead }, { status: 201 });
-}
+  await logActivity({
+    userId: payload.userId,
+    action: "lead_created",
+    entityType: "lead",
+    entityId: lead.id
+  });
+  await logActivity({
+    userId: payload.userId,
+    action: "lead_assigned",
+    entityType: "lead",
+    entityId: lead.id
+  });
 
+  if (lead.assignedUserId) {
+    await db.insert(schema.notifications).values({
+      userId: lead.assignedUserId,
+      type: "lead_assigned",
+      leadId: lead.id,
+      message: `You have been assigned a new hot lead: ${lead.clientName}`
+    });
+  }
+
+  return NextResponse.json({ lead: serializeHotLead(lead) }, { status: 201 });
+}

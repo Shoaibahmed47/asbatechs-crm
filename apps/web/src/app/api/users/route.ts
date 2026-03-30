@@ -4,19 +4,48 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { eq } from "drizzle-orm";
 import { COOKIE_NAME, verifyAuthToken, hashPassword } from "@/lib/auth";
+import { isRole } from "@/lib/rbac";
 
 const createUserSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.enum(["admin", "employee"]),
+  role: z.enum(["admin", "manager", "employee"]),
   departmentId: z.number().nullable().optional()
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+  if (!payload || !isRole(payload.role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (payload.role === "admin") {
+    const users = await db
+      .select()
+      .from(schema.users)
+      .orderBy(schema.users.createdAt);
+    return NextResponse.json({ users });
+  }
+
+  if (payload.role === "manager") {
+    if (!payload.departmentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const users = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.departmentId, payload.departmentId))
+      .orderBy(schema.users.createdAt);
+    return NextResponse.json({ users });
+  }
+
+  // employee
   const users = await db
     .select()
     .from(schema.users)
+    .where(eq(schema.users.id, payload.userId))
     .orderBy(schema.users.createdAt);
   return NextResponse.json({ users });
 }
@@ -60,6 +89,13 @@ export async function POST(req: NextRequest) {
       departmentId: departmentId ?? null
     })
     .returning();
+
+  await db.insert(schema.activityLogs).values({
+    userId: payload.userId,
+    action: "user_created",
+    entityType: "user",
+    entityId: user.id
+  });
 
   return NextResponse.json(
     {

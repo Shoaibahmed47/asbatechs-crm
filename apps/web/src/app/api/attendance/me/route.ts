@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { getLocalDateString } from "@/lib/attendance-date";
 
 function toDateParam(date?: string | null): string {
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateString();
 }
 
 export async function GET(req: NextRequest) {
@@ -45,17 +46,53 @@ export async function GET(req: NextRequest) {
       )
     );
 
+  const breakSessions = await db
+    .select()
+    .from(schema.breakSessions)
+    .where(eq(schema.breakSessions.attendanceLogId, log.id))
+    .orderBy(asc(schema.breakSessions.breakStart));
+
   const status = (() => {
     if (!log.clockIn) return "offline";
-    if (openBreak) return "on_break";
+    if (openBreak) return "break";
     if (log.clockOut) return "offline";
     return "active";
   })();
 
+  const now = Date.now();
+  const completedBreakMins = log.totalBreakMinutes ?? 0;
+  let liveWorkMinutes: number | null = null;
+  let ongoingBreakMinutes = 0;
+
+  if (openBreak) {
+    ongoingBreakMinutes = Math.max(
+      0,
+      Math.floor((now - new Date(openBreak.breakStart as Date).getTime()) / 60000)
+    );
+  }
+
+  if (log.clockIn && !log.clockOut) {
+    const startMs = new Date(log.clockIn as Date).getTime();
+    const elapsedMins = Math.max(0, Math.floor((now - startMs) / 60000));
+    liveWorkMinutes = Math.max(0, elapsedMins - completedBreakMins - ongoingBreakMinutes);
+  } else if (log.clockOut) {
+    liveWorkMinutes = log.totalWorkMinutes ?? 0;
+  }
+
+  const totalHoursLive =
+    log.clockOut && log.totalHours != null
+      ? String(log.totalHours)
+      : liveWorkMinutes != null
+        ? (liveWorkMinutes / 60).toFixed(2)
+        : null;
+
   return NextResponse.json({
     attendance: {
       ...log,
-      status
+      status,
+      liveWorkMinutes,
+      totalHoursLive,
+      breakSessions
     }
   });
 }

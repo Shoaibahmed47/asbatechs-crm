@@ -3,10 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { getLocalDateString } from "@/lib/attendance-date";
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -17,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = payload.userId;
-  const today = todayDate();
+  const today = getLocalDateString();
 
   const [log] = await db
     .select()
@@ -36,7 +33,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Ensure there is no open break session
+  if (!log.clockIn) {
+    return NextResponse.json(
+      { error: "Clock in before starting a break." },
+      { status: 400 }
+    );
+  }
+
+  if (log.clockOut) {
+    return NextResponse.json(
+      { error: "You have already clocked out today." },
+      { status: 400 }
+    );
+  }
+
   const [openSession] = await db
     .select()
     .from(schema.breakSessions)
@@ -62,6 +72,10 @@ export async function POST(req: NextRequest) {
     })
     .returning();
 
+  await db
+    .update(schema.attendanceLogs)
+    .set({ status: "break" })
+    .where(eq(schema.attendanceLogs.id, log.id));
+
   return NextResponse.json({ session });
 }
-

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { db } from "@/lib/db";
+import { schema } from "@asbatechs-crm/database";
 import { findUserByEmail, verifyPassword, signAuthToken, COOKIE_NAME } from "@/lib/auth";
+import { ensureDefaultAdmin } from "@/lib/bootstrap-admin";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -8,6 +11,8 @@ const loginSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  await ensureDefaultAdmin();
+
   const body = await req.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
 
@@ -34,6 +39,13 @@ export async function POST(req: Request) {
     userId: user.id,
     role: user.role,
     departmentId: user.departmentId
+  });
+
+  await db.insert(schema.activityLogs).values({
+    userId: user.id,
+    action: "login",
+    entityType: "user",
+    entityId: user.id
   });
 
   const res = NextResponse.json({

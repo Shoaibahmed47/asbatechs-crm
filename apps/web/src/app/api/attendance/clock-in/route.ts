@@ -3,10 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { getLocalDateString } from "@/lib/attendance-date";
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -17,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = payload.userId;
-  const today = todayDate();
+  const today = getLocalDateString();
 
   const [existing] = await db
     .select()
@@ -32,9 +29,39 @@ export async function POST(req: NextRequest) {
   const now = new Date();
 
   if (existing) {
+    if (existing.clockIn && !existing.clockOut) {
+      return NextResponse.json(
+        { error: "You are already clocked in." },
+        { status: 400 }
+      );
+    }
+
+    if (existing.clockOut) {
+      await db
+        .delete(schema.breakSessions)
+        .where(eq(schema.breakSessions.attendanceLogId, existing.id));
+
+      const [updated] = await db
+        .update(schema.attendanceLogs)
+        .set({
+          clockIn: now,
+          clockOut: null,
+          totalWorkMinutes: 0,
+          totalBreakMinutes: 0,
+          totalHours: null,
+          status: "active"
+        })
+        .where(eq(schema.attendanceLogs.id, existing.id))
+        .returning();
+      return NextResponse.json({ attendance: updated });
+    }
+
     const [updated] = await db
       .update(schema.attendanceLogs)
-      .set({ clockIn: now })
+      .set({
+        clockIn: now,
+        status: "active"
+      })
       .where(eq(schema.attendanceLogs.id, existing.id))
       .returning();
     return NextResponse.json({ attendance: updated });
@@ -47,10 +74,10 @@ export async function POST(req: NextRequest) {
       date: today as any,
       clockIn: now,
       totalWorkMinutes: 0,
-      totalBreakMinutes: 0
+      totalBreakMinutes: 0,
+      status: "active"
     })
     .returning();
 
   return NextResponse.json({ attendance: inserted }, { status: 201 });
 }
-

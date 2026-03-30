@@ -10,10 +10,16 @@ const createDepartmentSchema = z.object({
 });
 
 export async function GET() {
-  const departments = await db
+  const allDepartments = await db
     .select()
     .from(schema.departments)
     .orderBy(schema.departments.name);
+  const departments = allDepartments.filter(
+    (department) =>
+      typeof department.name === "string" &&
+      department.name.trim().length > 0 &&
+      department.name.trim().toLowerCase() !== "null"
+  );
   return NextResponse.json({ departments });
 }
 
@@ -34,10 +40,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const normalizedName = parsed.data.name.trim();
+  if (!normalizedName || normalizedName.toLowerCase() === "null") {
+    return NextResponse.json({ error: "Invalid department name" }, { status: 400 });
+  }
+
   const [department] = await db
     .insert(schema.departments)
     .values({
-      name: parsed.data.name,
+      name: normalizedName,
       description: parsed.data.description ?? null
     })
     .returning();

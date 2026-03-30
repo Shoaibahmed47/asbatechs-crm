@@ -3,10 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { getLocalDateString } from "@/lib/attendance-date";
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -17,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = payload.userId;
-  const today = todayDate();
+  const today = getLocalDateString();
 
   const [log] = await db
     .select()
@@ -32,6 +29,13 @@ export async function POST(req: NextRequest) {
   if (!log) {
     return NextResponse.json(
       { error: "No attendance log for today." },
+      { status: 400 }
+    );
+  }
+
+  if (log.clockOut) {
+    return NextResponse.json(
+      { error: "Shift already ended. Break was closed when you clocked out." },
       { status: 400 }
     );
   }
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
-  const diffMs = now.getTime() - new Date(openSession.breakStart as any).getTime();
+  const diffMs = now.getTime() - new Date(openSession.breakStart as Date).getTime();
   const addedMinutes = Math.floor(diffMs / 60000);
 
   const [sessionUpdated] = await db
@@ -68,10 +72,12 @@ export async function POST(req: NextRequest) {
 
   const [logUpdated] = await db
     .update(schema.attendanceLogs)
-    .set({ totalBreakMinutes: newTotalBreak })
+    .set({
+      totalBreakMinutes: newTotalBreak,
+      status: "active"
+    })
     .where(eq(schema.attendanceLogs.id, log.id))
     .returning();
 
   return NextResponse.json({ session: sessionUpdated, attendance: logUpdated });
 }
-

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { Button } from "@/components/ui/button";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 
 async function createDepartment(formData: FormData) {
   "use server";
@@ -15,11 +16,42 @@ async function createDepartment(formData: FormData) {
   revalidatePath("/settings/departments");
 }
 
+async function updateDepartment(formData: FormData) {
+  "use server";
+  const id = Number(formData.get("id"));
+  const name = String(formData.get("name") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  if (Number.isNaN(id) || !name) return;
+
+  await db
+    .update(schema.departments)
+    .set({
+      name,
+      description: description || null
+    })
+    .where(eq(schema.departments.id, id));
+
+  revalidatePath("/settings/departments");
+}
+
+async function deleteDepartment(formData: FormData) {
+  "use server";
+  const id = Number(formData.get("id"));
+  if (Number.isNaN(id)) return;
+
+  await db.delete(schema.departments).where(eq(schema.departments.id, id));
+  revalidatePath("/settings/departments");
+}
+
 export default async function DepartmentsPage() {
-  const departments = await db
+  const allDepartments = await db
     .select()
     .from(schema.departments)
     .orderBy(schema.departments.name);
+
+  const departments = allDepartments.filter(
+    (dept) => dept.name && dept.name.toLowerCase() !== "null"
+  );
 
   return (
     <div className="space-y-6">
@@ -34,38 +66,48 @@ export default async function DepartmentsPage() {
           <div className="mb-3 text-sm font-medium text-slate-900">
             Existing departments
           </div>
-          <table className="w-full table-auto text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase text-slate-500">
-                <th className="pb-2 text-left">Name</th>
-                <th className="pb-2 text-left">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={2}
-                    className="py-4 text-center text-xs text-slate-500"
-                  >
-                    No departments yet. Create your first one on the right.
-                  </td>
-                </tr>
-              ) : (
-                departments.map((dept) => (
-                  <tr
-                    key={dept.id}
-                    className="border-b border-slate-50 last:border-b-0"
-                  >
-                    <td className="py-2 text-sm text-slate-900">{dept.name}</td>
-                    <td className="py-2 text-xs text-slate-600">
-                      {dept.description || "—"}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <div className="space-y-3">
+            {departments.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-500">
+                No departments yet. Create your first one on the right.
+              </div>
+            ) : (
+              departments.map((dept) => (
+                <form
+                  key={dept.id}
+                  action={updateDepartment}
+                  className="grid gap-3 rounded-lg border border-slate-100 p-3 md:grid-cols-[1fr,1.4fr,auto]"
+                >
+                  <input type="hidden" name="id" value={dept.id} />
+                  <input
+                    name="name"
+                    defaultValue={dept.name}
+                    className="block w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    required
+                  />
+                  <textarea
+                    name="description"
+                    defaultValue={dept.description ?? ""}
+                    rows={2}
+                    className="block w-full resize-none rounded-md border border-slate-200 px-2 py-1.5 text-xs shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    placeholder="Add description"
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <Button type="submit" size="sm" variant="outline">
+                      Edit
+                    </Button>
+                    <button
+                      type="submit"
+                      formAction={deleteDepartment}
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </form>
+              ))
+            )}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="mb-3 text-sm font-medium text-slate-900">

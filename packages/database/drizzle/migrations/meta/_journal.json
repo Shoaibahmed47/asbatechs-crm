@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773423032182,
+      "tag": "0000_lying_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773772138112,
+      "tag": "0001_bitter_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774625909783,
+      "tag": "0002_flawless_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774716445184,
+      "tag": "0003_heavy_master_chief",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774784111260,
+      "tag": "0004_military_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774786849341,
+      "tag": "0005_ambiguous_dust",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774786900000,
+      "tag": "0006_unified_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774787000000,
+      "tag": "0007_notes_activity_upgrade",
+      "breakpoints": true
+    }
+  ]
+}

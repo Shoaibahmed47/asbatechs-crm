@@ -13,3 +13,9 @@ pnpm-lock.yaml
 *.log
 coverage
 drizzle
+
+# Allow committing schema migration SQL files.
+!packages/database/drizzle/
+!packages/database/drizzle/migrations/
+!packages/database/drizzle/migrations/*.sql
+!packages/database/drizzle/migrations/meta/**

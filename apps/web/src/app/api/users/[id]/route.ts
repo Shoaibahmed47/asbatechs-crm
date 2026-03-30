@@ -9,15 +9,16 @@ const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   password: z.string().min(8).optional(),
-  role: z.enum(["admin", "employee"]).optional(),
+  role: z.enum(["admin", "manager", "employee"]).optional(),
   departmentId: z.number().nullable().optional()
 });
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = Number(params.id);
+  const { id: idParam } = await context.params;
+  const id = Number(idParam);
   if (Number.isNaN(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
@@ -43,7 +44,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verifyAuthToken(token) : null;
@@ -51,7 +52,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const id = Number(params.id);
+  const { id: idParam } = await context.params;
+  const id = Number(idParam);
   if (Number.isNaN(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
@@ -90,7 +92,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verifyAuthToken(token) : null;
@@ -98,7 +100,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const id = Number(params.id);
+  const { id: idParam } = await context.params;
+  const id = Number(idParam);
   if (Number.isNaN(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }

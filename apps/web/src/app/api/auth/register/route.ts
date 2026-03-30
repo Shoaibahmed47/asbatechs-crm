@@ -1,18 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { hashPassword } from "@/lib/auth";
+import { COOKIE_NAME, hashPassword, verifyAuthToken } from "@/lib/auth";
 
 const registerSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
   departmentId: z.number().nullable().optional(),
-  role: z.enum(["admin", "employee"])
+  role: z.enum(["admin", "manager", "employee"])
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+
+  if (!payload || payload.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
 
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
   const [existing] = await db
     .select()
     .from(schema.users)
-    .where(schema.users.email.eq(email) as any);
+    .where(eq(schema.users.email, email));
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
@@ -45,6 +53,13 @@ export async function POST(req: Request) {
       departmentId: departmentId ?? null
     })
     .returning();
+
+  await db.insert(schema.activityLogs).values({
+    userId: payload.userId,
+    action: "user_created",
+    entityType: "user",
+    entityId: user.id
+  });
 
   return NextResponse.json(
     {
