@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
@@ -8,6 +8,12 @@ import { getLocalDateString } from "@/lib/attendance-date";
 import { assignableUserRoles, isRole } from "@/lib/rbac";
 import { autoAssignLead } from "@/lib/lead-assignment";
 import { logActivity } from "@/lib/audit";
+import {
+  collectLeadListConditions,
+  countLeads,
+  parseListPagination,
+  resolveLeadOrderBy
+} from "@/lib/leads-query";
 
 const emptyToUndef = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? undefined : v;
@@ -42,69 +48,41 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const departmentId = searchParams.get("departmentId");
-  const assignedUserId = searchParams.get("assignedUserId");
-  const search = searchParams.get("search")?.trim();
-
-  if (!isRole(payload.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const parsed = collectLeadListConditions("sale", payload, searchParams);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
   }
 
-  const conditions: SQL[] = [eq(schema.leads.type, "sale")];
-  conditions.push(eq(schema.leads.isDeleted, false));
-  if (payload.role === "manager") {
-    if (!payload.departmentId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    conditions.push(eq(schema.leads.departmentId, payload.departmentId));
-  }
-  if (payload.role === "employee") {
-    conditions.push(eq(schema.leads.assignedUserId, payload.userId));
-  }
-
-  if (payload.role === "employee" && assignedUserId) {
-    const requested = Number(assignedUserId);
-    if (!Number.isNaN(requested) && requested !== payload.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-  if (payload.role === "manager" && departmentId) {
-    const requested = Number(departmentId);
-    if (
-      !Number.isNaN(requested) &&
-      payload.departmentId &&
-      requested !== payload.departmentId
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-
-  if (departmentId && !Number.isNaN(Number(departmentId))) {
-    conditions.push(eq(schema.leads.departmentId, Number(departmentId)));
-  }
-  if (assignedUserId && !Number.isNaN(Number(assignedUserId))) {
-    conditions.push(eq(schema.leads.assignedUserId, Number(assignedUserId)));
-  }
-  if (search) {
-    const pattern = `%${search}%`;
-    conditions.push(
-      or(
-        ilike(schema.leads.clientName, pattern),
-        ilike(schema.leads.phone, pattern),
-        ilike(schema.leads.email, pattern),
-        ilike(schema.leads.servicePurchased, pattern)
-      )!
-    );
-  }
-
+  const whereClause = and(...parsed.conditions)!;
+  const { page, limit, offset } = parseListPagination(searchParams);
+  const orderByParts = resolveLeadOrderBy("sale", searchParams);
+  const total = await countLeads(whereClause);
   const rows = await db
     .select()
     .from(schema.leads)
-    .where(and(...conditions))
-    .orderBy(desc(schema.leads.createdAt));
+    .where(whereClause)
+    .orderBy(...orderByParts)
+    .limit(limit)
+    .offset(offset);
+
+  const [agg] = await db
+    .select({
+      sum: sql<string>`coalesce(sum(${schema.leads.saleAmount})::numeric, 0)::text`.as(
+        "sum_sale"
+      )
+    })
+    .from(schema.leads)
+    .where(whereClause);
+
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
   return NextResponse.json({
-    leads: rows.map(serializeSaleLead)
+    leads: rows.map(serializeSaleLead),
+    total,
+    page,
+    limit,
+    totalPages,
+    sumSaleAmount: agg?.sum ?? "0"
   });
 }
 

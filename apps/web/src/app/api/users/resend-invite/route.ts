@@ -5,6 +5,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/rbac";
 import { sendInviteEmail } from "@/lib/mail";
 
 const bodySchema = z.object({
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verifyAuthToken(token) : null;
 
-  if (!payload || payload.role !== "admin") {
+  if (!payload || !isAdminRole(payload.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

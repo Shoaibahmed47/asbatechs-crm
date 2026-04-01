@@ -5,7 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Line,
   LineChart,
   Pie,
@@ -26,15 +25,30 @@ export type DashboardChartPayload = {
   monthlyNewLeads: { month: string; label: string; count: number }[];
 };
 
-const PIE_COLORS = ["#2563eb", "#059669"];
+const PIE_COLORS = ["#2563eb", "#0f766e"];
 const CHART_AXIS = { fill: "#64748b", fontSize: 11 };
-const GRID_STROKE = "#e2e8f0";
+const GRID_STROKE = "#dbe4f0";
+
+/** Recharts 3 defaults initial size to -1×-1; that logs a warning until ResizeObserver runs. */
+const CHART_AREA = {
+  pie: { width: 560, height: 280 },
+  bar: { width: 560, height: 340 },
+  line: { width: 560, height: 320 }
+} as const;
 
 function currencyShort(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
   return `$${value.toFixed(0)}`;
 }
+
+const tooltipStyle = {
+  borderRadius: 14,
+  border: "1px solid rgba(148, 163, 184, 0.24)",
+  background: "rgba(255, 255, 255, 0.96)",
+  boxShadow: "0 18px 36px rgba(15, 23, 42, 0.12)",
+  fontSize: 12
+};
 
 export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
   const leadMix = [
@@ -43,30 +57,41 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
   ];
 
   const attendanceRate =
-    data.totalUsers > 0
-      ? Math.round((data.activeToday / data.totalUsers) * 100)
-      : 0;
+    data.totalUsers > 0 ? Math.round((data.activeToday / data.totalUsers) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <section className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">Charts</h2>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Lead mix, revenue trend, pipeline activity, and team attendance
-          snapshot.
+        <h2 className="text-lg font-semibold tracking-tight text-slate-950 dark:text-white">
+          Performance analytics
+        </h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Revenue, pipeline activity, and staffing visibility presented in a clearer executive format.
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Lead mix
-          </h3>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Hot vs sales records in <code className="text-[10px]">leads</code>
-          </p>
-          <div className="mt-2 h-[260px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="data-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Lead mix
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Relative split between active hot and sales lead records.
+              </p>
+            </div>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+              Pipeline
+            </div>
+          </div>
+          <div className="relative mt-4 h-[280px] w-full min-w-0">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={0}
+              initialDimension={CHART_AREA.pie}
+            >
               <PieChart>
                 <Pie
                   data={leadMix}
@@ -74,12 +99,12 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius={52}
-                  outerRadius={88}
-                  paddingAngle={2}
+                  innerRadius={66}
+                  outerRadius={98}
+                  paddingAngle={3}
                 >
-                  {leadMix.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  {leadMix.map((entry) => (
+                    <Cell key={entry.name} fill={PIE_COLORS[leadMix.indexOf(entry)]} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -87,32 +112,55 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                     typeof value === "number" ? value : Number(value),
                     "Leads"
                   ]}
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    fontSize: 12
-                  }}
+                  contentStyle={tooltipStyle}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {leadMix.map((item, index) => (
+              <div
+                key={item.name}
+                className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: PIE_COLORS[index] }}
+                  />
+                  {item.name}
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+                  {item.value}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Sales performance
-          </h3>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Recorded sale amounts by month (last 6 months)
-          </p>
-          <div className="mt-2 h-[260px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data.monthlySales}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+        <div className="data-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Sales performance
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Monthly booked revenue for the last six months.
+              </p>
+            </div>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+              Revenue
+            </div>
+          </div>
+          <div className="relative mt-4 h-[340px] w-full min-w-0">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={0}
+              initialDimension={CHART_AREA.bar}
+            >
+              <BarChart data={data.monthlySales} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
                 <XAxis
                   dataKey="label"
                   tick={CHART_AXIS}
@@ -123,7 +171,7 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                   tickFormatter={currencyShort}
                   tick={CHART_AXIS}
                   tickLine={false}
-                  axisLine={{ stroke: GRID_STROKE }}
+                  axisLine={false}
                   width={48}
                 />
                 <Tooltip
@@ -136,42 +184,40 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                         })
                       : String(value ?? "");
                   }}
-                  labelFormatter={(_, payload) =>
-                    String(payload?.[0]?.payload?.month ?? "")
-                  }
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    fontSize: 12
-                  }}
+                  labelFormatter={(_, payload) => String(payload?.[0]?.payload?.month ?? "")}
+                  contentStyle={tooltipStyle}
                 />
-                <Bar
-                  dataKey="amount"
-                  name="Revenue"
-                  fill="#0f172a"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="amount" name="Revenue" fill="#0f172a" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Pipeline activity
-          </h3>
-          <p className="mt-1 text-[11px] text-slate-400">
-            New lead rows created per month (all types)
-          </p>
-          <div className="mt-2 h-[260px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={data.monthlyNewLeads}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <div className="data-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Pipeline activity
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Newly created lead records month over month.
+              </p>
+            </div>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+              Trend
+            </div>
+          </div>
+          <div className="relative mt-4 h-[320px] w-full min-w-0">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={0}
+              initialDimension={CHART_AREA.line}
+            >
+              <LineChart data={data.monthlyNewLeads} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
                 <XAxis
                   dataKey="label"
                   tick={CHART_AXIS}
@@ -182,7 +228,7 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                   allowDecimals={false}
                   tick={CHART_AXIS}
                   tickLine={false}
-                  axisLine={{ stroke: GRID_STROKE }}
+                  axisLine={false}
                   width={36}
                 />
                 <Tooltip
@@ -190,19 +236,15 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
                     typeof value === "number" ? value : Number(value),
                     "New leads"
                   ]}
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    fontSize: 12
-                  }}
+                  contentStyle={tooltipStyle}
                 />
                 <Line
                   type="monotone"
                   dataKey="count"
                   name="New leads"
                   stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: "#2563eb" }}
+                  strokeWidth={3}
+                  dot={{ r: 3.5, fill: "#2563eb" }}
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
@@ -210,37 +252,49 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Team attendance today
-          </h3>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Share of users with an open shift (clocked in, not out)
-          </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-2">
-            <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-8 border-slate-100 bg-slate-50">
+        <div className="data-card flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Team attendance today
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Share of users with an active open shift right now.
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-5">
+            <div className="relative flex h-52 w-52 items-center justify-center rounded-full border-[14px] border-slate-100 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.94))] dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.85),rgba(15,23,42,0.95))]">
               <div className="text-center">
-                <div className="text-3xl font-semibold text-slate-900">
+                <div className="text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">
                   {attendanceRate}%
                 </div>
-                <div className="text-[10px] uppercase text-slate-500">
-                  active
+                <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                  Active
                 </div>
               </div>
             </div>
-            <p className="max-w-xs text-center text-xs text-slate-600">
-              <span className="font-semibold text-slate-800">
-                {data.activeToday}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold text-slate-800">
-                {data.totalUsers}
-              </span>{" "}
-              users currently in an open shift.
-            </p>
+
+            <div className="grid w-full gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  Open shifts
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+                  {data.activeToday}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  Total users
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+                  {data.totalUsers}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

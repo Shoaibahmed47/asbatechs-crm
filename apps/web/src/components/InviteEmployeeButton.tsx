@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 type Department = {
   id: number;
@@ -9,6 +13,7 @@ type Department = {
 };
 
 export function InviteEmployeeButton() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -17,15 +22,30 @@ export function InviteEmployeeButton() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [canResend, setCanResend] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   useEffect(() => {
     async function loadDepartments() {
       try {
-        const res = await fetch("/api/departments");
-        if (!res.ok) return;
-        const data = await res.json().catch(() => null);
+        const data = await apiFetch<{ departments?: Department[] }>("/api/departments");
         const cleanedDepartments = (data?.departments ?? []).filter(
           (department: Department) =>
             typeof department?.name === "string" &&
@@ -37,6 +57,7 @@ export function InviteEmployeeButton() {
         setDepartments([]);
       }
     }
+
     if (open) {
       void loadDepartments();
     }
@@ -44,47 +65,49 @@ export function InviteEmployeeButton() {
 
   function resetState() {
     setError(null);
-    setSuccess(null);
     setCanResend(false);
   }
 
   async function sendInvitation(action: "invite" | "resend") {
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
-      const res = await fetch("/api/admin/employees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiFetch.post("/api/admin/employees", {
           email,
           departmentId: departmentId ? Number(departmentId) : null,
           action
-        })
       });
-      const data = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        if (res.status === 403) {
-          setError("Only admins can invite employees.");
-        } else if (res.status === 409 && data?.code === "EMAIL_ALREADY_ADDED") {
-          setError("This email is already added");
-          setCanResend(Boolean(data?.canResend));
-        } else {
-          setError(data?.error ?? "Unable to send invitation.");
-        }
-        setLoading(false);
-        return;
-      }
-
-      setSuccess(
-        action === "resend" ? "Invitation resent successfully." : "Invitation sent successfully."
-      );
       setCanResend(false);
       setLoading(false);
-    } catch {
-      setError("Something went wrong. Please try again.");
+      toast.success(
+        action === "resend" ? "Invitation resent" : "Invitation sent",
+        { description: email }
+      );
+      setOpen(false);
+      setEmail("");
+      setFirstName("");
+      setLastName("");
+      setDepartmentId("");
+      resetState();
+    } catch (error) {
+      if (error instanceof ApiFetchError) {
+        if (
+          error.status === 409 &&
+          typeof error.details === "object" &&
+          error.details &&
+          "code" in (error.details as Record<string, unknown>) &&
+          (error.details as Record<string, unknown>).code === "EMAIL_ALREADY_ADDED"
+        ) {
+          setCanResend(
+            Boolean((error.details as Record<string, unknown>).canResend)
+          );
+        }
+        setError(error.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
       setLoading(false);
     }
   }
@@ -94,7 +117,7 @@ export function InviteEmployeeButton() {
     resetState();
 
     if (!email) {
-      setError("Email is required.");
+      toast.error("Email is required.");
       return;
     }
 
@@ -104,7 +127,7 @@ export function InviteEmployeeButton() {
   async function handleResend() {
     resetState();
     if (!email) {
-      setError("Email is required.");
+      toast.error("Email is required.");
       return;
     }
     await sendInvitation("resend");
@@ -114,7 +137,6 @@ export function InviteEmployeeButton() {
     <>
       <Button
         type="button"
-        className="text-xs"
         onClick={() => {
           setOpen(true);
           resetState();
@@ -123,120 +145,145 @@ export function InviteEmployeeButton() {
         Invite employee
       </Button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">
-                Add New Employee
-              </h2>
+      {mounted &&
+        open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/65 px-4 py-8 backdrop-blur-md sm:px-6 sm:py-10 dark:bg-slate-950/75"
+            role="presentation"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOpen(false);
+            }}
+          >
+            <div
+              className="my-auto w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] dark:border-slate-700 dark:bg-slate-950"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="invite-employee-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+            <div className="flex items-start justify-between border-b border-slate-200/80 px-6 py-5 dark:border-slate-800">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">
+                  Employee onboarding
+                </div>
+                <h2
+                  id="invite-employee-title"
+                  className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white"
+                >
+                  Invite new employee
+                </h2>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  Send a secure invitation and assign the employee to the correct department.
+                </p>
+              </div>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-600"
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 onClick={() => setOpen(false)}
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
             </div>
-            {error && (
-              <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                {success}
-              </div>
-            )}
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  placeholder="employee@example.com"
-                  required
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-700">
-                    First name
+
+            <div className="px-6 py-6">
+              {error && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Email
                   </label>
                   <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    placeholder="John"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="form-input"
+                    placeholder="employee@example.com"
+                    required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-700">
-                    Last name
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="form-input"
+                      placeholder="John"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="form-input"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Department
                   </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    placeholder="Doe"
-                  />
+                  <select
+                    value={departmentId}
+                    onChange={(e) => setDepartmentId(e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((department) => (
+                      <option key={department.id} value={department.id}>
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-700">
-                  Department
-                </label>
-                <select
-                  value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value)}
-                  className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                >
-                  <option value="">Select department</option>
-                  {departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mt-2 flex justify-end gap-2 text-xs">
-                {canResend && (
+
+                <div className="flex flex-wrap justify-end gap-3 pt-2">
+                  {canResend && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResend}
+                      disabled={loading}
+                    >
+                      {loading ? "Resending..." : "Resend invitation"}
+                    </Button>
+                  )}
                   <Button
                     type="button"
-                    size="sm"
                     variant="outline"
-                    onClick={handleResend}
+                    onClick={() => {
+                      setOpen(false);
+                      resetState();
+                    }}
                     disabled={loading}
                   >
-                    {loading ? "Resending..." : "Resend Invitation"}
+                    Cancel
                   </Button>
-                )}
-                <button
-                  type="button"
-                  className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
-                  onClick={() => {
-                    setOpen(false);
-                    resetState();
-                  }}
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <Button type="submit" size="sm" disabled={loading}>
-                  {loading ? "Sending..." : "Send Invitation"}
-                </Button>
-              </div>
-            </form>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Sending..." : "Send invitation"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }
-

@@ -5,6 +5,14 @@ import { AdminExportControls } from "@/components/AdminExportControls";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getAdminSnapshot } from "@/lib/admin-snapshot";
 
+const tableHeadClass =
+  "sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400";
+const tableHeadRowClass =
+  "border-b border-slate-200 dark:border-slate-700";
+const tableBodyClass =
+  "divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200";
+const tableRowHover = "hover:bg-slate-50/80 dark:hover:bg-slate-800/40";
+
 function Panel({
   title,
   children
@@ -13,8 +21,8 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <h2 className="border-b-[3px] border-double border-slate-300 bg-slate-100/95 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+    <section className="data-card overflow-hidden p-0">
+      <h2 className="border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-300">
         {title}
       </h2>
       <div className="max-h-[min(24rem,50vh)] overflow-auto">{children}</div>
@@ -40,16 +48,16 @@ export default async function AdminOverviewPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             Admin control
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
+          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
             Full read-only view of departments, people, leads, and invites.
             Export everything as CSV or PDF for reporting.
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Snapshot time:{" "}
-            <span className="font-medium text-slate-700">
+            <span className="font-medium text-slate-700 dark:text-slate-300">
               {new Date(snapshot.generatedAt).toLocaleString()}
             </span>
           </p>
@@ -67,14 +75,11 @@ export default async function AdminOverviewPage() {
             ["Pending invites", snapshot.stats.pendingInvites]
           ] as const
         ).map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
-          >
-            <div className="text-xs font-medium uppercase text-slate-500">
+          <div key={label} className="data-card px-4 py-3">
+            <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">
               {label}
             </div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
               {value}
             </div>
           </div>
@@ -84,21 +89,21 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Departments">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-600">
-              <tr className="border-b border-slate-200">
+            <thead className={tableHeadClass}>
+              <tr className={tableHeadRowClass}>
                 <th className="px-3 py-2 font-medium">ID</th>
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+            <tbody className={tableBodyClass}>
               {snapshot.departments.map((d) => (
-                <tr key={d.id} className="hover:bg-slate-50/80">
-                  <td className="px-3 py-2 tabular-nums text-slate-600">
+                <tr key={d.id} className={tableRowHover}>
+                  <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
                     {d.id}
                   </td>
                   <td className="px-3 py-2 font-medium">{d.name}</td>
-                  <td className="max-w-xs truncate px-3 py-2 text-slate-600">
+                  <td className="max-w-xs truncate px-3 py-2 text-slate-600 dark:text-slate-400">
                     {d.description ?? "—"}
                   </td>
                 </tr>
@@ -109,8 +114,8 @@ export default async function AdminOverviewPage() {
 
         <Panel title="Users">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-600">
-              <tr className="border-b border-slate-200">
+            <thead className={tableHeadClass}>
+              <tr className={tableHeadRowClass}>
                 <th className="px-3 py-2 font-medium">ID</th>
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Email</th>
@@ -119,19 +124,23 @@ export default async function AdminOverviewPage() {
                 <th className="px-3 py-2 font-medium">Invite</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+            <tbody className={tableBodyClass}>
               {snapshot.users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/80">
-                  <td className="px-3 py-2 tabular-nums text-slate-600">
+                <tr key={u.id} className={tableRowHover}>
+                  <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
                     {u.id}
                   </td>
                   <td className="px-3 py-2 font-medium">{u.name}</td>
-                  <td className="px-3 py-2 text-slate-600">{u.email}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                    {u.email}
+                  </td>
                   <td className="px-3 py-2 capitalize">{u.role}</td>
-                  <td className="px-3 py-2 text-slate-600">
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                     {u.departmentName ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-slate-600">{u.inviteStatus}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                    {u.inviteStatus}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -142,21 +151,21 @@ export default async function AdminOverviewPage() {
       {snapshot.pendingInvites.length > 0 && (
         <Panel title="Pending invitations">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-600">
-              <tr className="border-b border-slate-200">
+            <thead className={tableHeadClass}>
+              <tr className={tableHeadRowClass}>
                 <th className="px-3 py-2 font-medium">Email</th>
                 <th className="px-3 py-2 font-medium">Department</th>
                 <th className="px-3 py-2 font-medium">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+            <tbody className={tableBodyClass}>
               {snapshot.pendingInvites.map((i) => (
-                <tr key={i.id} className="hover:bg-slate-50/80">
+                <tr key={i.id} className={tableRowHover}>
                   <td className="px-3 py-2">{i.email}</td>
-                  <td className="px-3 py-2 text-slate-600">
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                     {i.departmentName ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-slate-600">
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                     {i.createdAt
                       ? new Date(i.createdAt).toLocaleString()
                       : "—"}
@@ -170,8 +179,8 @@ export default async function AdminOverviewPage() {
 
       <Panel title="All leads (hot & sale)">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-600">
-            <tr className="border-b border-slate-200">
+          <thead className={tableHeadClass}>
+            <tr className={tableHeadRowClass}>
               <th className="px-3 py-2 font-medium">ID</th>
               <th className="px-3 py-2 font-medium">Type</th>
               <th className="px-3 py-2 font-medium">Client</th>
@@ -182,27 +191,27 @@ export default async function AdminOverviewPage() {
               <th className="px-3 py-2 font-medium">Sale</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+          <tbody className={tableBodyClass}>
             {snapshot.leads.map((l) => (
-              <tr key={l.id} className="hover:bg-slate-50/80">
-                <td className="px-3 py-2 tabular-nums text-slate-600">
+              <tr key={l.id} className={tableRowHover}>
+                <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
                   {l.id}
                 </td>
                 <td className="px-3 py-2 capitalize">{l.type}</td>
                 <td className="px-3 py-2 font-medium">{l.clientName}</td>
-                <td className="max-w-[10rem] px-3 py-2 text-slate-600">
+                <td className="max-w-[10rem] px-3 py-2 text-slate-600 dark:text-slate-400">
                   <span className="line-clamp-2">
                     {[l.phone, l.email].filter(Boolean).join(" · ") || "—"}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {l.departmentName ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {l.assignedUserName ?? "—"}
                 </td>
                 <td className="px-3 py-2">{l.status}</td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {l.type === "sale" && l.saleAmount
                     ? l.saleAmount
                     : "—"}
@@ -215,8 +224,8 @@ export default async function AdminOverviewPage() {
 
       <Panel title={`Recent activity (last ${snapshot.recentActivity.length} events)`}>
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-600">
-            <tr className="border-b border-slate-200">
+          <thead className={tableHeadClass}>
+            <tr className={tableHeadRowClass}>
               <th className="px-3 py-2 font-medium">When</th>
               <th className="px-3 py-2 font-medium">User</th>
               <th className="px-3 py-2 font-medium">Action</th>
@@ -224,28 +233,30 @@ export default async function AdminOverviewPage() {
               <th className="px-3 py-2 font-medium">ID</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+          <tbody className={tableBodyClass}>
             {snapshot.recentActivity.length === 0 ? (
               <tr>
                 <td
                   colSpan={5}
-                  className="px-3 py-6 text-center text-slate-500"
+                  className="px-3 py-6 text-center text-slate-500 dark:text-slate-400"
                 >
                   No activity logged yet.
                 </td>
               </tr>
             ) : (
               snapshot.recentActivity.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50/80">
-                  <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                <tr key={a.id} className={tableRowHover}>
+                  <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
                     {a.createdAt
                       ? new Date(a.createdAt).toLocaleString()
                       : "—"}
                   </td>
                   <td className="px-3 py-2">{a.actorName}</td>
                   <td className="max-w-xs truncate px-3 py-2">{a.action}</td>
-                  <td className="px-3 py-2 text-slate-600">{a.entityType}</td>
-                  <td className="px-3 py-2 tabular-nums text-slate-600">
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                    {a.entityType}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
                     {a.entityId}
                   </td>
                 </tr>

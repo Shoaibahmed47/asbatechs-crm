@@ -1,8 +1,18 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, verifyAuthTokenEdge } from "@/lib/auth-edge";
+import { canViewEmployeeDirectory } from "@/lib/rbac";
 
 export async function middleware(req: NextRequest) {
+  const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-request-id", requestId);
+  const nextWithRequestId = () => {
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    res.headers.set("x-request-id", requestId);
+    return res;
+  };
+
   const { pathname } = req.nextUrl;
 
   const isAuthRoute = pathname === "/login";
@@ -26,11 +36,13 @@ export async function middleware(req: NextRequest) {
         pathname !== "/favicon.ico")
     ) {
       const loginUrl = new URL("/login", req.url);
-      return NextResponse.redirect(loginUrl);
+      const res = NextResponse.redirect(loginUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
     }
 
     // Allow access to auth routes and public assets
-    return NextResponse.next();
+    return nextWithRequestId();
   }
 
   if (
@@ -40,17 +52,32 @@ export async function middleware(req: NextRequest) {
     payload.role !== "manager"
   ) {
     const dashboardUrl = new URL("/dashboard", req.url);
-    return NextResponse.redirect(dashboardUrl);
+    const res = NextResponse.redirect(dashboardUrl);
+    res.headers.set("x-request-id", requestId);
+    return res;
+  }
+
+  if (
+    pathname.startsWith("/users") &&
+    payload &&
+    !canViewEmployeeDirectory(payload.role)
+  ) {
+    const dashboardUrl = new URL("/dashboard", req.url);
+    const res = NextResponse.redirect(dashboardUrl);
+    res.headers.set("x-request-id", requestId);
+    return res;
   }
 
   // Authenticated user
   if (isAuthRoute || isRoot) {
     // Already logged in → send to dashboard
     const dashboardUrl = new URL("/dashboard", req.url);
-    return NextResponse.redirect(dashboardUrl);
+    const res = NextResponse.redirect(dashboardUrl);
+    res.headers.set("x-request-id", requestId);
+    return res;
   }
 
-  return NextResponse.next();
+  return nextWithRequestId();
 }
 
 export const config = {

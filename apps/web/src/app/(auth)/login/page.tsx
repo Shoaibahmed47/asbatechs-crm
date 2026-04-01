@@ -1,8 +1,9 @@
- "use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,81 +18,84 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? "Unable to sign in. Please try again.");
-        setLoading(false);
-        return;
-      }
-
+      await apiFetch.post("/api/auth/login", { email, password });
       router.push("/dashboard");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (error) {
+      setError(
+        error instanceof ApiFetchError
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
       setLoading(false);
     }
   }
 
   return (
     <div className="flex h-full flex-col justify-center">
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">
+          <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            Secure sign in
+          </div>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
             Welcome back
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Sign in to access your dashboard and leads.
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Sign in to access your workspace, team dashboards, and lead operations.
           </p>
         </div>
+
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </div>
         )}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-700">
+
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="form-input"
               placeholder="you@example.com"
               required
             />
           </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-700">
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="form-input"
               placeholder="••••••••"
               required
             />
           </div>
+
           <div className="flex items-center justify-between text-xs">
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" className="h-3 w-3 rounded border-slate-300" />
-              <span className="text-slate-600">Remember me</span>
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              />
+              <span className="text-slate-600 dark:text-slate-400">Remember me</span>
             </label>
             <button
               type="button"
-              className="text-slate-500 hover:text-slate-700"
+              className="font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Forgot password?
             </button>
           </div>
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>
@@ -100,4 +104,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

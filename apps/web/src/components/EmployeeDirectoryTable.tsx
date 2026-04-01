@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { RefreshCw, Lock } from "lucide-react";
+import { useCallback, useState, type ReactNode } from "react";
+import { Lock, RefreshCw, Users } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 export type EmployeeUserRow = {
   kind: "user";
@@ -24,14 +27,17 @@ export type EmployeeInviteRow = {
 export type EmployeeDirectoryRow = EmployeeUserRow | EmployeeInviteRow;
 
 export function EmployeeDirectoryTable({
-  rows
+  rows,
+  allowAdminActions = true,
+  sortToolbar,
+  footer
 }: {
   rows: EmployeeDirectoryRow[];
+  /** Invite resend / password reset (admin-only APIs). */
+  allowAdminActions?: boolean;
+  sortToolbar?: ReactNode;
+  footer?: ReactNode;
 }) {
-  const [banner, setBanner] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const runAction = useCallback(
@@ -51,28 +57,12 @@ export function EmployeeDirectoryTable({
         return;
       }
 
-      setBanner(null);
       setBusy(true);
       try {
-        const res = await fetch(path, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          setBanner({
-            type: "error",
-            text:
-              typeof data?.error === "string" ? data.error : fallbackError
-          });
-          return;
-        }
-
-        setBanner({ type: "success", text: successMessage });
-      } catch {
-        setBanner({ type: "error", text: fallbackError });
+        await apiFetch.post(path, body);
+        toast.success(successMessage, { description: body.email });
+      } catch (error) {
+        toast.error(error instanceof ApiFetchError ? error.message : fallbackError);
       } finally {
         setBusy(false);
       }
@@ -80,126 +70,118 @@ export function EmployeeDirectoryTable({
     []
   );
 
-  const headerGridClass =
-    "grid w-full grid-cols-[minmax(0,20%)_minmax(0,26%)_minmax(0,12%)_minmax(0,18%)_minmax(0,24%)] border-b-[3px] border-double border-slate-300 bg-slate-100/95 text-xs font-semibold uppercase tracking-wide text-slate-600";
-
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      {banner && (
-        <div className="px-4 pb-4 pt-4">
-          <div
-            className={`rounded-md border px-3 py-2 text-xs ${
-              banner.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 bg-red-50 text-red-700"
-            }`}
-          >
-            {banner.text}
-          </div>
-        </div>
-      )}
-      {/* Full-width strip outside the table so the gray background spans evenly */}
-      <div className={headerGridClass}>
-        <div className="min-w-0 px-3 py-3 text-left">Name</div>
-        <div className="min-w-0 px-3 py-3 text-left">Email</div>
-        <div className="min-w-0 px-3 py-3 text-left">Role</div>
-        <div className="min-w-0 px-3 py-3 text-left">Department</div>
-        <div className="min-w-0 px-3 py-3 text-center">Actions</div>
-      </div>
-      <div className="px-0 pb-4">
-        <table className="w-full table-fixed text-sm" aria-label="Employee directory">
-          <colgroup>
-            <col className="w-[20%]" />
-            <col className="w-[26%]" />
-            <col className="w-[12%]" />
-            <col className="w-[18%]" />
-            <col className="w-[24%]" />
-          </colgroup>
-          <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td
-                colSpan={5}
-                className="px-3 py-4 text-center text-xs text-slate-500"
-              >
-                No employees or pending invitations.
-              </td>
+    <div className="data-card overflow-hidden p-0">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50/90 dark:bg-slate-900/70">
+            <tr className="border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="px-5 py-4">Name</th>
+              <th className="px-5 py-4">Email</th>
+              <th className="px-5 py-4">Role</th>
+              <th className="px-5 py-4">Department</th>
+              <th className="px-5 py-4 text-right">Actions</th>
             </tr>
-          ) : (
-            rows.map((row) => {
-              const email = row.email;
-              const name = row.kind === "user" ? row.name : row.email;
-              const role = row.kind === "user" ? row.role : "—";
-              const dept =
-                row.kind === "user" ? row.department : row.department;
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-0">
+                  <EmptyState
+                    icon={Users}
+                    title="No team members yet"
+                    description="When people are added or invited, they will appear in this directory."
+                  />
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => {
+                const email = row.email;
+                const name = row.kind === "user" ? row.name : "Pending invitation";
+                const role = row.kind === "user" ? row.role : "Pending";
+                const showResend =
+                  allowAdminActions &&
+                  (row.kind === "invite" ||
+                    (row.kind === "user" && row.inviteStatus === "pending"));
+                const showReset =
+                  allowAdminActions &&
+                  row.kind === "user" &&
+                  row.inviteStatus !== "pending";
 
-              const showResend =
-                row.kind === "invite" ||
-                (row.kind === "user" && row.inviteStatus === "pending");
-              const showReset =
-                row.kind === "user" && row.inviteStatus !== "pending";
-
-              return (
-                <tr
-                  key={row.kind === "user" ? `u-${row.id}` : `i-${row.id}`}
-                  className="border-b border-slate-50 last:border-b-0"
-                >
-                  <td className="px-3 py-2 text-sm text-slate-900">{name}</td>
-                  <td className="px-3 py-2 text-xs text-slate-600">{email}</td>
-                  <td className="px-3 py-2 text-xs capitalize text-slate-700">
-                    {role}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-slate-700">{dept}</td>
-                  <td className="px-3 py-2 text-center align-middle">
-                    <div className="mx-auto flex min-h-[2.25rem] w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5">
-                      {showResend ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="default"
-                          className="h-9 min-w-[11.5rem] shrink-0 justify-center gap-2 px-3 text-xs font-medium shadow-sm"
-                          disabled={busy}
-                          onClick={() =>
-                            runAction(
-                              "/api/users/resend-invite",
-                              { email },
-                              "Invitation sent again",
-                              "Could not resend invitation."
-                            )
-                          }
-                        >
-                          <RefreshCw className="h-4 w-4 shrink-0 opacity-90" />
-                          Resend Invite
-                        </Button>
-                      ) : showReset ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="default"
-                          className="h-9 min-w-[11.5rem] shrink-0 justify-center gap-2 px-3 text-xs font-medium shadow-sm"
-                          disabled={busy}
-                          onClick={() =>
-                            runAction(
-                              "/api/users/reset-password",
-                              { email },
-                              "Password reset link sent",
-                              "Could not send reset link."
-                            )
-                          }
-                        >
-                          <Lock className="h-4 w-4 shrink-0 opacity-90" />
-                          Reset Password
-                        </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-          )}
+                return (
+                  <tr
+                    key={row.kind === "user" ? `u-${row.id}` : `i-${row.id}`}
+                    className="border-b border-slate-100/80 transition hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-900/40"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="font-medium text-slate-950 dark:text-white">{name}</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {row.kind === "user" ? "Active employee record" : "Awaiting acceptance"}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{email}</td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {role}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                      {row.department}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex justify-end">
+                        {showResend ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="min-w-[11rem] justify-center gap-2"
+                            disabled={busy}
+                            onClick={() =>
+                              runAction(
+                                "/api/users/resend-invite",
+                                { email },
+                                "Invitation sent again",
+                                "Could not resend invitation."
+                              )
+                            }
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Resend invite
+                          </Button>
+                        ) : showReset ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="min-w-[11rem] justify-center gap-2"
+                            disabled={busy}
+                            onClick={() =>
+                              runAction(
+                                "/api/users/reset-password",
+                                { email },
+                                "Password reset link sent",
+                                "Could not send reset link."
+                              )
+                            }
+                          >
+                            <Lock className="h-4 w-4" />
+                            Reset password
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
+      {footer ? <div className="border-t border-slate-200/80 px-4 py-3 dark:border-slate-800/80">{footer}</div> : null}
     </div>
   );
 }

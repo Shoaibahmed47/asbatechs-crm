@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 export default function EmployeeSignupPage() {
   const router = useRouter();
@@ -30,22 +31,14 @@ export default function EmployeeSignupPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/employee-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password })
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        setError(data?.error ?? "Unable to complete signup.");
-        setLoading(false);
-        return;
-      }
-
+      await apiFetch.post("/api/auth/employee-signup", { token, password });
       router.push("/login");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (error) {
+      setError(
+        error instanceof ApiFetchError
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
       setLoading(false);
     }
   }

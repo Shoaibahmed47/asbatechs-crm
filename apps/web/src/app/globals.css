@@ -2,11 +2,204 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 216 33% 97%;
+    --background-muted: 210 25% 94%;
+    --foreground: 222 47% 11%;
+    --foreground-muted: 215 16% 47%;
+    --card: 0 0% 100%;
+    --card-muted: 210 20% 98%;
+    --border: 214 24% 88%;
+    --border-strong: 215 25% 80%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 199 89% 48%;
+    --success: 160 84% 39%;
+    --warning: 35 92% 50%;
+    --danger: 0 72% 51%;
+    --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 12px 32px rgba(15, 23, 42, 0.06);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 222 47% 8%;
+    --background-muted: 223 35% 12%;
+    --foreground: 210 40% 96%;
+    /* Brighter than light-mode muted so nav labels read on dark panels */
+    --foreground-muted: 215 18% 78%;
+    --card: 222 39% 11%;
+    --card-muted: 223 31% 15%;
+    --border: 217 22% 22%;
+    --border-strong: 217 19% 30%;
+    --primary: 213 94% 68%;
+    --primary-foreground: 222 47% 11%;
+    --accent: 190 95% 58%;
+    --success: 160 84% 45%;
+    --warning: 38 92% 58%;
+    --danger: 0 84% 67%;
+    --shadow-soft: 0 28px 80px rgba(2, 6, 23, 0.45);
+    --shadow-card: 0 16px 48px rgba(2, 6, 23, 0.35);
+  }
+
+  * {
+    @apply border-transparent;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 28%),
+      linear-gradient(180deg, hsl(var(--background-muted)) 0%, hsl(var(--background)) 28%, hsl(var(--background)) 100%);
+    color: hsl(var(--foreground));
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(37, 99, 235, 0.18);
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply relative min-h-screen;
+  }
+
+  .app-panel {
+    background-color: hsl(var(--card) / 0.9);
+    border: 1px solid hsl(var(--border) / 0.9);
+    box-shadow: var(--shadow-card);
+    @apply backdrop-blur-xl;
+  }
+
+  .app-panel-muted {
+    background-color: hsl(var(--card-muted) / 0.84);
+    border: 1px solid hsl(var(--border) / 0.85);
+    @apply backdrop-blur-xl;
+  }
+
+  .app-nav-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200;
+    color: hsl(var(--foreground-muted));
+  }
+
+  .dark .app-nav-link:not(.app-nav-link-active) {
+    color: hsl(var(--foreground) / 0.88);
+  }
+
+  .dark .app-nav-link:not(.app-nav-link-active):hover {
+    color: hsl(var(--foreground));
+  }
+
+  .app-nav-link:hover {
+    background-color: hsl(var(--background-muted) / 0.9);
+    color: hsl(var(--foreground));
+  }
+
+  .app-nav-link-active {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.16), hsl(var(--accent) / 0.08));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--primary) / 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .app-section-label {
+    @apply mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em];
+    color: hsl(var(--foreground-muted));
+  }
+
+  .page-title {
+    @apply text-3xl font-semibold tracking-tight;
+    color: hsl(var(--foreground));
+  }
+
+  .page-subtitle {
+    @apply mt-2 max-w-2xl text-sm leading-6;
+    color: hsl(var(--foreground-muted));
+  }
+
+  .metric-card {
+    @apply rounded-2xl p-5;
+    background:
+      linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--card-muted) / 0.92));
+    border: 1px solid hsl(var(--border) / 0.9);
+    box-shadow: var(--shadow-card);
+  }
+
+  .data-card {
+    @apply rounded-2xl p-5 transition-shadow duration-300;
+    background-color: hsl(var(--card) / 0.92);
+    border: 1px solid hsl(var(--border) / 0.9);
+    box-shadow:
+      var(--shadow-card),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .dark .data-card {
+    box-shadow:
+      var(--shadow-card),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .data-card:hover {
+    box-shadow:
+      var(--shadow-soft),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .dark .data-card:hover {
+    box-shadow:
+      var(--shadow-soft),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .form-input {
+    @apply block w-full rounded-xl px-4 py-3 text-sm transition duration-200 focus:outline-none focus:ring-4;
+    background-color: hsl(var(--card) / 0.95);
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  }
+
+  .form-input::placeholder {
+    color: hsl(var(--foreground-muted));
+  }
+
+  .form-input:focus {
+    border-color: hsl(var(--primary) / 0.55);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.12);
+  }
+}
+
 body {
-  @apply bg-slate-50 text-slate-900;
+  @apply text-slate-900;
 }
 
 .dark body {
-  @apply bg-slate-950 text-slate-100;
+  @apply text-slate-100;
 }
 
+/* Above invite modal (z-200) */
+[data-sonner-toaster] {
+  z-index: 400;
+}
+
+[data-sonner-toast] {
+  border-width: 1px !important;
+  border-color: hsl(var(--border) / 0.95) !important;
+  box-shadow:
+    0 18px 50px -12px rgba(15, 23, 42, 0.2),
+    0 0 0 1px rgba(59, 130, 246, 0.08) !important;
+}
+
+.dark [data-sonner-toast] {
+  border-color: hsl(var(--border) / 0.9) !important;
+  box-shadow:
+    0 22px 55px -18px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(56, 189, 248, 0.12) !important;
+}

@@ -1,96 +1,64 @@
 import type { ReactNode } from "react";
+import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
 import { AppHeaderUser } from "@/components/AppHeader";
+import { AppSidebarNav } from "@/components/AppSidebarNav";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 overflow-y-auto border-r border-slate-200 bg-white px-4 py-6 dark:border-slate-800 dark:bg-slate-900 md:block">
-        <div className="mb-8">
-          <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            AsbaTechs CRM
+    <div className="app-shell overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_26%),radial-gradient(circle_at_right,rgba(6,182,212,0.08),transparent_24%)]" />
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[292px] p-5 lg:block">
+        <div className="app-panel flex h-full flex-col rounded-[28px] px-5 py-6">
+          <div className="border-b border-slate-200/70 pb-6 dark:border-slate-800/80">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">
+              AsbaTechs
+            </div>
+            <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+              CRM Workspace
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Operational oversight for leads, attendance, and internal team management.
+            </p>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            Internal operations console
+
+          <AppSidebarNav />
+
+          <div className="app-panel-muted rounded-2xl p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              Daily focus
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Review new leads, verify active attendance, and keep department ownership current.
+            </p>
           </div>
         </div>
-        <nav className="space-y-4 text-sm">
-          <div>
-            <div className="mb-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-              Overview
-            </div>
-            <ul className="space-y-1">
-              <li>
-                <a href="/dashboard" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Dashboard
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <div className="mb-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-              Work
-            </div>
-            <ul className="space-y-1">
-              <li>
-                <a href="/leads/hot" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Hot leads
-                </a>
-              </li>
-              <li>
-                <a href="/leads/sales" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Sales leads
-                </a>
-              </li>
-              <li>
-                <a href="/attendance" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Attendance
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <div className="mb-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-              Admin
-            </div>
-            <ul className="space-y-1">
-              <li>
-                <a href="/users" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Employee
-                </a>
-              </li>
-              <li>
-                <a href="/settings/departments" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Departments
-                </a>
-              </li>
-              <li>
-                <a href="/admin/overview" className="block rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Admin control
-                </a>
-              </li>
-            </ul>
-          </div>
-        </nav>
       </aside>
-      <div className="flex h-screen min-w-0 flex-col md:ml-64">
-        <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              CRM Dashboard
+
+      <div className="flex min-h-screen min-w-0 flex-col lg:ml-[292px]">
+        <header className="sticky top-0 z-10 px-4 pb-3 pt-4 sm:px-6 lg:px-8">
+          <div className="app-panel flex flex-col gap-4 rounded-[24px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Internal operations console
+              </div>
+              <div className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                Professional team workflow management
+              </div>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                A cleaner control center for sales visibility, attendance tracking, and admin oversight.
+              </p>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Monitor attendance, leads, and sales performance.
-            </div>
-          </div>
-          <AppHeaderUser />
+            <AppHeaderUser />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6 dark:bg-slate-950">
-          {children}
+
+        <main className="flex-1 px-4 pb-6 sm:px-6 lg:px-8">
+          <div className="min-w-0">
+            <AppBreadcrumbs />
+            {children}
+          </div>
         </main>
       </div>
     </div>
   );
 }
-

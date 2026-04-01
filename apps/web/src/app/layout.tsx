@@ -1,5 +1,12 @@
 import "@/app/globals.css";
 import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import { AppToaster } from "@/components/AppToaster";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap"
+});
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,8 +19,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body className="min-h-screen bg-slate-50">{children}</body>
+      <body className={`${inter.className} min-h-screen`}>
+        {children}
+        <AppToaster />
+      </body>
     </html>
   );
 }
-

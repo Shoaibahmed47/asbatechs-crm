@@ -1,0 +1,58 @@
+import { POST } from "./route";
+
+const selectWhere = jest.fn();
+const insertReturning = jest.fn();
+
+jest.mock("@/lib/auth", () => ({
+  COOKIE_NAME: "crm_token",
+  verifyAuthToken: jest.fn()
+}));
+jest.mock("@/lib/attendance-date", () => ({
+  getLocalDateString: () => "2026-03-31"
+}));
+jest.mock("@/lib/db", () => ({
+  db: {
+    select: jest.fn(() => ({
+      from: jest.fn(() => ({ where: selectWhere }))
+    })),
+    insert: jest.fn(() => ({
+      values: jest.fn(() => ({ returning: insertReturning }))
+    })),
+    update: jest.fn(() => ({
+      set: jest.fn(() => ({
+        where: jest.fn(() => ({ returning: jest.fn().mockResolvedValue([]) }))
+      }))
+    })),
+    delete: jest.fn(() => ({ where: jest.fn() }))
+  }
+}));
+jest.mock("@asbatechs-crm/database", () => ({
+  schema: { attendanceLogs: {}, breakSessions: {} }
+}));
+
+const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+
+describe("attendance clock-in route", () => {
+  const req = (cookie = "token") =>
+    ({
+      cookies: { get: () => (cookie ? { value: cookie } : undefined) }
+    }) as any;
+
+  it("rejects unauthorized request", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce(null);
+    const res = await POST(req());
+    expect(res.status).toBe(401);
+  });
+
+  it("creates attendance record on first clock-in", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce({ userId: 3 });
+    selectWhere.mockResolvedValueOnce([]);
+    insertReturning.mockResolvedValueOnce([{ id: 1, status: "active" }]);
+
+    const res = await POST(req());
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.attendance.status).toBe("active");
+  });
+});

@@ -57,6 +57,13 @@
       "when": 1774787000000,
       "tag": "0007_notes_activity_upgrade",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774787100000,
+      "tag": "0010_leads_users_list_indexes",
+      "breakpoints": true
     }
   ]
 }

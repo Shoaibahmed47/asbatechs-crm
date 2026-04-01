@@ -56,19 +56,21 @@ export default async function DepartmentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Departments</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Departments
+        </h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Manage brands and departments used for leads, users, and reports.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-[2fr,1.2fr]">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-slate-900">
+        <div className="data-card p-4">
+          <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">
             Existing departments
           </div>
           <div className="space-y-3">
             {departments.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500">
+              <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
                 No departments yet. Create your first one on the right.
               </div>
             ) : (
@@ -76,20 +78,20 @@ export default async function DepartmentsPage() {
                 <form
                   key={dept.id}
                   action={updateDepartment}
-                  className="grid gap-3 rounded-lg border border-slate-100 p-3 md:grid-cols-[1fr,1.4fr,auto]"
+                  className="grid gap-3 rounded-lg border border-slate-200/80 p-3 md:grid-cols-[1fr,1.4fr,auto] dark:border-slate-700/80"
                 >
                   <input type="hidden" name="id" value={dept.id} />
                   <input
                     name="name"
                     defaultValue={dept.name}
-                    className="block w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="form-input py-2 text-sm"
                     required
                   />
                   <textarea
                     name="description"
                     defaultValue={dept.description ?? ""}
                     rows={2}
-                    className="block w-full resize-none rounded-md border border-slate-200 px-2 py-1.5 text-xs shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="form-input resize-none py-2 text-xs"
                     placeholder="Add description"
                   />
                   <div className="flex items-center justify-end gap-2">
@@ -99,7 +101,7 @@ export default async function DepartmentsPage() {
                     <button
                       type="submit"
                       formAction={deleteDepartment}
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
                     >
                       Delete
                     </button>
@@ -109,30 +111,30 @@ export default async function DepartmentsPage() {
             )}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-slate-900">
+        <div className="data-card p-4">
+          <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">
             Add department
           </div>
           <form action={createDepartment} className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                 Name
               </label>
               <input
                 name="name"
-                className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="form-input"
                 placeholder="ResumePro"
                 required
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                 Description
               </label>
               <textarea
                 name="description"
                 rows={3}
-                className="block w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="form-input resize-none"
                 placeholder="Short description of the department or brand."
               />
             </div>

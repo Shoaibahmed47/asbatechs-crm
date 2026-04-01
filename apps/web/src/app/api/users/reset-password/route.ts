@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/rbac";
 import { sendPasswordResetEmail } from "@/lib/mail";
 
 const bodySchema = z.object({
@@ -15,8 +16,17 @@ export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verifyAuthToken(token) : null;
 
-  if (!payload || payload.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!payload) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isAdminRole(payload.role)) {
+    return NextResponse.json(
+      {
+        error:
+          "Only administrators can send password reset links. Sign in as an admin or ask your admin to reset this account."
+      },
+      { status: 403 }
+    );
   }
 
   const raw = await req.json().catch(() => null);
