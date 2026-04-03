@@ -61,6 +61,20 @@
     {
       "idx": 8,
       "version": "7",
+      "when": 1774787050000,
+      "tag": "0008_enterprise_followups_notifications_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774787080000,
+      "tag": "0009_force_enterprise_columns_and_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
       "when": 1774787100000,
       "tag": "0010_leads_users_list_indexes",
       "breakpoints": true
