@@ -1,0 +1,156 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+
+type Project = {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: string | null;
+};
+
+export default function ClientProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const data = await apiFetch.get<{ projects: Project[] }>("/api/client/projects");
+    setProjects(data.projects);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await load();
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof ApiFetchError ? e.message : "Failed to load");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  async function addProject(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiFetch.post("/api/client/projects", {
+        name: name.trim(),
+        description: description.trim() || null
+      });
+      setName("");
+      setDescription("");
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiFetchError ? err.message : "Could not add");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: number) {
+    if (!confirm("Delete this project? Work updates linked to it will keep the update but lose the project link."))
+      return;
+    try {
+      await apiFetch.del(`/api/client/projects/${id}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiFetchError ? err.message : "Delete failed");
+    }
+  }
+
+  if (loading) {
+    return <p className="text-slate-400">Loading…</p>;
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold text-white">Projects</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Create projects to organize your work updates.
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <form
+        onSubmit={addProject}
+        className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-6"
+      >
+        <div className="text-sm font-semibold text-slate-200">Add project</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-xs text-slate-400">Name</label>
+            <input
+              className="form-input w-full border-slate-700 bg-slate-950 text-white"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="e.g. Website redesign"
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-xs text-slate-400">Description (optional)</label>
+            <textarea
+              className="form-input min-h-[72px] w-full border-slate-700 bg-slate-950 text-white"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+        </div>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Adding…" : "Add project"}
+        </Button>
+      </form>
+
+      <ul className="space-y-3">
+        {projects.length === 0 ? (
+          <li className="rounded-xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">
+            No projects yet. Add one above.
+          </li>
+        ) : (
+          projects.map((p) => (
+            <li
+              key={p.id}
+              className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="font-medium text-white">{p.name}</div>
+                {p.description ? (
+                  <p className="mt-1 text-sm text-slate-400">{p.description}</p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-slate-600 text-slate-300"
+                onClick={() => void remove(p.id)}
+              >
+                Delete
+              </Button>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}

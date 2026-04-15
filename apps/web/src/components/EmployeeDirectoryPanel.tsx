@@ -20,6 +20,7 @@ type DirectoryResponse = {
   limit?: number;
   totalPages?: number;
   departments?: Department[];
+  clientProjectOptions?: Array<{ projectId: number; label: string }>;
 };
 
 export function EmployeeDirectoryPanel({
@@ -29,6 +30,9 @@ export function EmployeeDirectoryPanel({
 }) {
   const [rows, setRows] = useState<EmployeeDirectoryRow[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [clientProjectOptions, setClientProjectOptions] = useState<
+    Array<{ projectId: number; label: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +113,7 @@ export function EmployeeDirectoryPanel({
       if (data.departments?.length) {
         setDepartments(data.departments);
       }
+      setClientProjectOptions(data.clientProjectOptions ?? []);
     } catch (e) {
       if (e instanceof ApiFetchError && e.status !== 401) {
         setError(e.message);
@@ -135,6 +140,22 @@ export function EmployeeDirectoryPanel({
     createdFrom,
     createdTo
   ]);
+
+  const assignClientProject = useCallback(
+    async (userId: number, projectIds: number[]) => {
+      try {
+        await apiFetch.patch(`/api/users/${userId}/project-assignment`, { projectIds });
+        await loadDirectory();
+      } catch (e) {
+        if (e instanceof ApiFetchError) {
+          setError(e.message);
+          return;
+        }
+        setError("Could not assign client project.");
+      }
+    },
+    [loadDirectory]
+  );
 
   useEffect(() => {
     void loadDirectory();
@@ -302,6 +323,8 @@ export function EmployeeDirectoryPanel({
         <EmployeeDirectoryTable
           rows={rows}
           allowAdminActions={allowAdminActions}
+          clientProjectOptions={clientProjectOptions}
+          onAssignProject={allowAdminActions ? assignClientProject : undefined}
           sortToolbar={
             <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               <span className="text-slate-400 dark:text-slate-500">Sort</span>

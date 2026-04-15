@@ -17,10 +17,18 @@ const ROUTE_CRUMBS: Record<string, Crumb[]> = {
     { label: "Sales leads" }
   ],
   "/attendance": [{ label: "Attendance" }],
+  "/attendance/report": [
+    { label: "Attendance", href: "/attendance" },
+    { label: "Daily report" }
+  ],
   "/users": [{ label: "Employees" }],
   "/settings/departments": [
     { label: "Administration", href: "/users" },
     { label: "Departments" }
+  ],
+  "/settings/clients": [
+    { label: "Administration", href: "/users" },
+    { label: "Clients" }
   ],
   "/admin/overview": [
     { label: "Administration", href: "/users" },

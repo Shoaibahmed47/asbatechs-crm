@@ -21,11 +21,21 @@ export default function LoginPage() {
       await apiFetch.post("/api/auth/login", { email, password });
       router.push("/dashboard");
     } catch (error) {
-      setError(
+      let msg =
         error instanceof ApiFetchError
           ? error.message
-          : "Something went wrong. Please try again."
-      );
+          : "Something went wrong. Please try again.";
+      if (
+        error instanceof ApiFetchError &&
+        error.details &&
+        typeof error.details === "object" &&
+        error.details !== null &&
+        "detail" in error.details &&
+        typeof (error.details as { detail?: unknown }).detail === "string"
+      ) {
+        msg += ` — ${(error.details as { detail: string }).detail}`;
+      }
+      setError(msg);
       setLoading(false);
     }
   }
@@ -100,6 +110,16 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </Button>
         </form>
+
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          External client?{" "}
+          <a
+            href="/client/login"
+            className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+          >
+            Client portal login
+          </a>
+        </p>
       </div>
     </div>
   );

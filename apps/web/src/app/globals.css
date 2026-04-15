@@ -203,3 +203,48 @@ body {
     0 22px 55px -18px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(56, 189, 248, 0.12) !important;
 }
+
+/* Daily focus: slide in → hold → brief fade → quick re-entry (text never sits invisible for ~2s) */
+@keyframes daily-focus-text-cycle {
+  0% {
+    opacity: 0;
+    transform: translateX(-0.65rem);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  68% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  74% {
+    opacity: 0;
+    transform: translateX(0.45rem);
+  }
+  75% {
+    opacity: 0;
+    transform: translateX(-0.65rem);
+  }
+  88% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.daily-focus-animated-text {
+  animation: daily-focus-text-cycle 7s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daily-focus-animated-text {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

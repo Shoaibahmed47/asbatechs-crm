@@ -1,11 +1,25 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { Button } from "@/components/ui/button";
+import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
+async function ensureDepartmentAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+  if (!payload || !isAdminRole(payload.role)) {
+    redirect("/dashboard");
+  }
+}
+
 async function createDepartment(formData: FormData) {
   "use server";
+  await ensureDepartmentAdmin();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   if (!name) return;
@@ -18,6 +32,7 @@ async function createDepartment(formData: FormData) {
 
 async function updateDepartment(formData: FormData) {
   "use server";
+  await ensureDepartmentAdmin();
   const id = Number(formData.get("id"));
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
@@ -36,6 +51,7 @@ async function updateDepartment(formData: FormData) {
 
 async function deleteDepartment(formData: FormData) {
   "use server";
+  await ensureDepartmentAdmin();
   const id = Number(formData.get("id"));
   if (Number.isNaN(id)) return;
 
@@ -44,6 +60,8 @@ async function deleteDepartment(formData: FormData) {
 }
 
 export default async function DepartmentsPage() {
+  await ensureDepartmentAdmin();
+
   const allDepartments = await db
     .select()
     .from(schema.departments)

@@ -1,7 +1,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAuthTokenEdge } from "@/lib/auth-edge";
-import { canViewEmployeeDirectory } from "@/lib/rbac";
+import {
+  CLIENT_COOKIE_NAME,
+  COOKIE_NAME,
+  verifyAuthTokenEdge,
+  verifyClientTokenEdge
+} from "@/lib/auth-edge";
+import { canViewEmployeeDirectory, isAdminRole, normalizeRole } from "@/lib/rbac";
 
 export async function middleware(req: NextRequest) {
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -16,20 +21,36 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isAuthRoute = pathname === "/login";
+  const isClientLogin = pathname === "/client/login";
+  const isClientSignup = pathname.startsWith("/client/signup/");
+  const isClientPublic = isClientLogin || isClientSignup;
+
   const isPublicSignup =
     pathname.startsWith("/employee-signup/") ||
     pathname.startsWith("/reset-password/");
   const isRoot = pathname === "/";
 
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const payload = token ? await verifyAuthTokenEdge(token) : null;
+  const staffToken = req.cookies.get(COOKIE_NAME)?.value;
+  const staffPayload = staffToken ? await verifyAuthTokenEdge(staffToken) : null;
 
-  // If not authenticated
-  if (!payload) {
-    // Unauthed visiting root or any protected app page → go to login
+  const clientToken = req.cookies.get(CLIENT_COOKIE_NAME)?.value;
+  const clientPayload = clientToken ? await verifyClientTokenEdge(clientToken) : null;
+
+  const isClientAppRoute = pathname.startsWith("/client") && !isClientPublic;
+
+  // Unauthenticated
+  if (!staffPayload && !clientPayload) {
+    if (pathname.startsWith("/client") && !isClientPublic) {
+      const clientLoginUrl = new URL("/client/login", req.url);
+      const res = NextResponse.redirect(clientLoginUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
     if (
       isRoot ||
       (!isAuthRoute &&
+        !isClientPublic &&
         !isPublicSignup &&
         !pathname.startsWith("/_next") &&
         !pathname.startsWith("/api") &&
@@ -41,38 +62,83 @@ export async function middleware(req: NextRequest) {
       return res;
     }
 
-    // Allow access to auth routes and public assets
     return nextWithRequestId();
   }
 
-  if (
-    pathname.startsWith("/admin") &&
-    payload &&
-    payload.role !== "admin" &&
-    payload.role !== "manager"
-  ) {
-    const dashboardUrl = new URL("/dashboard", req.url);
-    const res = NextResponse.redirect(dashboardUrl);
-    res.headers.set("x-request-id", requestId);
-    return res;
+  // Client session hitting staff-only app routes → send to client hub
+  if (clientPayload && !staffPayload) {
+    if (isRoot || isAuthRoute) {
+      const url = new URL("/client", req.url);
+      const res = NextResponse.redirect(url);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+    if (!isClientAppRoute && !isClientPublic && !pathname.startsWith("/api")) {
+      const url = new URL("/client", req.url);
+      const res = NextResponse.redirect(url);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
   }
 
-  if (
-    pathname.startsWith("/users") &&
-    payload &&
-    !canViewEmployeeDirectory(payload.role)
-  ) {
-    const dashboardUrl = new URL("/dashboard", req.url);
-    const res = NextResponse.redirect(dashboardUrl);
-    res.headers.set("x-request-id", requestId);
-    return res;
+  // Staff session
+  if (staffPayload) {
+    const staffRole = normalizeRole(staffPayload.role);
+    if (
+      pathname.startsWith("/admin") &&
+      staffRole !== "admin" &&
+      staffRole !== "manager"
+    ) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      const res = NextResponse.redirect(dashboardUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
+    if (
+      pathname.startsWith("/users") &&
+      !canViewEmployeeDirectory(staffRole)
+    ) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      const res = NextResponse.redirect(dashboardUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
+    if (
+      (pathname.startsWith("/settings/departments") ||
+        pathname.startsWith("/settings/clients")) &&
+      !isAdminRole(staffRole)
+    ) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      const res = NextResponse.redirect(dashboardUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
+    if (isClientAppRoute) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      const res = NextResponse.redirect(dashboardUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
+    if (isAuthRoute || isRoot) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      const res = NextResponse.redirect(dashboardUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
   }
 
-  // Authenticated user
-  if (isAuthRoute || isRoot) {
-    // Already logged in → send to dashboard
-    const dashboardUrl = new URL("/dashboard", req.url);
-    const res = NextResponse.redirect(dashboardUrl);
+  // Client session: protect portal routes
+  if (clientPayload && isClientAppRoute) {
+    return nextWithRequestId();
+  }
+
+  if (clientPayload && isClientPublic) {
+    const url = new URL("/client", req.url);
+    const res = NextResponse.redirect(url);
     res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -81,10 +147,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Run middleware for all pages except Next.js assets
-    "/((?!_next/static|_next/image|favicon.ico).*)"
-  ]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
 };
-
-

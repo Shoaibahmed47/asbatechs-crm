@@ -32,6 +32,20 @@ export async function sendInviteEmail(to: string, signupUrl: string) {
   });
 }
 
+export async function sendClientInviteEmail(to: string, signupUrl: string) {
+  if (!transporter) return;
+
+  await transporter.sendMail({
+    from: `"AsbaTechs CRM" <${user}>`,
+    to,
+    subject: "Your client portal invitation — AsbaTechs CRM",
+    text: `You have been invited to the AsbaTechs client portal. Complete signup: ${signupUrl}`,
+    html: `<p>You have been invited to the <strong>AsbaTechs client portal</strong>.</p>
+           <p><a href="${signupUrl}">Create your password and access your dashboard</a>.</p>
+           <p style="color:#64748b;font-size:12px">If you did not expect this, you can ignore this email.</p>`
+  });
+}
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   if (!transporter) return;
 

@@ -29,6 +29,13 @@ export function InviteEmployeeButton() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("pointer-events");
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -202,7 +209,7 @@ export function InviteEmployeeButton() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="form-input"
-                    placeholder="employee@example.com"
+                    placeholder="name@yourcompany.com"
                     required
                   />
                 </div>

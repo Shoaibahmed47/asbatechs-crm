@@ -15,22 +15,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null }, { status: 200 });
   }
 
-  const [user] = await db
-    .select()
+  const [row] = await db
+    .select({
+      id: schema.users.id,
+      name: schema.users.name,
+      email: schema.users.email,
+      role: schema.users.role,
+      departmentId: schema.users.departmentId,
+      departmentName: schema.departments.name
+    })
     .from(schema.users)
+    .leftJoin(schema.departments, eq(schema.users.departmentId, schema.departments.id))
     .where(eq(schema.users.id, payload.userId));
 
-  if (!user) {
+  if (!row) {
     return NextResponse.json({ user: null }, { status: 200 });
   }
 
   return NextResponse.json({
     user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      departmentId: user.departmentId
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      departmentId: row.departmentId,
+      departmentName: row.departmentName ?? null
     }
   });
 }

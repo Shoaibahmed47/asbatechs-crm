@@ -9,6 +9,12 @@ export const DEFAULT_MAX_UPLOAD_BYTES =
     ? Number(process.env.SECURE_UPLOAD_MAX_BYTES)
     : 10 * 1024 * 1024; // 10 MB
 
+/** Larger cap for client portal work-update uploads (video). Tunable via env. */
+export const CLIENT_WORK_MAX_UPLOAD_BYTES =
+  Number(process.env.CLIENT_WORK_UPLOAD_MAX_BYTES) > 0
+    ? Number(process.env.CLIENT_WORK_UPLOAD_MAX_BYTES)
+    : 100 * 1024 * 1024; // 100 MB
+
 /**
  * Allowed media types after validation.
  * SVG is restricted with content inspection (see assertSafeSvg) because it can embed scripts.
@@ -19,7 +25,25 @@ export const ALLOWED_UPLOAD_MIME = new Set([
   "image/jpeg",
   "image/gif",
   "image/webp",
-  "image/svg+xml"
+  "image/svg+xml",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime"
+]);
+
+/** ISO BMFF `ftyp` brands we treat as images/archives — never as video/mp4. */
+const FTYP_NON_VIDEO_BRANDS = new Set([
+  "avif",
+  "mif1",
+  "msf1",
+  "mif2",
+  "heic",
+  "heix",
+  "heim",
+  "heis",
+  "hevc",
+  "hevm",
+  "hevs"
 ]);
 
 /**
@@ -51,6 +75,15 @@ export function sanitizeUploadFileName(raw: string): string {
  */
 export function buildObjectStorageKey(leadId: number, sanitizedFileName: string): string {
   return `leads/${leadId}/${randomUUID()}-${sanitizedFileName}`;
+}
+
+/** Client portal work-update files (isolated from lead paths). */
+export function buildClientWorkStorageKey(
+  clientId: number,
+  workUpdateId: number,
+  sanitizedFileName: string
+): string {
+  return `clients/${clientId}/work/${workUpdateId}/${randomUUID()}-${sanitizedFileName}`;
 }
 
 function readAscii(buf: Buffer, len: number): string {
@@ -104,7 +137,32 @@ export function detectMimeFromBuffer(buf: Buffer): string | null {
   if (/^(<\?xml|<svg\b)/i.test(text)) {
     return "image/svg+xml";
   }
+  // WebM / Matroska (EBML): WebM is the supported subset for uploads
+  if (buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    return "video/webm";
+  }
+  // MP4 / MOV (ISO base media): `ftyp` at byte offset 4
+  if (buf.length >= 12 && readAscii(buf.subarray(4, 8), 4) === "ftyp") {
+    const brand = readAscii(buf.subarray(8, 12), 4);
+    if (FTYP_NON_VIDEO_BRANDS.has(brand)) {
+      return null;
+    }
+    if (brand === "qt  ") {
+      return "video/quicktime";
+    }
+    return "video/mp4";
+  }
   return null;
+}
+
+/**
+ * Browsers may label .mov as video/quicktime or video/mp4; both match the same sniffed family.
+ */
+function isLooselyCompatibleMime(claimedMime: string, detectedMime: string): boolean {
+  if (claimedMime === detectedMime) return true;
+  const mp4Family = new Set(["video/mp4", "video/quicktime"]);
+  if (mp4Family.has(claimedMime) && mp4Family.has(detectedMime)) return true;
+  return false;
 }
 
 /**
@@ -127,19 +185,26 @@ export type ValidatedUpload = {
   sanitizedFileName: string;
 };
 
+export type ValidateSecureUploadOptions = {
+  /** Override max size (e.g. client work videos vs lead attachments). */
+  maxBytes?: number;
+};
+
 /**
  * Validates size, file magic bytes vs claimed MIME, and allowed type set.
  */
 export function validateSecureUpload(
   buffer: Buffer,
   claimedMime: string | null,
-  sanitizedFileName: string
+  sanitizedFileName: string,
+  options?: ValidateSecureUploadOptions
 ): { ok: true; value: ValidatedUpload } | { ok: false; status: number; error: string } {
-  if (buffer.length > DEFAULT_MAX_UPLOAD_BYTES) {
+  const maxBytes = options?.maxBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+  if (buffer.length > maxBytes) {
     return {
       ok: false,
       status: 400,
-      error: `File too large (max ${Math.floor(DEFAULT_MAX_UPLOAD_BYTES / (1024 * 1024))}MB)`
+      error: `File too large (max ${Math.floor(maxBytes / (1024 * 1024))}MB)`
     };
   }
   if (buffer.length === 0) {
@@ -155,7 +220,12 @@ export function validateSecureUpload(
     return { ok: false, status: 400, error: "Unsupported or unreadable file type" };
   }
 
-  if (claimedMime && claimedMime !== detected && ALLOWED_UPLOAD_MIME.has(claimedMime)) {
+  if (
+    claimedMime &&
+    claimedMime !== detected &&
+    ALLOWED_UPLOAD_MIME.has(claimedMime) &&
+    !isLooselyCompatibleMime(claimedMime, detected)
+  ) {
     return {
       ok: false,
       status: 400,

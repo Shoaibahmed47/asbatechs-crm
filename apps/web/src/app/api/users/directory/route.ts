@@ -7,6 +7,7 @@ import {
   eq,
   gte,
   ilike,
+  inArray,
   isNull,
   lte,
   notExists,
@@ -326,15 +327,72 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  const userIds = bodyRows
+    .filter((r): r is (typeof bodyRows)[number] & { kind: "user" } => r.kind === "user")
+    .map((r) => r.id);
+
+  const assignmentByUserId = new Map<number, Array<{ projectId: number; label: string }>>();
+  if (userIds.length > 0) {
+    const assignments = await db
+      .select({
+        userId: schema.employeeClientProjectAssignments.userId,
+        projectId: schema.employeeClientProjectAssignments.projectId,
+        projectName: schema.clientProjects.name,
+        clientName: schema.clients.name
+      })
+      .from(schema.employeeClientProjectAssignments)
+      .innerJoin(
+        schema.clientProjects,
+        eq(schema.employeeClientProjectAssignments.projectId, schema.clientProjects.id)
+      )
+      .innerJoin(
+        schema.clients,
+        eq(schema.employeeClientProjectAssignments.clientId, schema.clients.id)
+      )
+      .where(inArray(schema.employeeClientProjectAssignments.userId, userIds));
+
+    for (const a of assignments) {
+      const list = assignmentByUserId.get(a.userId) ?? [];
+      list.push({
+        projectId: a.projectId,
+        label: `${a.clientName} — ${a.projectName}`
+      });
+      assignmentByUserId.set(a.userId, list);
+    }
+  }
+
+  const projectOptionsRows = await db
+    .select({
+      projectId: schema.clientProjects.id,
+      projectName: schema.clientProjects.name,
+      clientName: schema.clients.name
+    })
+    .from(schema.clientProjects)
+    .innerJoin(schema.clients, eq(schema.clientProjects.clientId, schema.clients.id))
+    .orderBy(asc(schema.clients.name), asc(schema.clientProjects.name));
+
+  const clientProjectOptions = projectOptionsRows.map((p) => ({
+    projectId: p.projectId,
+    label: `${p.clientName} — ${p.projectName}`
+  }));
+
   const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
     return okJson(ctx, {
-      rows: bodyRows,
+      rows: bodyRows.map((row) =>
+        row.kind === "user"
+          ? {
+              ...row,
+              assignedClientProjects: assignmentByUserId.get(row.id) ?? []
+            }
+          : row
+      ),
       total,
       page,
       limit,
       totalPages,
-      departments
+      departments,
+      clientProjectOptions
     });
   });
 }

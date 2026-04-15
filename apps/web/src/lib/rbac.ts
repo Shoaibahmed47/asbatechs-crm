@@ -6,12 +6,16 @@ export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (roles as readonly string[]).includes(value);
 }
 
+export function normalizeRole(role: string | undefined): string {
+  return typeof role === "string" ? role.trim().toLowerCase() : "";
+}
+
 export function isAdminRole(role: string | undefined): boolean {
-  return typeof role === "string" && role.toLowerCase() === "admin";
+  return normalizeRole(role) === "admin";
 }
 
 export function isManagerRole(role: string | undefined): boolean {
-  return role === "manager";
+  return normalizeRole(role) === "manager";
 }
 
 /** Who may open the Employee directory page (read-only for managers). */

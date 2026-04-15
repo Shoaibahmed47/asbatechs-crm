@@ -94,8 +94,21 @@ export async function apiFetch<T = unknown>(
 
     const payload = await parseResponseBody(res);
     if (!res.ok) {
-      if (res.status === 401) {
-        redirectToLogin();
+      const isCredentialFailure401 =
+        res.status === 401 &&
+        typeof input === "string" &&
+        (input.includes("/api/auth/login") ||
+          input.includes("/api/auth/register") ||
+          input.includes("/api/auth/employee-signup") ||
+          input.includes("/api/auth/client-login") ||
+          input.includes("/api/auth/client-signup"));
+      if (res.status === 401 && !isCredentialFailure401) {
+        if (typeof window !== "undefined" && window.location.pathname.startsWith("/client")) {
+          window.sessionStorage.removeItem(LOGIN_REDIRECT_FLAG);
+          window.location.replace("/client/login");
+        } else {
+          redirectToLogin();
+        }
       }
       const message =
         typeof payload === "object" &&
@@ -137,6 +150,14 @@ apiFetch.put = function put<T = unknown>(
   options?: ApiFetchOptions
 ) {
   return apiFetch<T>(input, { ...(options ?? {}), method: "PUT", body });
+};
+
+apiFetch.patch = function patch<T = unknown>(
+  input: string,
+  body?: ApiFetchOptions["body"],
+  options?: ApiFetchOptions
+) {
+  return apiFetch<T>(input, { ...(options ?? {}), method: "PATCH", body });
 };
 
 apiFetch.del = function del<T = unknown>(input: string, options?: ApiFetchOptions) {

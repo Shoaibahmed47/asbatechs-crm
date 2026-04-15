@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -6,8 +7,17 @@ import {
   integer,
   numeric,
   date,
-  boolean
+  boolean,
+  jsonb,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
+
+/** Files uploaded with a client work update (drag & drop). */
+export type ClientWorkAttachment = {
+  fileName: string;
+  storagePath: string;
+  mimeType: string;
+};
 
 export const departments = pgTable("departments", {
   id: serial("id").primaryKey(),
@@ -158,5 +168,111 @@ export const invitations = pgTable("invitations", {
     .notNull()
     .references(() => users.id),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
+});
+
+/** Portal users (separate from internal CRM users). Invited by admin only. */
+export const clientInvitations = pgTable("client_invitations", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  invitedByUserId: integer("invited_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
+});
+
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  companyName: text("company_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
+});
+
+export const clientProjects = pgTable("client_projects", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
+});
+
+/**
+ * Admin-side assignment of internal employees to client projects.
+ * One active project per user (Phase 1), can be expanded later.
+ */
+export const employeeClientProjectAssignments = pgTable(
+  "employee_client_project_assignments",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => clientProjects.id, { onDelete: "cascade" }),
+    assignedByUserId: integer("assigned_by_user_id").references(() => users.id, {
+      onDelete: "set null"
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
+  },
+  (table) => ({
+    uniqueUserProject: uniqueIndex("employee_client_project_assignments_user_project_unique").on(
+      table.userId,
+      table.projectId
+    )
+  })
+);
+
+/** Client-submitted work updates (links, repo, docs, screenshot URL). */
+export const clientWorkUpdates = pgTable("client_work_updates", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => clientProjects.id, {
+    onDelete: "set null"
+  }),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  screenshotUrl: text("screenshot_url"),
+  gitRepoUrl: text("git_repo_url"),
+  documentUrl: text("document_url"),
+  linkUrl: text("link_url"),
+  /** submitted | in_review | changes_requested | approved */
+  status: text("status").notNull().default("submitted"),
+  attachments: jsonb("attachments")
+    .$type<ClientWorkAttachment[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
+});
+
+export const clientWorkComments = pgTable("client_work_comments", {
+  id: serial("id").primaryKey(),
+  workUpdateId: integer("work_update_id")
+    .notNull()
+    .references(() => clientWorkUpdates.id, { onDelete: "cascade" }),
+  actorType: text("actor_type").notNull(),
+  actorUserId: integer("actor_user_id").references(() => users.id, {
+    onDelete: "set null"
+  }),
+  actorClientId: integer("actor_client_id").references(() => clients.id, {
+    onDelete: "set null"
+  }),
+  body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
 });

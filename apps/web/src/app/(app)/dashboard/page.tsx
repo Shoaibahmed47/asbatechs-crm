@@ -1,8 +1,13 @@
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
+import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
+import { AdminAttendanceLivePanel } from "@/components/AdminAttendanceLivePanel";
 import { DashboardCharts } from "@/components/DashboardCharts";
-import { and, count, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 
 function monthKeysLast(n: number): string[] {
   const out: string[] = [];
@@ -32,6 +37,12 @@ function startOfRollingMonthsAgo(monthsBackFromStart: number): Date {
 }
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const session = token ? await verifyAuthToken(token) : null;
+  /** Org-wide live attendance (table + aggregated counts): administrators only. */
+  const isAdminViewer = isAdminRole(session?.role);
+
   const [hotCount] = await db
     .select({ value: count() })
     .from(schema.leads)
@@ -61,8 +72,34 @@ export default async function DashboardPage() {
   const todaysLogs = await db
     .select()
     .from(schema.attendanceLogs)
-    .where(eq(schema.attendanceLogs.date, today));
+    .where(eq(schema.attendanceLogs.date, today as any));
   const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
+
+  const liveAttendanceToday = isAdminViewer
+    ? await getAttendanceStatusForDate(today)
+    : null;
+
+  const assignedClientProjects =
+    session?.role === "employee"
+      ? await db
+          .select({
+            assignmentId: schema.employeeClientProjectAssignments.id,
+            clientName: schema.clients.name,
+            projectName: schema.clientProjects.name,
+            assignedAt: schema.employeeClientProjectAssignments.createdAt
+          })
+          .from(schema.employeeClientProjectAssignments)
+          .innerJoin(
+            schema.clients,
+            eq(schema.employeeClientProjectAssignments.clientId, schema.clients.id)
+          )
+          .innerJoin(
+            schema.clientProjects,
+            eq(schema.employeeClientProjectAssignments.projectId, schema.clientProjects.id)
+          )
+          .where(eq(schema.employeeClientProjectAssignments.userId, session.userId))
+          .orderBy(desc(schema.employeeClientProjectAssignments.createdAt))
+      : [];
 
   const months = monthKeysLast(6);
   const saleFrom = startOfRollingMonthsAgo(5);
@@ -120,8 +157,9 @@ export default async function DashboardPage() {
             </div>
             <h1 className="page-title mt-3">CRM dashboard</h1>
             <p className="page-subtitle">
-              Track lead pipeline health, revenue momentum, and live attendance from one
-              professional operations view.
+              Track lead pipeline health, revenue momentum
+              {isAdminViewer ? ", and live team attendance " : " "}
+              from one professional operations view.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -135,11 +173,35 @@ export default async function DashboardPage() {
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                Attendance status
+                {isAdminViewer ? "Team attendance (today)" : "Attendance"}
               </div>
-              <div className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-                {activeToday} active
-              </div>
+              {isAdminViewer && liveAttendanceToday ? (
+                <div className="mt-2 space-y-1 text-sm">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 font-semibold">
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {liveAttendanceToday.people.filter((p) => p.status === "active").length}{" "}
+                      active
+                    </span>
+                    <span className="text-amber-700 dark:text-amber-400">
+                      {liveAttendanceToday.people.filter((p) => p.status === "break").length}{" "}
+                      break
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {liveAttendanceToday.people.filter((p) => p.status === "offline").length}{" "}
+                      offline
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {activeToday} with an open shift (incl. break)
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                  Clock in, breaks, and your hours are on the{" "}
+                  <span className="font-medium text-slate-800 dark:text-slate-200">Attendance</span>{" "}
+                  page. Live team status is available to administrators only.
+                </p>
+              )}
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -155,6 +217,48 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {isAdminViewer && liveAttendanceToday ? (
+        <AdminAttendanceLivePanel people={liveAttendanceToday.people} date={liveAttendanceToday.date} />
+      ) : null}
+
+      {session?.role === "employee" ? (
+        <section className="data-card">
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              Assigned client projects
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              These are the client projects assigned to your account by admin.
+            </p>
+          </div>
+          {assignedClientProjects.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">
+              No client project assigned yet.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {assignedClientProjects.map((item) => (
+                <article
+                  key={item.assignmentId}
+                  className="rounded-xl border border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    {item.clientName}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {item.projectName}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Assigned{" "}
+                    {item.assignedAt ? new Date(item.assignedAt).toLocaleDateString() : "recently"}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="metric-card">
@@ -207,6 +311,7 @@ export default async function DashboardPage() {
       </section>
 
       <DashboardCharts
+        showTeamAttendanceOverview={isAdminViewer}
         data={{
           hotLeads: Number(hotCount?.value ?? 0),
           saleLeads: Number(saleCount?.value ?? 0),

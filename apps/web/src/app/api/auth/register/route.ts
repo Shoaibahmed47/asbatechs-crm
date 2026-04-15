@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { COOKIE_NAME, hashPassword, verifyAuthToken } from "@/lib/auth";
+import {
+  COOKIE_NAME,
+  hashPassword,
+  verifyAuthToken,
+  findUserByEmail,
+  normalizeEmail
+} from "@/lib/auth";
 
 const registerSchema = z.object({
   name: z.string().min(1),
@@ -31,12 +36,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, email, password, departmentId, role } = parsed.data;
+  const { name, password, departmentId, role } = parsed.data;
+  const email = normalizeEmail(parsed.data.email);
 
-  const [existing] = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.email, email));
+  const existing = await findUserByEmail(email);
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }

@@ -3,7 +3,13 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { eq } from "drizzle-orm";
-import { COOKIE_NAME, verifyAuthToken, hashPassword } from "@/lib/auth";
+import {
+  COOKIE_NAME,
+  verifyAuthToken,
+  hashPassword,
+  findUserByEmail,
+  normalizeEmail
+} from "@/lib/auth";
 import { isRole } from "@/lib/rbac";
 
 const createUserSchema = z.object({
@@ -67,12 +73,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, email, password, role, departmentId } = parsed.data;
+  const { name, password, role, departmentId } = parsed.data;
+  const email = normalizeEmail(parsed.data.email);
 
-  const [existing] = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.email, email));
+  const existing = await findUserByEmail(email);
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }

@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "./db";
 import { schema } from "@asbatechs-crm/database";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret");
 const JWT_EXPIRES_IN = "8h";
@@ -14,11 +14,17 @@ export type AuthTokenPayload = {
   departmentId: number | null;
 };
 
+/** Canonical form for auth and uniqueness (Postgres compare is case-sensitive on citext-less text). */
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export async function findUserByEmail(email: string) {
+  const normalized = normalizeEmail(email);
   const [user] = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.email, email));
+    .where(sql`lower(${schema.users.email}) = ${normalized}`);
   return user ?? null;
 }
 

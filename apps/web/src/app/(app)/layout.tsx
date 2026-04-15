@@ -1,15 +1,24 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
 import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
 import { AppHeaderUser } from "@/components/AppHeader";
 import { AppSidebarNav } from "@/components/AppSidebarNav";
+import { BodyPointerEventsGuard } from "@/components/BodyPointerEventsGuard";
+import { DailyFocusCard } from "@/components/DailyFocusCard";
+import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const session = token ? await verifyAuthToken(token) : null;
+
   return (
-    <div className="app-shell overflow-hidden">
+    <div className="app-shell overflow-x-hidden">
+      <BodyPointerEventsGuard />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_26%),radial-gradient(circle_at_right,rgba(6,182,212,0.08),transparent_24%)]" />
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[292px] p-5 lg:block">
-        <div className="app-panel flex h-full flex-col rounded-[28px] px-5 py-6">
-          <div className="border-b border-slate-200/70 pb-6 dark:border-slate-800/80">
+        <div className="app-panel flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] px-5 py-6">
+          <div className="shrink-0 border-b border-slate-200/70 pb-6 dark:border-slate-800/80">
             <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">
               AsbaTechs
             </div>
@@ -21,15 +30,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
 
-          <AppSidebarNav />
+          <AppSidebarNav userRole={session?.role} />
 
-          <div className="app-panel-muted rounded-2xl p-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Daily focus
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Review new leads, verify active attendance, and keep department ownership current.
-            </p>
+          <div className="mt-4 shrink-0 border-t border-slate-200/60 pt-4 dark:border-slate-800/80">
+            <DailyFocusCard />
           </div>
         </div>
       </aside>

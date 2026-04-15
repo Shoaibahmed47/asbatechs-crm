@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
-import { Lock, RefreshCw, Users } from "lucide-react";
+import { ChevronDown, Lock, RefreshCw, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 export type EmployeeUserRow = {
   kind: "user";
@@ -15,6 +20,7 @@ export type EmployeeUserRow = {
   role: string;
   department: string;
   inviteStatus: string;
+  assignedClientProjects?: Array<{ projectId: number; label: string }>;
 };
 
 export type EmployeeInviteRow = {
@@ -29,16 +35,22 @@ export type EmployeeDirectoryRow = EmployeeUserRow | EmployeeInviteRow;
 export function EmployeeDirectoryTable({
   rows,
   allowAdminActions = true,
+  clientProjectOptions = [],
+  onAssignProject,
   sortToolbar,
   footer
 }: {
   rows: EmployeeDirectoryRow[];
   /** Invite resend / password reset (admin-only APIs). */
   allowAdminActions?: boolean;
+  clientProjectOptions?: Array<{ projectId: number; label: string }>;
+  onAssignProject?: (userId: number, projectIds: number[]) => Promise<void>;
   sortToolbar?: ReactNode;
   footer?: ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
+  const [selectedByUser, setSelectedByUser] = useState<Record<number, number[]>>({});
+  const [savingAssignByUser, setSavingAssignByUser] = useState<Record<number, boolean>>({});
 
   const runAction = useCallback(
     async (
@@ -70,6 +82,35 @@ export function EmployeeDirectoryTable({
     []
   );
 
+  const getSelectedIds = (row: EmployeeUserRow): number[] =>
+    selectedByUser[row.id] ?? (row.assignedClientProjects ?? []).map((p) => p.projectId);
+
+  const saveAssignments = async (userId: number, projectIds: number[]) => {
+    if (!onAssignProject) return;
+    setSavingAssignByUser((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await onAssignProject(userId, projectIds);
+      toast.success("Project assignments updated");
+    } catch {
+      toast.error("Could not update project assignments");
+    } finally {
+      setSavingAssignByUser((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const toggleSelectedProject = (row: EmployeeUserRow, projectId: number) => {
+    let next: number[] = [];
+    setSelectedByUser((prev) => {
+      const currentFromState = prev[row.id] ?? (row.assignedClientProjects ?? []).map((p) => p.projectId);
+      const has = currentFromState.includes(projectId);
+      next = has
+        ? currentFromState.filter((id) => id !== projectId)
+        : [...currentFromState, projectId];
+      return { ...prev, [row.id]: next };
+    });
+    void saveAssignments(row.id, next);
+  };
+
   return (
     <div className="data-card overflow-hidden p-0">
       <div className="overflow-x-auto">
@@ -80,13 +121,14 @@ export function EmployeeDirectoryTable({
               <th className="px-5 py-4">Email</th>
               <th className="px-5 py-4">Role</th>
               <th className="px-5 py-4">Department</th>
+              <th className="px-5 py-4">Client project</th>
               <th className="px-5 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-0">
+                <td colSpan={6} className="p-0">
                   <EmptyState
                     icon={Users}
                     title="No team members yet"
@@ -127,6 +169,67 @@ export function EmployeeDirectoryTable({
                     </td>
                     <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
                       {row.department}
+                    </td>
+                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                      {allowAdminActions &&
+                      row.kind === "user" &&
+                      row.role.toLowerCase() === "employee" &&
+                      onAssignProject ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="min-w-[15rem] justify-between gap-2 border-slate-600"
+                            >
+                              <span className="truncate text-left">
+                                {(() => {
+                                  const selectedIds = getSelectedIds(row);
+                                  if (selectedIds.length === 0) return "Select project(s)";
+                                  const labels = clientProjectOptions
+                                    .filter((opt) => selectedIds.includes(opt.projectId))
+                                    .map((opt) => opt.label);
+                                  return labels.join(", ");
+                                })()}
+                              </span>
+                              <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-[24rem] p-2">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Assigned projects {savingAssignByUser[row.id] ? "• Saving..." : ""}
+                            </div>
+                            <div className="max-h-64 space-y-1 overflow-y-auto">
+                              {clientProjectOptions.map((opt) => {
+                                const checked = getSelectedIds(row).includes(opt.projectId);
+                                return (
+                                  <label
+                                    key={opt.projectId}
+                                    className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleSelectedProject(row, opt.projectId)}
+                                      className="mt-0.5 h-4 w-4 rounded border-slate-400 bg-transparent"
+                                    />
+                                    <span className="text-xs text-slate-700 dark:text-slate-200">
+                                      {opt.label}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          {row.kind === "user"
+                            ? row.assignedClientProjects?.map((p) => p.label).join(", ") || "Unassigned"
+                            : "—"}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end">

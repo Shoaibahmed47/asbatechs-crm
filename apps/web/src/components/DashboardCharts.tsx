@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -50,11 +51,22 @@ const tooltipStyle = {
   fontSize: 12
 };
 
-export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
+export function DashboardCharts({
+  data,
+  showTeamAttendanceOverview = false
+}: {
+  data: DashboardChartPayload;
+  /** Org-wide open-shift / headcount metrics: administrators only. */
+  showTeamAttendanceOverview?: boolean;
+}) {
   const leadMix = [
     { name: "Hot leads", value: data.hotLeads },
     { name: "Sales leads", value: data.saleLeads }
   ];
+
+  const leadMixTotal = data.hotLeads + data.saleLeads;
+  const hasMonthlySales = data.monthlySales.some((r) => r.amount > 0);
+  const hasMonthlyNewLeads = data.monthlyNewLeads.some((r) => r.count > 0);
 
   const attendanceRate =
     data.totalUsers > 0 ? Math.round((data.activeToday / data.totalUsers) * 100) : 0;
@@ -66,7 +78,9 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
           Performance analytics
         </h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Revenue, pipeline activity, and staffing visibility presented in a clearer executive format.
+          Revenue and pipeline activity
+          {showTeamAttendanceOverview ? ", plus staffing visibility, " : " "}
+          in a clearer executive format.
         </p>
       </div>
 
@@ -86,36 +100,51 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
             </div>
           </div>
           <div className="relative mt-4 h-[280px] w-full min-w-0">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              initialDimension={CHART_AREA.pie}
-            >
-              <PieChart>
-                <Pie
-                  data={leadMix}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={66}
-                  outerRadius={98}
-                  paddingAngle={3}
-                >
-                  {leadMix.map((entry) => (
-                    <Cell key={entry.name} fill={PIE_COLORS[leadMix.indexOf(entry)]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => [
-                    typeof value === "number" ? value : Number(value),
-                    "Leads"
-                  ]}
-                  contentStyle={tooltipStyle}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {leadMixTotal === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No leads to chart yet
+                </p>
+                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  The dashboard is working. Add hot or sales leads under{" "}
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    Operations
+                  </span>{" "}
+                  and this chart will show the mix.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                initialDimension={CHART_AREA.pie}
+              >
+                <PieChart>
+                  <Pie
+                    data={leadMix}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={66}
+                    outerRadius={98}
+                    paddingAngle={3}
+                  >
+                    {leadMix.map((entry) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[leadMix.indexOf(entry)]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [
+                      typeof value === "number" ? value : Number(value),
+                      "Leads"
+                    ]}
+                    contentStyle={tooltipStyle}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {leadMix.map((item, index) => (
@@ -153,43 +182,55 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
             </div>
           </div>
           <div className="relative mt-4 h-[340px] w-full min-w-0">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              initialDimension={CHART_AREA.bar}
-            >
-              <BarChart data={data.monthlySales} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={CHART_AXIS}
-                  tickLine={false}
-                  axisLine={{ stroke: GRID_STROKE }}
-                />
-                <YAxis
-                  tickFormatter={currencyShort}
-                  tick={CHART_AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                />
-                <Tooltip
-                  formatter={(value) => {
-                    const n = typeof value === "number" ? value : Number(value);
-                    return Number.isFinite(n)
-                      ? n.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "USD"
-                        })
-                      : String(value ?? "");
-                  }}
-                  labelFormatter={(_, payload) => String(payload?.[0]?.payload?.month ?? "")}
-                  contentStyle={tooltipStyle}
-                />
-                <Bar dataKey="amount" name="Revenue" fill="#0f172a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {!hasMonthlySales ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No revenue in this window
+                </p>
+                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Sale leads with amounts in the last six months appear here. Totals above still include
+                  all-time booked revenue.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                initialDimension={CHART_AREA.bar}
+              >
+                <BarChart data={data.monthlySales} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={CHART_AXIS}
+                    tickLine={false}
+                    axisLine={{ stroke: GRID_STROKE }}
+                  />
+                  <YAxis
+                    tickFormatter={currencyShort}
+                    tick={CHART_AXIS}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                  />
+                  <Tooltip
+                    formatter={(value) => {
+                      const n = typeof value === "number" ? value : Number(value);
+                      return Number.isFinite(n)
+                        ? n.toLocaleString(undefined, {
+                            style: "currency",
+                            currency: "USD"
+                          })
+                        : String(value ?? "");
+                    }}
+                    labelFormatter={(_, payload) => String(payload?.[0]?.payload?.month ?? "")}
+                    contentStyle={tooltipStyle}
+                  />
+                  <Bar dataKey="amount" name="Revenue" fill="#0f172a" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -210,90 +251,120 @@ export function DashboardCharts({ data }: { data: DashboardChartPayload }) {
             </div>
           </div>
           <div className="relative mt-4 h-[320px] w-full min-w-0">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              initialDimension={CHART_AREA.line}
+            {!hasMonthlyNewLeads ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No new leads this period
+                </p>
+                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  When leads are created, monthly counts will show here. The axis still shows the last
+                  six months for context.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                initialDimension={CHART_AREA.line}
+              >
+                <LineChart data={data.monthlyNewLeads} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={CHART_AXIS}
+                    tickLine={false}
+                    axisLine={{ stroke: GRID_STROKE }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={CHART_AXIS}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                  />
+                  <Tooltip
+                    formatter={(value) => [
+                      typeof value === "number" ? value : Number(value),
+                      "New leads"
+                    ]}
+                    contentStyle={tooltipStyle}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    name="New leads"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                    dot={{ r: 3.5, fill: "#2563eb" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {showTeamAttendanceOverview ? (
+          <div className="data-card flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Team attendance today
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Share of users with an active open shift right now.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center justify-center gap-5">
+              <div className="relative flex h-52 w-52 items-center justify-center rounded-full border-[14px] border-slate-100 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.94))] dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.85),rgba(15,23,42,0.95))]">
+                <div className="text-center">
+                  <div className="text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                    {attendanceRate}%
+                  </div>
+                  <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                    Active
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid w-full gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Open shifts
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+                    {data.activeToday}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Total users
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+                    {data.totalUsers}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="data-card flex flex-col justify-center gap-4 px-6 py-10 text-center">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Attendance</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Organization-wide attendance and live team presence are limited to administrator
+                accounts so employee dashboards stay focused on their own work.
+              </p>
+            </div>
+            <Link
+              href="/attendance"
+              className="mx-auto inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
             >
-              <LineChart data={data.monthlyNewLeads} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={CHART_AXIS}
-                  tickLine={false}
-                  axisLine={{ stroke: GRID_STROKE }}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={CHART_AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  formatter={(value) => [
-                    typeof value === "number" ? value : Number(value),
-                    "New leads"
-                  ]}
-                  contentStyle={tooltipStyle}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  name="New leads"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                  dot={{ r: 3.5, fill: "#2563eb" }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+              Open my attendance
+            </Link>
           </div>
-        </div>
-
-        <div className="data-card flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Team attendance today
-            </h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Share of users with an active open shift right now.
-            </p>
-          </div>
-
-          <div className="mt-8 flex flex-col items-center justify-center gap-5">
-            <div className="relative flex h-52 w-52 items-center justify-center rounded-full border-[14px] border-slate-100 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.94))] dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.85),rgba(15,23,42,0.95))]">
-              <div className="text-center">
-                <div className="text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                  {attendanceRate}%
-                </div>
-                <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                  Active
-                </div>
-              </div>
-            </div>
-
-            <div className="grid w-full gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Open shifts
-                </div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
-                  {data.activeToday}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Total users
-                </div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
-                  {data.totalUsers}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );
