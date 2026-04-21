@@ -22,3 +22,4 @@ drizzle
 !packages/database/drizzle/migrations/
 !packages/database/drizzle/migrations/*.sql
 !packages/database/drizzle/migrations/meta/**
+.vercel
