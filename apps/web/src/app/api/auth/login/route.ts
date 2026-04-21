@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { findUserByEmail, verifyPassword, signAuthToken, COOKIE_NAME } from "@/lib/auth";
+import {
+  COOKIE_NAME,
+  findUserByEmail,
+  signAuthToken,
+  verifyPassword
+} from "@/lib/auth";
 import { ensureDefaultAdmin } from "@/lib/bootstrap-admin";
+import { createSupabaseServerClient } from "@/lib/supabase";
+import { ensureSupabaseIdentityForLogin, linkSupabaseAuthId } from "@/lib/supabase-user-link";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -31,6 +38,29 @@ function isMissingRelationError(err: unknown): boolean {
   return msg.includes("does not exist") && msg.includes("relation");
 }
 
+async function authenticateWithSupabase(email: string, password: string) {
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      return { authenticated: false as const, reason: "rejected" as const, detail: error.message };
+    }
+
+    return {
+      authenticated: true as const,
+      email: data.user.email ?? email,
+      authUserId: data.user.id
+    };
+  } catch (error) {
+    return {
+      authenticated: false as const,
+      reason: "unavailable" as const,
+      detail: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
 export async function POST(req: Request) {
   try {
     await ensureDefaultAdmin();
@@ -45,16 +75,57 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
+    const { password } = parsed.data;
+    const supabaseResult = await authenticateWithSupabase(email, password);
     const user = await findUserByEmail(email);
+
+    if (supabaseResult.authenticated && !user) {
+      return NextResponse.json(
+        { error: "This Supabase account is not linked to a CRM staff profile yet." },
+        { status: 403 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    const ok = await verifyPassword(password, user.passwordHash);
-    if (!ok) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+    if (supabaseResult.authenticated) {
+      if (user.supabaseAuthId && user.supabaseAuthId !== supabaseResult.authUserId) {
+        return NextResponse.json(
+          { error: "This CRM account is linked to a different Supabase identity." },
+          { status: 403 }
+        );
+      }
+
+      if (!user.supabaseAuthId) {
+        await linkSupabaseAuthId(user.id, supabaseResult.authUserId);
+      }
+    } else {
+      const ok = await verifyPassword(password, user.passwordHash);
+      if (!ok) {
+        return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      }
+
+      const linked = await ensureSupabaseIdentityForLogin(
+        {
+          id: user.id,
+          email: user.email,
+          supabaseAuthId: user.supabaseAuthId
+        },
+        password
+      );
+
+      if (!linked) {
+        return NextResponse.json(
+          {
+            error:
+              "This account exists in the CRM, but Supabase rejected the sign-in. Use Forgot password to finish the migration."
+          },
+          { status: 401 }
+        );
+      }
     }
 
     const token = await signAuthToken({
@@ -127,4 +198,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

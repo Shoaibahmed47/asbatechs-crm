@@ -9,8 +9,8 @@ jest.mock("@/lib/auth", () => ({
   COOKIE_NAME: "crm_token",
   verifyAuthToken: jest.fn()
 }));
-jest.mock("@/lib/mail", () => ({
-  sendInviteEmail: jest.fn().mockResolvedValue(undefined)
+jest.mock("@/lib/supabase-employee-invite", () => ({
+  sendEmployeeInvite: jest.fn().mockResolvedValue({ delivery: "supabase" })
 }));
 jest.mock("@/lib/db", () => ({
   db: {
@@ -28,8 +28,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 const auth = jest.requireMock("@/lib/auth") as {
   verifyAuthToken: jest.Mock;
 };
-const mail = jest.requireMock("@/lib/mail") as {
-  sendInviteEmail: jest.Mock;
+const invite = jest.requireMock("@/lib/supabase-employee-invite") as {
+  sendEmployeeInvite: jest.Mock;
 };
 
 beforeEach(() => {
@@ -56,9 +56,12 @@ describe("admin employee invites", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(insertValues).toHaveBeenCalled();
-    expect(mail.sendInviteEmail).toHaveBeenCalledWith(
-      "new@x.com",
-      expect.stringContaining("/employee-signup/")
+    expect(invite.sendEmployeeInvite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "new@x.com",
+        redirectTo: expect.stringContaining("/employee-signup"),
+        resend: false
+      })
     );
   });
 
@@ -88,6 +91,11 @@ describe("admin employee invites", () => {
     expect(res.status).toBe(200);
     expect(data.resent).toBe(true);
     expect(updateWhere).toHaveBeenCalled();
-    expect(mail.sendInviteEmail).toHaveBeenCalled();
+    expect(invite.sendEmployeeInvite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "dup@x.com",
+        resend: true
+      })
+    );
   });
 });

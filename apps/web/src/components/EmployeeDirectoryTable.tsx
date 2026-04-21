@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
-import { ChevronDown, Lock, RefreshCw, Users } from "lucide-react";
+import { ChevronDown, Lock, RefreshCw, Trash2, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ export function EmployeeDirectoryTable({
   allowAdminActions = true,
   clientProjectOptions = [],
   onAssignProject,
+  onDirectoryChanged,
+  currentUserId,
   sortToolbar,
   footer
 }: {
@@ -45,6 +47,8 @@ export function EmployeeDirectoryTable({
   allowAdminActions?: boolean;
   clientProjectOptions?: Array<{ projectId: number; label: string }>;
   onAssignProject?: (userId: number, projectIds: number[]) => Promise<void>;
+  onDirectoryChanged?: () => Promise<void> | void;
+  currentUserId?: number | null;
   sortToolbar?: ReactNode;
   footer?: ReactNode;
 }) {
@@ -80,6 +84,29 @@ export function EmployeeDirectoryTable({
       }
     },
     []
+  );
+
+  const runDeleteUser = useCallback(
+    async (userId: number, email: string, role: string) => {
+      if (!window.confirm(`Remove employee ${email}? This action cannot be undone.`)) {
+        return;
+      }
+      if (role.toLowerCase() === "admin") {
+        const typed = window.prompt(`Type DELETE to remove admin ${email}`);
+        if (typed !== "DELETE") return;
+      }
+      setBusy(true);
+      try {
+        await apiFetch.del(`/api/users/${userId}`);
+        toast.success("Employee removed", { description: email });
+        await onDirectoryChanged?.();
+      } catch (error) {
+        toast.error(error instanceof ApiFetchError ? error.message : "Could not remove employee.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [onDirectoryChanged]
   );
 
   const getSelectedIds = (row: EmployeeUserRow): number[] =>
@@ -149,6 +176,7 @@ export function EmployeeDirectoryTable({
                   allowAdminActions &&
                   row.kind === "user" &&
                   row.inviteStatus !== "pending";
+                const showRemove = allowAdminActions && row.kind === "user" && row.id !== currentUserId;
 
                 return (
                   <tr
@@ -252,24 +280,39 @@ export function EmployeeDirectoryTable({
                             Resend invite
                           </Button>
                         ) : showReset ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="min-w-[11rem] justify-center gap-2"
-                            disabled={busy}
-                            onClick={() =>
-                              runAction(
-                                "/api/users/reset-password",
-                                { email },
-                                "Password reset link sent",
-                                "Could not send reset link."
-                              )
-                            }
-                          >
-                            <Lock className="h-4 w-4" />
-                            Reset password
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="min-w-[11rem] justify-center gap-2"
+                              disabled={busy}
+                              onClick={() =>
+                                runAction(
+                                  "/api/users/reset-password",
+                                  { email },
+                                  "Password reset link sent",
+                                  "Could not send reset link."
+                                )
+                              }
+                            >
+                              <Lock className="h-4 w-4" />
+                              Reset password
+                            </Button>
+                            {showRemove ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="min-w-[7.5rem] justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                                disabled={busy}
+                                onClick={() => void runDeleteUser(row.id, email, row.role)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : null}
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400 dark:text-slate-500">
                             —

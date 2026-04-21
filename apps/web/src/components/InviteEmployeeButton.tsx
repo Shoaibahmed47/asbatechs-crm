@@ -82,6 +82,8 @@ export function InviteEmployeeButton() {
     try {
       await apiFetch.post("/api/admin/employees", {
           email,
+          firstName,
+          lastName,
           departmentId: departmentId ? Number(departmentId) : null,
           action
       });

@@ -3,6 +3,13 @@ import { POST } from "./route";
 jest.mock("@/lib/bootstrap-admin", () => ({
   ensureDefaultAdmin: jest.fn().mockResolvedValue(undefined)
 }));
+jest.mock("@/lib/supabase-user-link", () => ({
+  ensureSupabaseIdentityForLogin: jest.fn().mockResolvedValue({
+    authUserId: "supabase-user-id",
+    source: "created"
+  }),
+  linkSupabaseAuthId: jest.fn().mockResolvedValue(undefined)
+}));
 jest.mock("@/lib/auth", () => ({
   COOKIE_NAME: "crm_token",
   findUserByEmail: jest.fn(),

@@ -5,10 +5,12 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-import { sendInviteEmail } from "@/lib/mail";
+import { sendEmployeeInvite } from "@/lib/supabase-employee-invite";
 
 const inviteSchema = z.object({
   email: z.string().email(),
+  firstName: z.string().trim().optional(),
+  lastName: z.string().trim().optional(),
   departmentId: z.number().nullable().optional(),
   action: z.enum(["invite", "resend"]).default("invite")
 });
@@ -29,6 +31,8 @@ export async function POST(req: NextRequest) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
+  const firstName = parsed.data.firstName?.trim() || undefined;
+  const lastName = parsed.data.lastName?.trim() || undefined;
   const departmentId = parsed.data.departmentId ?? null;
   const action = parsed.data.action;
 
@@ -91,20 +95,31 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const signupUrl = `${appUrl}/employee-signup/${inviteToken}`;
-
-    await sendInviteEmail(email, signupUrl);
+    const inviteResult = await sendEmployeeInvite({
+      email,
+      redirectTo: `${appUrl}/employee-signup`,
+      resend: action === "resend",
+      metadata: {
+        firstName,
+        lastName,
+        departmentId,
+        invitedByUserId: payload.userId
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      resent: action === "resend"
+      resent: action === "resend",
+      delivery: inviteResult.delivery
     });
   } catch (error: any) {
     console.error("Failed to send invitation:", error);
     return NextResponse.json(
-      { error: "Failed to send invitation. Check SMTP settings and logs." },
+      {
+        error:
+          "Failed to send invitation. Check Supabase Auth settings, redirect URLs, service role key, and SMTP fallback."
+      },
       { status: 500 }
     );
   }
 }
-

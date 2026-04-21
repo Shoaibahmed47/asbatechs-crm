@@ -21,12 +21,15 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isAuthRoute = pathname === "/login";
+  const isForgotPasswordRoute = pathname === "/forgot-password";
   const isClientLogin = pathname === "/client/login";
   const isClientSignup = pathname.startsWith("/client/signup/");
   const isClientPublic = isClientLogin || isClientSignup;
 
   const isPublicSignup =
+    pathname === "/employee-signup" ||
     pathname.startsWith("/employee-signup/") ||
+    pathname === "/reset-password" ||
     pathname.startsWith("/reset-password/");
   const isRoot = pathname === "/";
 
@@ -50,6 +53,7 @@ export async function middleware(req: NextRequest) {
     if (
       isRoot ||
       (!isAuthRoute &&
+        !isForgotPasswordRoute &&
         !isClientPublic &&
         !isPublicSignup &&
         !pathname.startsWith("/_next") &&
@@ -67,7 +71,7 @@ export async function middleware(req: NextRequest) {
 
   // Client session hitting staff-only app routes → send to client hub
   if (clientPayload && !staffPayload) {
-    if (isRoot || isAuthRoute) {
+    if (isRoot || isAuthRoute || isForgotPasswordRoute) {
       const url = new URL("/client", req.url);
       const res = NextResponse.redirect(url);
       res.headers.set("x-request-id", requestId);
@@ -123,7 +127,7 @@ export async function middleware(req: NextRequest) {
       return res;
     }
 
-    if (isAuthRoute || isRoot) {
+    if (isAuthRoute || isForgotPasswordRoute || isRoot) {
       const dashboardUrl = new URL("/dashboard", req.url);
       const res = NextResponse.redirect(dashboardUrl);
       res.headers.set("x-request-id", requestId);

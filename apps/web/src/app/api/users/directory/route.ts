@@ -392,7 +392,8 @@ export async function GET(req: NextRequest) {
       limit,
       totalPages,
       departments,
-      clientProjectOptions
+      clientProjectOptions,
+      viewerUserId: payload.userId
     });
   });
 }

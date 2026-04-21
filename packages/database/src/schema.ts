@@ -31,6 +31,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  supabaseAuthId: text("supabase_auth_id").unique(),
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull(),
   departmentId: integer("department_id").references(() => departments.id),

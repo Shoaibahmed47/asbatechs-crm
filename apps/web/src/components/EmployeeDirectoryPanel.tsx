@@ -21,6 +21,7 @@ type DirectoryResponse = {
   totalPages?: number;
   departments?: Department[];
   clientProjectOptions?: Array<{ projectId: number; label: string }>;
+  viewerUserId?: number;
 };
 
 export function EmployeeDirectoryPanel({
@@ -53,6 +54,7 @@ export function EmployeeDirectoryPanel({
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [viewerUserId, setViewerUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -110,6 +112,7 @@ export function EmployeeDirectoryPanel({
       setRows(data.rows ?? []);
       setTotal(data.total ?? 0);
       setTotalPages(data.totalPages ?? 0);
+      setViewerUserId(typeof data.viewerUserId === "number" ? data.viewerUserId : null);
       if (data.departments?.length) {
         setDepartments(data.departments);
       }
@@ -325,6 +328,8 @@ export function EmployeeDirectoryPanel({
           allowAdminActions={allowAdminActions}
           clientProjectOptions={clientProjectOptions}
           onAssignProject={allowAdminActions ? assignClientProject : undefined}
+          onDirectoryChanged={loadDirectory}
+          currentUserId={viewerUserId}
           sortToolbar={
             <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               <span className="text-slate-400 dark:text-slate-500">Sort</span>

@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isAdminRole } from "@/lib/rbac";
-import { sendInviteEmail } from "@/lib/mail";
+import { sendEmployeeInvite } from "@/lib/supabase-employee-invite";
 
 const bodySchema = z.object({
   email: z.string().email()
@@ -70,13 +70,24 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(schema.invitations.id, inviteRow.id));
 
-    await sendInviteEmail(email, `${appUrl}/employee-signup/${inviteToken}`);
+    await sendEmployeeInvite({
+      email,
+      redirectTo: `${appUrl}/employee-signup`,
+      resend: true,
+      metadata: {
+        departmentId: inviteRow.departmentId ?? null,
+        invitedByUserId: payload.userId
+      }
+    });
 
     return NextResponse.json({ success: true, message: "Invitation sent again" });
   } catch (error) {
     console.error("resend-invite:", error);
     return NextResponse.json(
-      { error: "Failed to send invitation. Check SMTP settings and logs." },
+      {
+        error:
+          "Failed to send invitation. Check Supabase Auth settings, redirect URLs, service role key, and SMTP fallback."
+      },
       { status: 500 }
     );
   }

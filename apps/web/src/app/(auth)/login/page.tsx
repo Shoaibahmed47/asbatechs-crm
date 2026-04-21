@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
@@ -98,12 +99,12 @@ export default function LoginPage() {
               />
               <span className="text-slate-600 dark:text-slate-400">Remember me</span>
             </label>
-            <button
-              type="button"
+            <Link
+              href="/forgot-password"
               className="font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Forgot password?
-            </button>
+            </Link>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
