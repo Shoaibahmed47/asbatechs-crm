@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AdminExportControls } from "@/components/AdminExportControls";
@@ -68,21 +69,50 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {(
           [
-            ["Departments", snapshot.stats.departments],
-            ["Users", snapshot.stats.users],
-            ["Hot leads", snapshot.stats.hotLeads],
-            ["Sale leads", snapshot.stats.saleLeads],
-            ["Pending invites", snapshot.stats.pendingInvites]
+            {
+              label: "Departments",
+              value: snapshot.stats.departments,
+              href: "/settings/departments"
+            },
+            {
+              label: "Users",
+              value: snapshot.stats.users,
+              href: "/users"
+            },
+            {
+              label: "Hot leads",
+              value: snapshot.stats.hotLeads,
+              href: "/leads/hot"
+            },
+            {
+              label: "Sale leads",
+              value: snapshot.stats.saleLeads,
+              href: "/leads/sales"
+            },
+            {
+              label: "Pending invites",
+              value: snapshot.stats.pendingInvites,
+              href: "/users"
+            },
+            {
+              label: "Clients",
+              value: "Manage",
+              href: "/settings/clients"
+            }
           ] as const
-        ).map(([label, value]) => (
-          <div key={label} className="data-card px-4 py-3">
+        ).map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="data-card px-4 py-3 transition hover:border-sky-300 hover:bg-sky-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:border-sky-700 dark:hover:bg-sky-950/20"
+          >
             <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">
-              {label}
+              {item.label}
             </div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-              {value}
+              {item.value}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

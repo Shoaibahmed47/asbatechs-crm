@@ -49,7 +49,6 @@ function ExistingAttachmentPreview({
     return (
       <div className="relative overflow-hidden rounded-md border border-slate-700/60 bg-slate-950/40">
         {removeButton}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={href} alt={att.fileName} className="aspect-square w-full object-cover" />
       </div>
     );
@@ -110,7 +109,6 @@ function PickedFilePreview({ file, onRemove }: { file: File; onRemove: () => voi
     return (
       <div className="relative overflow-hidden rounded-md border border-slate-700/60 bg-slate-950/40">
         {removeButton}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={file.name} className="aspect-square w-full object-cover" />
       </div>
     );

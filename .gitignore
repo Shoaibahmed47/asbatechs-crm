@@ -3,6 +3,9 @@ node_modules
 .env.local
 .env.production
 .next
+**/.next
+**/.next/**
+**/dev/cache/**
 dist
 .turbo
 .DS_Store
