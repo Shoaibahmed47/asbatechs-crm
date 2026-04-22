@@ -67,10 +67,7 @@ export default function AttendancePage() {
     try {
       const result = await apiFetch.post<{ attendance?: Attendance | null }>(path);
       if (result?.attendance) {
-        setAttendance((prev) => ({
-          ...(prev ?? {}),
-          ...result.attendance
-        }));
+        setAttendance(result.attendance);
       }
       await refresh();
       const label = path.includes("clock-in")
