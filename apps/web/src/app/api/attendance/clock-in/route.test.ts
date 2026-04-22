@@ -37,6 +37,11 @@ describe("attendance clock-in route", () => {
     ({
       cookies: { get: () => (cookie ? { value: cookie } : undefined) }
     }) as any;
+  const reqWithBearer = (token = "token") =>
+    ({
+      cookies: { get: () => undefined },
+      headers: { get: (name: string) => (name === "authorization" ? `Bearer ${token}` : null) }
+    }) as any;
 
   it("rejects unauthorized request", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce(null);
@@ -54,5 +59,18 @@ describe("attendance clock-in route", () => {
 
     expect(res.status).toBe(201);
     expect(data.attendance.status).toBe("active");
+  });
+
+  it("accepts bearer token when cookie is missing", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce({ userId: 9 });
+    selectWhere.mockResolvedValueOnce([]);
+    insertReturning.mockResolvedValueOnce([{ id: 2, status: "active" }]);
+
+    const res = await POST(reqWithBearer());
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.attendance.status).toBe("active");
+    expect(auth.verifyAuthToken).toHaveBeenLastCalledWith("token");
   });
 });
