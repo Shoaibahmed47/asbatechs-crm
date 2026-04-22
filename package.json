@@ -6,9 +6,16 @@
     "apps/*",
     "packages/*"
   ],
+  "engines": {
+    "node": "24.13.0"
+  },
   "scripts": {
+    "db:build": "npm --workspace packages/database run build",
+    "predev": "npm run db:build",
     "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
+    "prebuild": "npm run db:build",
     "build": "npm --workspace apps/web run build",
+    "prestart": "npm run db:build",
     "start": "npm --workspace apps/web run start",
     "lint": "npm --workspace apps/web run lint",
     "db:create": "createdb asbatechs-crm-db -U postgres",

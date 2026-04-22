@@ -11,7 +11,7 @@ import { and, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 
 function monthKeysLast(n: number): string[] {
   const out: string[] = [];
-  const now = new Date();
+const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
