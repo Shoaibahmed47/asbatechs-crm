@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": "24.13.0"
+    "node": "22.17.1"
   },
   "scripts": {
     "db:build": "npm --workspace packages/database run build",
