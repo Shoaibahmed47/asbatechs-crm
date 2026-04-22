@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClientSession } from "@/lib/client-session";
+import { BodyPointerEventsGuard } from "@/components/BodyPointerEventsGuard";
 import { ClientPortalLogout } from "@/components/ClientPortalLogout";
 
 const nav = [
@@ -19,6 +20,7 @@ export default async function ClientPortalLayout({ children }: { children: React
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <BodyPointerEventsGuard />
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
