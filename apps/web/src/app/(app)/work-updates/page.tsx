@@ -244,9 +244,13 @@ export default function InternalWorkUpdatesPage() {
         }
       }
       if (editingUpdateId != null) {
-        await apiFetch.patch(`/api/work-updates/${editingUpdateId}`, fd);
+        await apiFetch.patch(`/api/work-updates/${editingUpdateId}`, fd, {
+          timeoutMs: 180000
+        });
       } else {
-        await apiFetch.post("/api/work-updates", fd);
+        await apiFetch.post("/api/work-updates", fd, {
+          timeoutMs: 180000
+        });
       }
       setTitle("");
       setNotes("");
@@ -261,6 +265,27 @@ export default function InternalWorkUpdatesPage() {
       setError(e instanceof ApiFetchError ? e.message : "Could not submit update");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeUpdate(id: number) {
+    if (!confirm("Delete this work update? This cannot be undone.")) return;
+    try {
+      setError(null);
+      await apiFetch.del(`/api/work-updates/${id}`);
+      if (editingUpdateId === id) {
+        setEditingUpdateId(null);
+        setTitle("");
+        setNotes("");
+        setGitRepoUrl("");
+        setProjectId("");
+        setFiles([]);
+        setEditingExistingAttachments([]);
+        setRemovedAttachmentPaths([]);
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiFetchError ? e.message : "Delete failed");
     }
   }
 
@@ -440,6 +465,13 @@ export default function InternalWorkUpdatesPage() {
                       }}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-red-600 hover:underline"
+                      onClick={() => void removeUpdate(u.id)}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>

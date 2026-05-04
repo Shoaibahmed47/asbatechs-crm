@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { TablePagination } from "@/components/TablePagination";
+import { LeadEntryForm } from "@/components/leads/lead-entry-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import { leadPermissionUserMessage } from "@/lib/lead-api-errors";
+import { LEAD_STAGE_OPTIONS, type LeadStage } from "@/lib/lead-workflow";
 import { cn } from "@/lib/utils";
 
 type SaleLead = {
@@ -30,12 +33,22 @@ type SaleLead = {
 type Department = { id: number; name: string };
 type UserRow = { id: number; name: string; email: string };
 
-const STATUS_OPTIONS = ["Closed", "Pending", "Refunded"] as const;
+type MeUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  departmentId: number | null;
+  departmentName: string | null;
+};
+
+const STATUS_OPTIONS = LEAD_STAGE_OPTIONS;
 
 export default function SalesLeadsPage() {
   const [leads, setLeads] = useState<SaleLead[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +74,13 @@ export default function SalesLeadsPage() {
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [source, setSource] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
   const [servicePurchased, setServicePurchased] = useState("");
   const [saleDate, setSaleDate] = useState(() => getLocalDateString());
-  const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("Closed");
+  const [status, setStatus] = useState<LeadStage>("Won");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -91,19 +105,77 @@ export default function SalesLeadsPage() {
   useEffect(() => {
     async function loadMeta() {
       try {
-        const [d, u] = await Promise.all([
+        const [d, u, session] = await Promise.all([
           apiFetch<{ departments?: Department[] }>("/api/departments"),
-          apiFetch<{ users?: UserRow[] }>("/api/users")
+          apiFetch<{ users?: UserRow[] }>("/api/users"),
+          apiFetch<{ user: MeUser | null }>("/api/auth/me")
         ]);
         setDepartments(d.departments ?? []);
         setUsers(u.users ?? []);
+        setMe(session.user);
       } catch {
         setDepartments([]);
         setUsers([]);
+        setMe(null);
       }
     }
     void loadMeta();
   }, []);
+
+  const formDepartments = useMemo(() => {
+    if (!me) return departments;
+    if (me.role === "admin") return departments;
+    if (me.departmentId == null) return [];
+    if (me.role === "employee" || me.role === "manager") {
+      return departments.filter((d) => d.id === me.departmentId);
+    }
+    return departments;
+  }, [me, departments]);
+
+  const formUsers = useMemo(() => {
+    if (me?.role === "employee") {
+      return users.filter((u) => u.id === me.id);
+    }
+    return users;
+  }, [me, users]);
+
+  const departmentLocked =
+    !!me &&
+    me.role !== "admin" &&
+    me.departmentId != null &&
+    (me.role === "employee" || me.role === "manager");
+
+  const formHint = useMemo(() => {
+    if (!me) return undefined;
+    if (me.role === "employee") {
+      if (me.departmentId == null) {
+        return "Your profile has no department. An administrator must assign you to a department before you can save leads.";
+      }
+      return `You can only record sales for ${me.departmentName ?? "your department"}. Assign to yourself or use Auto assign.`;
+    }
+    if (me.role === "manager" && me.departmentId == null) {
+      return "Your manager profile has no department. Contact an administrator.";
+    }
+    if (me.role === "manager" && me.departmentId != null) {
+      return `Sales leads are scoped to ${me.departmentName ?? "your department"}. You can assign to teammates in that department.`;
+    }
+    return undefined;
+  }, [me]);
+
+  const applyMeFormDefaults = useCallback(() => {
+    if (!me) return;
+    if (me.role === "admin") return;
+    if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+      setDepartmentId(String(me.departmentId));
+    }
+    if (me.role === "employee") {
+      setAssignedUserId(String(me.id));
+    }
+  }, [me]);
+
+  useEffect(() => {
+    applyMeFormDefaults();
+  }, [applyMeFormDefaults]);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -225,6 +297,7 @@ export default function SalesLeadsPage() {
         clientName: clientName.trim(),
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
+        source: source.trim() || undefined,
         servicePurchased: servicePurchased.trim() || undefined,
         notes: notes.trim() || undefined,
         saleDate: saleDate || undefined,
@@ -245,20 +318,24 @@ export default function SalesLeadsPage() {
       setClientName("");
       setPhone("");
       setEmail("");
+      setSource("");
       setDepartmentId("");
       setAssignedUserId("");
       setSaleAmount("");
       setServicePurchased("");
       setSaleDate(getLocalDateString());
-      setStatus("Closed");
+      setStatus("Won");
       setNotes("");
+      queueMicrotask(() => applyMeFormDefaults());
       await loadLeads();
     } catch (error) {
-      toast.error("Could not save sale", {
-        description:
-          error instanceof ApiFetchError
-            ? error.message
-            : "Something went wrong while saving."
+      const detail =
+        error instanceof ApiFetchError
+          ? leadPermissionUserMessage(error.status, error.message)
+          : "Check your connection and try again.";
+      toast.error(detail, {
+        description: "Sales lead was not saved.",
+        duration: 9000
       });
     } finally {
       setSaving(false);
@@ -292,148 +369,41 @@ export default function SalesLeadsPage() {
         </div>
       )}
 
-      <div className="data-card p-5" id="sale-lead-form">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Record a sale (manual entry)
-        </h2>
-        <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Client name <span className="text-red-500">*</span>
-            </label>
-            <input
-              className="form-input mt-1"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Phone
-            </label>
-            <input
-              className="form-input mt-1"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Email
-            </label>
-            <input
-              type="email"
-              className="form-input mt-1"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Sale amount (USD)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              className="form-input mt-1"
-              value={saleAmount}
-              onChange={(e) => setSaleAmount(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Service purchased
-            </label>
-            <input
-              className="form-input mt-1"
-              value={servicePurchased}
-              onChange={(e) => setServicePurchased(e.target.value)}
-              placeholder="Package or SKU"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Sale date
-            </label>
-            <input
-              type="date"
-              className="form-input mt-1"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Department
-            </label>
-            <select
-              className="form-input mt-1"
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Assigned user
-            </label>
-            <select
-              className="form-input mt-1"
-              value={assignedUserId}
-              onChange={(e) => setAssignedUserId(e.target.value)}
-            >
-              <option value="">Auto assign (round robin)</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Status
-            </label>
-            <select
-              className="form-input mt-1"
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as (typeof STATUS_OPTIONS)[number])
-              }
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Notes
-            </label>
-            <textarea
-              className="form-input mt-1 min-h-[80px]"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? "Saving…" : "Save sale lead"}
-            </Button>
-          </div>
-        </form>
-      </div>
+      <LeadEntryForm
+        mode="sale"
+        formId="sale-lead-form"
+        title="Add sales lead (manual entry)"
+        submitLabel="Save lead"
+        saving={saving}
+        departments={formDepartments}
+        users={formUsers}
+        formHint={formHint}
+        departmentLocked={departmentLocked}
+        statusOptions={STATUS_OPTIONS}
+        clientName={clientName}
+        onClientNameChange={setClientName}
+        phone={phone}
+        onPhoneChange={setPhone}
+        email={email}
+        onEmailChange={setEmail}
+        source={source}
+        onSourceChange={setSource}
+        departmentId={departmentId}
+        onDepartmentIdChange={setDepartmentId}
+        assignedUserId={assignedUserId}
+        onAssignedUserIdChange={setAssignedUserId}
+        status={status}
+        onStatusChange={setStatus}
+        notes={notes}
+        onNotesChange={setNotes}
+        saleAmount={saleAmount}
+        onSaleAmountChange={setSaleAmount}
+        servicePurchased={servicePurchased}
+        onServicePurchasedChange={setServicePurchased}
+        saleDate={saleDate}
+        onSaleDateChange={setSaleDate}
+        onSubmit={handleCreate}
+      />
 
       <div className="grid gap-4 md:grid-cols-[2fr,1fr]">
         <div className="data-card p-4">
@@ -489,7 +459,7 @@ export default function SalesLeadsPage() {
               </div>
               <div>
                 <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
-                  Status
+                  Stage
                 </label>
                 <select
                   value={filterStatus}
@@ -570,7 +540,7 @@ export default function SalesLeadsPage() {
                   {sortHead("sale_date", "Sale date")}
                   {sortHead("department_id", "Dept")}
                   {sortHead("assigned_user_id", "Assigned")}
-                  {sortHead("status", "Status")}
+                  {sortHead("status", "Stage")}
                 </tr>
               </thead>
               <tbody>

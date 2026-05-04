@@ -22,6 +22,7 @@ export type ApiFetchOptions = Omit<RequestInit, "body"> & {
 };
 
 const DEFAULT_TIMEOUT_MS = 15000;
+const FORM_DATA_TIMEOUT_MS = 600000;
 const LOGIN_REDIRECT_FLAG = "crm_auth_redirected";
 
 function getStoredToken() {
@@ -62,9 +63,11 @@ export async function apiFetch<T = unknown>(
   input: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, headers, body, credentials, ...rest } = options;
+  const { timeoutMs, headers, body, credentials, ...rest } = options;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const effectiveTimeoutMs = timeoutMs ?? (isFormData ? FORM_DATA_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const timer = window.setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
   const requestHeaders = new Headers(headers ?? {});
   const token = getStoredToken();
@@ -72,7 +75,6 @@ export async function apiFetch<T = unknown>(
     requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   let requestBody: BodyInit | undefined;
   if (body == null) {
     requestBody = undefined;

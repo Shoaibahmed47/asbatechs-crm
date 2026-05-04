@@ -13,11 +13,12 @@ import { schema } from "@asbatechs-crm/database";
 import type { AuthTokenPayload } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isRole } from "@/lib/rbac";
+import { LEAD_STAGE_OPTIONS } from "@/lib/lead-workflow";
 
-const HOT_STATUSES = ["New", "Contacted", "Follow Up", "Closed"] as const;
-const SALE_STATUSES = ["Closed", "Pending", "Refunded"] as const;
+const HOT_STATUSES = LEAD_STAGE_OPTIONS;
+const SALE_STATUSES = LEAD_STAGE_OPTIONS;
 
-export type LeadType = "hot" | "sale";
+export type LeadType = "hot" | "sale" | "all";
 
 export function parseListPagination(sp: URLSearchParams) {
   const page = Math.max(1, parseInt(sp.get("page") ?? "1", 10) || 1);
@@ -43,17 +44,28 @@ export function collectLeadListConditions(
   sp: URLSearchParams
 ): LeadFilterResult {
   const conditions: SQL[] = [
-    eq(schema.leads.type, leadType),
     eq(schema.leads.isDeleted, false)
   ];
+  if (leadType !== "all") {
+    conditions.push(eq(schema.leads.type, leadType));
+  }
 
   if (!isRole(payload.role)) {
-    return { ok: false, status: 403, error: "Forbidden" };
+    return {
+      ok: false,
+      status: 403,
+      error: "Your account role cannot view this leads list."
+    };
   }
 
   if (payload.role === "manager") {
     if (!payload.departmentId) {
-      return { ok: false, status: 403, error: "Forbidden" };
+      return {
+        ok: false,
+        status: 403,
+        error:
+          "Your manager profile has no department. Contact an administrator to assign a department."
+      };
     }
     conditions.push(eq(schema.leads.departmentId, payload.departmentId));
   }
@@ -67,7 +79,11 @@ export function collectLeadListConditions(
   if (payload.role === "employee" && assignedUserId) {
     const requested = Number(assignedUserId);
     if (!Number.isNaN(requested) && requested !== payload.userId) {
-      return { ok: false, status: 403, error: "Forbidden" };
+      return {
+        ok: false,
+        status: 403,
+        error: "You can only filter by your own user in “Assigned”."
+      };
     }
   }
   if (payload.role === "manager" && departmentId) {
@@ -77,7 +93,11 @@ export function collectLeadListConditions(
       payload.departmentId &&
       requested !== payload.departmentId
     ) {
-      return { ok: false, status: 403, error: "Forbidden" };
+      return {
+        ok: false,
+        status: 403,
+        error: "You can only filter by your own department."
+      };
     }
   }
 
@@ -176,13 +196,32 @@ const SALE_SORT_COLUMNS = [
   "sale_date",
   "service_purchased"
 ] as const;
+const ALL_SORT_COLUMNS = [
+  "created_at",
+  "updated_at",
+  "client_name",
+  "status",
+  "department_id",
+  "assigned_user_id",
+  "type",
+  "source",
+  "next_follow_up_date",
+  "sale_amount",
+  "sale_date",
+  "service_purchased"
+] as const;
 
 export function resolveLeadOrderBy(leadType: LeadType, sp: URLSearchParams): SQL[] {
   const rawSort = sp.get("sort") ?? "created_at";
   const rawOrder = (sp.get("order") ?? "desc").toLowerCase();
   const order = rawOrder === "asc" ? "asc" : "desc";
 
-  const allowed = leadType === "hot" ? HOT_SORT_COLUMNS : SALE_SORT_COLUMNS;
+  const allowed =
+    leadType === "hot"
+      ? HOT_SORT_COLUMNS
+      : leadType === "sale"
+      ? SALE_SORT_COLUMNS
+      : ALL_SORT_COLUMNS;
   const sort = (allowed as readonly string[]).includes(rawSort) ? rawSort : "created_at";
 
   const col = (() => {
@@ -193,6 +232,8 @@ export function resolveLeadOrderBy(leadType: LeadType, sp: URLSearchParams): SQL
         return schema.leads.updatedAt;
       case "status":
         return schema.leads.status;
+      case "type":
+        return schema.leads.type;
       case "department_id":
         return schema.leads.departmentId;
       case "assigned_user_id":

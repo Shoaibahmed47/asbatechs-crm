@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
@@ -73,34 +74,34 @@ export default function ClientProjectsPage() {
   }
 
   if (loading) {
-    return <p className="text-slate-400">Loading…</p>;
+    return <p className="text-slate-600 dark:text-slate-400">Loading…</p>;
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Projects</h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Projects</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Create projects to organize your work updates.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </div>
       )}
 
       <form
         onSubmit={addProject}
-        className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-6"
+        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/50"
       >
-        <div className="text-sm font-semibold text-slate-200">Add project</div>
+        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add project</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs text-slate-400">Name</label>
+            <label className="text-xs text-slate-600 dark:text-slate-400">Name</label>
             <input
-              className="form-input w-full border-slate-700 bg-slate-950 text-white"
+              className="form-input w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -108,9 +109,9 @@ export default function ClientProjectsPage() {
             />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-400">Description (optional)</label>
+            <label className="text-xs text-slate-600 dark:text-slate-400">Description (optional)</label>
             <textarea
-              className="form-input min-h-[72px] w-full border-slate-700 bg-slate-950 text-white"
+              className="form-input min-h-[72px] w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -123,30 +124,29 @@ export default function ClientProjectsPage() {
 
       <ul className="space-y-3">
         {projects.length === 0 ? (
-          <li className="rounded-xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">
+          <li className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-500">
             No projects yet. Add one above.
           </li>
         ) : (
           projects.map((p) => (
             <li
               key={p.id}
-              className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/40"
             >
               <div>
-                <div className="font-medium text-white">{p.name}</div>
+                <div className="font-medium text-slate-900 dark:text-white">{p.name}</div>
                 {p.description ? (
-                  <p className="mt-1 text-sm text-slate-400">{p.description}</p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{p.description}</p>
                 ) : null}
               </div>
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="border-slate-600 text-slate-300"
+                className="inline-flex min-w-[108px] whitespace-nowrap items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-700"
                 onClick={() => void remove(p.id)}
               >
+                <Trash2 className="h-3.5 w-3.5 text-red-300" />
                 Delete
-              </Button>
+              </button>
             </li>
           ))
         )}

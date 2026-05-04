@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         source: null,
         departmentId,
         assignedUserId,
-        status: "Closed",
+        status: "Won",
         notesSummary: data.source ?? null,
         saleAmount: amountStr,
         servicePurchased: data.servicePurchased ?? null,

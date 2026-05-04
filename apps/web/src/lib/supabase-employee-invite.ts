@@ -33,17 +33,32 @@ export async function sendEmployeeInvite({
   email,
   redirectTo,
   metadata,
-  resend = false
+  resend = false,
+  invitationToken
 }: {
   email: string;
   redirectTo: string;
   metadata: EmployeeInviteMetadata;
   resend?: boolean;
+  invitationToken?: string;
 }) {
   const admin = createSupabaseAdminClient();
   const normalizedMetadata = normalizeEmployeeInviteMetadata(metadata);
+  const isLocalRedirect =
+    redirectTo.includes("localhost") || redirectTo.includes("127.0.0.1");
 
-  if (!resend) {
+  // For local development, always use generated-link + SMTP flow so the
+  // email consistently carries your local redirect target.
+  if (isLocalRedirect && invitationToken) {
+    const normalizedBase = redirectTo.endsWith("/")
+      ? redirectTo.slice(0, -1)
+      : redirectTo;
+    await sendInviteEmail(email, `${normalizedBase}/${invitationToken}`);
+    return { delivery: "smtp" as const };
+  }
+
+  // For local development without a legacy token, fallback to generated-link.
+  if (!resend && !isLocalRedirect) {
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: normalizedMetadata,
       redirectTo

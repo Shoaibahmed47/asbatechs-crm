@@ -74,11 +74,14 @@ export async function GET(req: NextRequest) {
         attachments: schema.clientWorkUpdates.attachments,
         createdAt: schema.clientWorkUpdates.createdAt,
         updatedAt: schema.clientWorkUpdates.updatedAt,
+        authorType: schema.clientWorkUpdates.authorType,
+        authorUserName: schema.users.name,
         clientId: schema.clientWorkUpdates.clientId,
         clientName: schema.clients.name,
         projectName: schema.clientProjects.name
       })
       .from(schema.clientWorkUpdates)
+      .leftJoin(schema.users, eq(schema.clientWorkUpdates.authorUserId, schema.users.id))
       .leftJoin(schema.clients, eq(schema.clientWorkUpdates.clientId, schema.clients.id))
       .leftJoin(
         schema.clientProjects,
@@ -94,8 +97,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const updatesWithAuthor = updates.map((row) => ({
+      ...row,
+      authorName:
+        row.authorType === "client"
+          ? (row.clientName ?? "Client")
+          : (row.authorUserName ?? "Team member")
+    }));
+
     return NextResponse.json({
-      updates,
+      updates: updatesWithAuthor,
       clients: Array.from(clientById.values()).sort((a, b) => a.name.localeCompare(b.name)),
       projects: assignments
         .map((a) => ({
@@ -119,11 +130,14 @@ export async function GET(req: NextRequest) {
       attachments: schema.clientWorkUpdates.attachments,
       createdAt: schema.clientWorkUpdates.createdAt,
       updatedAt: schema.clientWorkUpdates.updatedAt,
+      authorType: schema.clientWorkUpdates.authorType,
+      authorUserName: schema.users.name,
       clientId: schema.clientWorkUpdates.clientId,
       clientName: schema.clients.name,
       projectName: schema.clientProjects.name
     })
     .from(schema.clientWorkUpdates)
+    .leftJoin(schema.users, eq(schema.clientWorkUpdates.authorUserId, schema.users.id))
     .leftJoin(schema.clients, eq(schema.clientWorkUpdates.clientId, schema.clients.id))
     .leftJoin(schema.clientProjects, eq(schema.clientWorkUpdates.projectId, schema.clientProjects.id))
     .orderBy(desc(schema.clientWorkUpdates.createdAt));
@@ -145,7 +159,20 @@ export async function GET(req: NextRequest) {
     .from(schema.clientProjects)
     .orderBy(asc(schema.clientProjects.name));
 
-  return NextResponse.json({ updates, clients, projects, isAssignmentRestricted: false });
+  const updatesWithAuthor = updates.map((row) => ({
+    ...row,
+    authorName:
+      row.authorType === "client"
+        ? (row.clientName ?? "Client")
+        : (row.authorUserName ?? "Team member")
+  }));
+
+  return NextResponse.json({
+    updates: updatesWithAuthor,
+    clients,
+    projects,
+    isAssignmentRestricted: false
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -214,6 +241,8 @@ export async function POST(req: NextRequest) {
   const [update] = await db
     .insert(schema.clientWorkUpdates)
     .values({
+      authorType: payload.role === "employee" ? "employee" : "admin",
+      authorUserId: payload.userId,
       clientId: parsed.data.clientId,
       projectId,
       title: parsed.data.title,
@@ -316,6 +345,8 @@ async function postMultipart(req: NextRequest, userId: number, role: string) {
   const [row] = await db
     .insert(schema.clientWorkUpdates)
     .values({
+      authorType: role === "employee" ? "employee" : "admin",
+      authorUserId: userId,
       clientId,
       projectId,
       title,

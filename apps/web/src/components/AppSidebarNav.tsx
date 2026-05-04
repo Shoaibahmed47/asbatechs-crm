@@ -18,6 +18,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: "Operations",
     items: [
+      { href: "/leads", label: "All Leads" },
       { href: "/leads/hot", label: "Hot Leads" },
       { href: "/leads/sales", label: "Sales Leads" },
       { href: "/work-updates", label: "Work Updates" },

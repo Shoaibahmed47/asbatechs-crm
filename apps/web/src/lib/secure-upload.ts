@@ -9,10 +9,10 @@ export const DEFAULT_MAX_UPLOAD_BYTES =
     ? Number(process.env.SECURE_UPLOAD_MAX_BYTES)
     : 10 * 1024 * 1024; // 10 MB
 
-/** Larger cap for client portal work-update uploads (video). Tunable via env. */
+/** Client portal work-update uploads cap (100MB max per file). */
 export const CLIENT_WORK_MAX_UPLOAD_BYTES =
   Number(process.env.CLIENT_WORK_UPLOAD_MAX_BYTES) > 0
-    ? Number(process.env.CLIENT_WORK_UPLOAD_MAX_BYTES)
+    ? Math.min(Number(process.env.CLIENT_WORK_UPLOAD_MAX_BYTES), 100 * 1024 * 1024)
     : 100 * 1024 * 1024; // 100 MB
 
 /**

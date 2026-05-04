@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { sendEmployeeInvite } from "@/lib/supabase-employee-invite";
+import { resolveAppUrl } from "@/lib/request-origin";
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     const existingInvite =
       existingInvites.length > 0 ? existingInvites[existingInvites.length - 1] : null;
 
-    const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+    const appUrl = resolveAppUrl(req);
     const inviteToken = randomBytes(32).toString("hex");
 
     if (action === "invite" && existingInvite) {
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
     const inviteResult = await sendEmployeeInvite({
       email,
       redirectTo: `${appUrl}/employee-signup`,
+      invitationToken: inviteToken,
       resend: action === "resend",
       metadata: {
         firstName,

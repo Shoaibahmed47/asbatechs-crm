@@ -15,8 +15,8 @@
     "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
     "prebuild": "npm run db:build",
     "build": "npm --workspace apps/web run build",
-    "prestart": "npm run db:build",
-    "start": "npm --workspace apps/web run start",
+    "prestart": "npx kill-port 3000 && npm run db:build",
+    "start": "npx kill-port 3000 && npm --workspace apps/web run start",
     "lint": "npm --workspace apps/web run lint",
     "db:create": "createdb asbatechs-crm-db -U postgres",
     "db:drop": "dropdb asbatechs-crm-db -U postgres",
@@ -24,6 +24,8 @@
     "db:migrate": "npm --workspace packages/database run drizzle:migrate",
     "db:push": "npm --workspace packages/database run drizzle:push",
     "db:seed": "npm --workspace packages/database run db:seed",
+    "db:supabase:clear": "npm --workspace packages/database run db:reset",
+    "db:supabase:seed-push": "npm run db:push && npm run db:seed",
     "db:cleanup-invalid-departments": "npm --workspace packages/database run db:cleanup-invalid-departments"
   },
   "devDependencies": {

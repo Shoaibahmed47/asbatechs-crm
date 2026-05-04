@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomBytes } from "crypto";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import {
   COOKIE_NAME,
   findUserByEmail,
+  hashPassword,
   signAuthToken,
   verifyPassword
 } from "@/lib/auth";
@@ -61,6 +64,55 @@ async function authenticateWithSupabase(email: string, password: string) {
   }
 }
 
+function buildRecoveredUserName(email: string) {
+  const prefix = email.split("@")[0]?.trim();
+  return prefix || email;
+}
+
+async function recoverInvitedEmployeeFromSupabaseIdentity(params: {
+  email: string;
+  authUserId: string;
+}) {
+  const { email, authUserId } = params;
+  const [invite] = await db
+    .select()
+    .from(schema.invitations)
+    .where(
+      and(
+        sql`lower(${schema.invitations.email}) = ${email}`,
+        isNull(schema.invitations.acceptedAt)
+      )
+    )
+    .orderBy(desc(schema.invitations.id))
+    .limit(1);
+
+  if (!invite) return null;
+
+  const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+  const [createdUser] = await db
+    .insert(schema.users)
+    .values({
+      name: buildRecoveredUserName(email),
+      email,
+      supabaseAuthId: authUserId,
+      passwordHash,
+      role: "employee",
+      departmentId: invite.departmentId ?? null,
+      inviteStatus: "accepted",
+      inviteToken: null,
+      resetToken: null,
+      resetTokenExpiry: null
+    })
+    .returning();
+
+  await db
+    .update(schema.invitations)
+    .set({ acceptedAt: new Date() })
+    .where(eq(schema.invitations.id, invite.id));
+
+  return createdUser;
+}
+
 export async function POST(req: Request) {
   try {
     await ensureDefaultAdmin();
@@ -78,13 +130,22 @@ export async function POST(req: Request) {
     const email = parsed.data.email.trim().toLowerCase();
     const { password } = parsed.data;
     const supabaseResult = await authenticateWithSupabase(email, password);
-    const user = await findUserByEmail(email);
+    let user = await findUserByEmail(email);
 
     if (supabaseResult.authenticated && !user) {
-      return NextResponse.json(
-        { error: "This Supabase account is not linked to a CRM staff profile yet." },
-        { status: 403 }
-      );
+      const recoveredUser = await recoverInvitedEmployeeFromSupabaseIdentity({
+        email,
+        authUserId: supabaseResult.authUserId
+      });
+
+      if (!recoveredUser) {
+        return NextResponse.json(
+          { error: "This Supabase account is not linked to a CRM staff profile yet." },
+          { status: 403 }
+        );
+      }
+
+      user = recoveredUser;
     }
 
     if (!user) {

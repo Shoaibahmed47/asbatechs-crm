@@ -168,3 +168,54 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   return NextResponse.json({ update: updated });
 }
+
+export async function DELETE(req: NextRequest, ctx: Ctx) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+  if (!payload || !isRole(payload.role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const id = Number((await ctx.params).id);
+  if (!Number.isFinite(id)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  const [existing] = await db
+    .select({
+      id: schema.clientWorkUpdates.id,
+      projectId: schema.clientWorkUpdates.projectId,
+      attachments: schema.clientWorkUpdates.attachments
+    })
+    .from(schema.clientWorkUpdates)
+    .where(eq(schema.clientWorkUpdates.id, id));
+
+  if (!existing) {
+    return NextResponse.json({ error: "Update not found" }, { status: 404 });
+  }
+
+  const isEmployee = payload.role === "employee";
+  if (isEmployee) {
+    const [assignment] = await db
+      .select({ projectId: schema.employeeClientProjectAssignments.projectId })
+      .from(schema.employeeClientProjectAssignments)
+      .where(
+        and(
+          eq(schema.employeeClientProjectAssignments.userId, payload.userId),
+          eq(schema.employeeClientProjectAssignments.projectId, existing.projectId ?? -1)
+        )
+      );
+    if (!assignment) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  const attachments = (existing.attachments ?? []) as ClientWorkAttachment[];
+  await db.delete(schema.clientWorkUpdates).where(eq(schema.clientWorkUpdates.id, id));
+
+  for (const att of attachments) {
+    await deleteClientWorkFile(att.storagePath).catch(() => null);
+  }
+
+  return NextResponse.json({ ok: true });
+}

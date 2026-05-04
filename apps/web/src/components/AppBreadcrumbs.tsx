@@ -8,6 +8,10 @@ type Crumb = { label: string; href?: string };
 
 const ROUTE_CRUMBS: Record<string, Crumb[]> = {
   "/dashboard": [{ label: "Executive dashboard" }],
+  "/leads": [
+    { label: "Operations", href: "/leads/hot" },
+    { label: "All leads" }
+  ],
   "/leads/hot": [
     { label: "Operations", href: "/leads/sales" },
     { label: "Hot leads" }

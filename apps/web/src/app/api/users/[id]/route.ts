@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { COOKIE_NAME, verifyAuthToken, hashPassword } from "@/lib/auth";
 
 const updateUserSchema = z.object({
@@ -138,7 +138,59 @@ export async function DELETE(
     }
   }
 
-  await db.delete(schema.users).where(eq(schema.users.id, id));
-  return NextResponse.json({ ok: true });
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.leads)
+        .set({ assignedUserId: null })
+        .where(eq(schema.leads.assignedUserId, id));
+
+      const attendanceRows = await tx
+        .select({ id: schema.attendanceLogs.id })
+        .from(schema.attendanceLogs)
+        .where(eq(schema.attendanceLogs.userId, id));
+
+      if (attendanceRows.length > 0) {
+        const attendanceIds = attendanceRows.map((row) => row.id);
+        await tx
+          .delete(schema.breakSessions)
+          .where(inArray(schema.breakSessions.attendanceLogId, attendanceIds));
+      }
+
+      await tx.delete(schema.attendanceLogs).where(eq(schema.attendanceLogs.userId, id));
+      await tx.delete(schema.notifications).where(eq(schema.notifications.userId, id));
+      await tx.delete(schema.leadNotes).where(eq(schema.leadNotes.userId, id));
+      await tx.delete(schema.activityLogs).where(eq(schema.activityLogs.userId, id));
+      await tx
+        .delete(schema.employeeClientProjectAssignments)
+        .where(eq(schema.employeeClientProjectAssignments.userId, id));
+      await tx
+        .update(schema.employeeClientProjectAssignments)
+        .set({ assignedByUserId: null })
+        .where(eq(schema.employeeClientProjectAssignments.assignedByUserId, id));
+      await tx
+        .update(schema.clientWorkComments)
+        .set({ actorUserId: null })
+        .where(eq(schema.clientWorkComments.actorUserId, id));
+      await tx.delete(schema.invitations).where(eq(schema.invitations.invitedByUserId, id));
+      await tx
+        .delete(schema.clientInvitations)
+        .where(eq(schema.clientInvitations.invitedByUserId, id));
+
+      await tx.delete(schema.users).where(eq(schema.users.id, id));
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to remove user:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error during user delete.";
+    return NextResponse.json(
+      {
+        error: `Could not remove this employee: ${errorMessage}`
+      },
+      { status: 500 }
+    );
+  }
 }
 

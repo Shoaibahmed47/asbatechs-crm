@@ -57,5 +57,9 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Could not prepare download" }, { status: 500 });
   }
 
-  return NextResponse.redirect(link.url);
+  const res = NextResponse.redirect(link.url);
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
 }

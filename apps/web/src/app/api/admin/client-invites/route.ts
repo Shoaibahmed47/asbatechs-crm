@@ -7,6 +7,7 @@ import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, normalizeEmail, verifyAuthToken } from "@/lib/auth";
 import { isAdminRole } from "@/lib/rbac";
 import { sendClientInviteEmail } from "@/lib/mail";
+import { resolveAppUrl } from "@/lib/request-origin";
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   const email = normalizeEmail(parsed.data.email);
   const action = parsed.data.action;
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const appUrl = resolveAppUrl(req);
 
   const [existingClient] = await db
     .select()

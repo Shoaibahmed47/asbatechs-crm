@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema, type ClientWorkAttachment } from "@asbatechs-crm/database";
-import { getClientSession } from "@/lib/client-session";
+import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isRole } from "@/lib/rbac";
 import { getClientWorkFileDownloadLink } from "@/lib/client-work-attachment-storage";
 
 type Ctx = { params: Promise<{ id: string; index: string }> };
@@ -13,11 +14,13 @@ function normalizeAttachments(raw: unknown): ClientWorkAttachment[] {
 }
 
 /**
- * Mint a short-lived URL for previews/downloads (JSON). Used by the client portal preview modal.
+ * Authenticated redirect for internal users to fetch work-update attachments.
+ * Generates a fresh short-lived URL on each request.
  */
 export async function GET(req: NextRequest, ctx: Ctx) {
-  const session = await getClientSession();
-  if (!session) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+  if (!payload || !isRole(payload.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -29,14 +32,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
 
   const [row] = await db
-    .select()
+    .select({
+      attachments: schema.clientWorkUpdates.attachments
+    })
     .from(schema.clientWorkUpdates)
-    .where(
-      and(
-        eq(schema.clientWorkUpdates.id, workId),
-        eq(schema.clientWorkUpdates.clientId, session.clientId)
-      )
-    );
+    .where(eq(schema.clientWorkUpdates.id, workId));
 
   if (!row) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -48,21 +48,12 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const link = await getClientWorkFileDownloadLink(
-    att.storagePath,
-    req.nextUrl.origin,
-    att.mimeType
-  );
+  const link = await getClientWorkFileDownloadLink(att.storagePath, req.nextUrl.origin, att.mimeType);
   if (!link) {
-    return NextResponse.json({ error: "Could not prepare file URL" }, { status: 500 });
+    return NextResponse.json({ error: "Could not prepare download" }, { status: 500 });
   }
 
-  const res = NextResponse.json({
-    url: link.url,
-    mimeType: att.mimeType,
-    fileName: att.fileName,
-    expiresInSeconds: link.kind === "s3" ? link.expiresInSeconds : null
-  });
+  const res = NextResponse.redirect(link.url);
   res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.headers.set("Pragma", "no-cache");
   res.headers.set("Expires", "0");

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { schema } from "@asbatechs-crm/database";
+import { schema, type ClientWorkAttachment } from "@asbatechs-crm/database";
 import { getClientSession } from "@/lib/client-session";
 import { z } from "zod";
+import {
+  CLIENT_WORK_MAX_UPLOAD_BYTES,
+  sanitizeUploadFileName,
+  validateSecureUpload
+} from "@/lib/secure-upload";
+import {
+  deleteClientWorkFile,
+  storeValidatedClientWorkFile
+} from "@/lib/client-work-attachment-storage";
 
 const optionalGit = z.string().max(2000).nullable().optional();
 
@@ -11,7 +20,17 @@ const patchSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   notes: z.string().max(8000).nullable().optional(),
   projectId: z.number().int().positive().nullable().optional(),
-  gitRepoUrl: optionalGit
+  gitRepoUrl: optionalGit,
+  attachments: z
+    .array(
+      z.object({
+        fileName: z.string().min(1).max(300),
+        storagePath: z.string().min(1).max(2000),
+        mimeType: z.string().min(1).max(200)
+      })
+    )
+    .max(10)
+    .optional()
 });
 
 function emptyToNull(s: string | null | undefined): string | null {
@@ -20,6 +39,93 @@ function emptyToNull(s: string | null | undefined): string | null {
 }
 
 type Ctx = { params: Promise<{ id: string }> };
+const MAX_WORK_FILES = 10;
+
+function parseAttachmentsLike(raw: unknown): ClientWorkAttachment[] | null {
+  if (!Array.isArray(raw)) return null;
+  const parsed: ClientWorkAttachment[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") return null;
+    const rec = item as Record<string, unknown>;
+    if (
+      typeof rec.fileName !== "string" ||
+      typeof rec.storagePath !== "string" ||
+      typeof rec.mimeType !== "string"
+    ) {
+      return null;
+    }
+    parsed.push({
+      fileName: rec.fileName,
+      storagePath: rec.storagePath,
+      mimeType: rec.mimeType
+    });
+  }
+  return parsed;
+}
+
+async function applyAttachmentChanges(params: {
+  existing: ClientWorkAttachment[];
+  requested: ClientWorkAttachment[] | undefined;
+  filesToAdd: File[];
+  clientId: number;
+  workUpdateId: number;
+}): Promise<{ ok: true; attachments: ClientWorkAttachment[] } | { ok: false; error: string; status: number }> {
+  const existingByPath = new Map(params.existing.map((a) => [a.storagePath, a] as const));
+  const requestedPaths = new Set<string>();
+  const kept: ClientWorkAttachment[] = [];
+
+  if (params.requested !== undefined) {
+    for (const attachment of params.requested) {
+      const matched = existingByPath.get(attachment.storagePath);
+      if (
+        !matched ||
+        matched.fileName !== attachment.fileName ||
+        matched.mimeType !== attachment.mimeType
+      ) {
+        return { ok: false, error: "Invalid attachments list", status: 400 };
+      }
+      if (requestedPaths.has(attachment.storagePath)) continue;
+      requestedPaths.add(attachment.storagePath);
+      kept.push(matched);
+    }
+  } else {
+    kept.push(...params.existing);
+    for (const item of params.existing) requestedPaths.add(item.storagePath);
+  }
+
+  const combinedCount = kept.length + params.filesToAdd.length;
+  if (combinedCount > MAX_WORK_FILES) {
+    return { ok: false, error: `Too many files (max ${MAX_WORK_FILES})`, status: 400 };
+  }
+
+  const added: ClientWorkAttachment[] = [];
+  for (const file of params.filesToAdd) {
+    const buf = Buffer.from(await file.arrayBuffer());
+    const checked = validateSecureUpload(buf, file.type || null, sanitizeUploadFileName(file.name), {
+      maxBytes: CLIENT_WORK_MAX_UPLOAD_BYTES
+    });
+    if (!checked.ok) {
+      return { ok: false, error: checked.error, status: checked.status };
+    }
+    const { storagePath } = await storeValidatedClientWorkFile(
+      params.clientId,
+      params.workUpdateId,
+      checked.value
+    );
+    added.push({
+      fileName: checked.value.sanitizedFileName,
+      storagePath,
+      mimeType: checked.value.mimeType
+    });
+  }
+
+  const removed = params.existing.filter((a) => !requestedPaths.has(a.storagePath));
+  for (const attachment of removed) {
+    await deleteClientWorkFile(attachment.storagePath).catch(() => undefined);
+  }
+
+  return { ok: true, attachments: [...kept, ...added] };
+}
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const session = await getClientSession();
@@ -46,15 +152,43 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const body = await req.json().catch(() => null);
-  const parsed = patchSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+  const ctype = req.headers.get("content-type") ?? "";
+  let parsedData: z.infer<typeof patchSchema>;
+  let filesToAdd: File[] = [];
+
+  if (ctype.includes("multipart/form-data")) {
+    const formData = await req.formData().catch(() => null);
+    if (!formData) return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+
+    const rawPayload = formData.get("payload");
+    let payload: unknown = {};
+    if (rawPayload) {
+      try {
+        payload = JSON.parse(String(rawPayload));
+      } catch {
+        return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+      }
+    }
+    const parsed = patchSchema.safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    }
+    parsedData = parsed.data;
+    filesToAdd = formData
+      .getAll("files")
+      .filter((x): x is File => typeof File !== "undefined" && x instanceof File && x.size > 0);
+  } else {
+    const body = await req.json().catch(() => null);
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    }
+    parsedData = parsed.data;
   }
 
   let projectId = existing.projectId;
-  if (parsed.data.projectId !== undefined) {
-    projectId = parsed.data.projectId;
+  if (parsedData.projectId !== undefined) {
+    projectId = parsedData.projectId;
     if (projectId != null) {
       const [owned] = await db
         .select({ id: schema.clientProjects.id })
@@ -72,11 +206,25 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (parsed.data.title != null) updates.title = parsed.data.title;
-  if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes;
-  if (parsed.data.projectId !== undefined) updates.projectId = projectId;
-  if (parsed.data.gitRepoUrl !== undefined) {
-    updates.gitRepoUrl = emptyToNull(parsed.data.gitRepoUrl);
+  if (parsedData.title != null) updates.title = parsedData.title;
+  if (parsedData.notes !== undefined) updates.notes = parsedData.notes;
+  if (parsedData.projectId !== undefined) updates.projectId = projectId;
+  if (parsedData.gitRepoUrl !== undefined) {
+    updates.gitRepoUrl = emptyToNull(parsedData.gitRepoUrl);
+  }
+  if (parsedData.attachments !== undefined || filesToAdd.length > 0) {
+    const existingAttachments = parseAttachmentsLike(existing.attachments) ?? [];
+    const attachmentResult = await applyAttachmentChanges({
+      existing: existingAttachments,
+      requested: parsedData.attachments,
+      filesToAdd,
+      clientId: session.clientId,
+      workUpdateId: id
+    });
+    if (!attachmentResult.ok) {
+      return NextResponse.json({ error: attachmentResult.error }, { status: attachmentResult.status });
+    }
+    updates.attachments = attachmentResult.attachments;
   }
 
   const [row] = await db

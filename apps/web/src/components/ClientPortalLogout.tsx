@@ -19,7 +19,7 @@ export function ClientPortalLogout() {
       type="button"
       variant="outline"
       size="sm"
-      className="ml-1 gap-2 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-white"
+      className="ml-1 gap-2 border-slate-300 bg-white text-slate-800 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white"
       onClick={() => void logout()}
     >
       <LogOut className="h-4 w-4" />

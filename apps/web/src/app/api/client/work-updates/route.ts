@@ -27,6 +27,49 @@ function emptyToNull(s: string | null | undefined): string | null {
 
 const MAX_WORK_FILES = 10;
 
+function normalizeClientAttachments(raw: unknown): ClientWorkAttachment[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const rec = item as Record<string, unknown>;
+        const fileName =
+          typeof rec.fileName === "string"
+            ? rec.fileName
+            : typeof rec.name === "string"
+              ? rec.name
+              : null;
+        const storagePath =
+          typeof rec.storagePath === "string"
+            ? rec.storagePath
+            : typeof rec.path === "string"
+              ? rec.path
+              : typeof rec.url === "string"
+                ? rec.url
+                : null;
+        const mimeType =
+          typeof rec.mimeType === "string"
+            ? rec.mimeType
+            : typeof rec.type === "string"
+              ? rec.type
+              : "application/octet-stream";
+        if (!fileName || !storagePath) return null;
+        return { fileName, storagePath, mimeType } satisfies ClientWorkAttachment;
+      })
+      .filter((x): x is ClientWorkAttachment => x != null);
+  }
+
+  if (typeof raw === "string") {
+    try {
+      return normalizeClientAttachments(JSON.parse(raw));
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
 export async function GET() {
   const session = await getClientSession();
   if (!session) {
@@ -34,12 +77,40 @@ export async function GET() {
   }
 
   const rows = await db
-    .select()
+    .select({
+      id: schema.clientWorkUpdates.id,
+      clientId: schema.clientWorkUpdates.clientId,
+      projectId: schema.clientWorkUpdates.projectId,
+      title: schema.clientWorkUpdates.title,
+      notes: schema.clientWorkUpdates.notes,
+      screenshotUrl: schema.clientWorkUpdates.screenshotUrl,
+      gitRepoUrl: schema.clientWorkUpdates.gitRepoUrl,
+      documentUrl: schema.clientWorkUpdates.documentUrl,
+      linkUrl: schema.clientWorkUpdates.linkUrl,
+      attachments: schema.clientWorkUpdates.attachments,
+      status: schema.clientWorkUpdates.status,
+      createdAt: schema.clientWorkUpdates.createdAt,
+      updatedAt: schema.clientWorkUpdates.updatedAt,
+      authorType: schema.clientWorkUpdates.authorType,
+      authorUserName: schema.users.name,
+      clientName: schema.clients.name
+    })
     .from(schema.clientWorkUpdates)
+    .leftJoin(schema.users, eq(schema.clientWorkUpdates.authorUserId, schema.users.id))
+    .leftJoin(schema.clients, eq(schema.clientWorkUpdates.clientId, schema.clients.id))
     .where(eq(schema.clientWorkUpdates.clientId, session.clientId))
     .orderBy(desc(schema.clientWorkUpdates.createdAt));
 
-  return NextResponse.json({ updates: rows });
+  const updates = rows.map((row) => ({
+    ...row,
+    attachments: normalizeClientAttachments(row.attachments),
+    authorName:
+      row.authorType === "client"
+        ? (row.clientName ?? "Client")
+        : (row.authorUserName ?? "Team member")
+  }));
+
+  return NextResponse.json({ updates });
 }
 
 async function resolveProjectForClient(
@@ -94,6 +165,8 @@ export async function POST(req: NextRequest) {
     .insert(schema.clientWorkUpdates)
     .values({
       clientId: session.clientId,
+      authorType: "client",
+      authorClientId: session.clientId,
       projectId,
       title: parsed.data.title,
       notes: parsed.data.notes ?? null,
@@ -114,7 +187,14 @@ async function postMultipart(req: NextRequest, clientId: number) {
   let formData: FormData;
   try {
     formData = await req.formData();
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    if (message.includes("10mb") || message.includes("body") || message.includes("size")) {
+      return NextResponse.json(
+        { error: "Upload payload too large. Keep total upload size within 100MB." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
 
@@ -164,6 +244,8 @@ async function postMultipart(req: NextRequest, clientId: number) {
     .insert(schema.clientWorkUpdates)
     .values({
       clientId,
+      authorType: "client",
+      authorClientId: clientId,
       projectId,
       title,
       notes,

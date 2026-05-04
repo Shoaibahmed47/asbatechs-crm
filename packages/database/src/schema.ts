@@ -257,6 +257,14 @@ export const clientWorkUpdates = pgTable("client_work_updates", {
     .$type<ClientWorkAttachment[]>()
     .notNull()
     .default(sql`'[]'::jsonb`),
+  /** client | employee | admin */
+  authorType: text("author_type").notNull().default("client"),
+  authorUserId: integer("author_user_id").references(() => users.id, {
+    onDelete: "set null"
+  }),
+  authorClientId: integer("author_client_id").references(() => clients.id, {
+    onDelete: "set null"
+  }),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()

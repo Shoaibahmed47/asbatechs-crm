@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Flame } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { TablePagination } from "@/components/TablePagination";
+import { LeadEntryForm } from "@/components/leads/lead-entry-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import { leadPermissionUserMessage } from "@/lib/lead-api-errors";
+import { LEAD_STAGE_OPTIONS, type LeadStage } from "@/lib/lead-workflow";
 import { cn } from "@/lib/utils";
 
 type HotLead = {
@@ -27,14 +30,26 @@ type HotLead = {
 type Department = { id: number; name: string };
 type UserRow = { id: number; name: string; email: string };
 
-const STATUS_OPTIONS = ["New", "Contacted", "Follow Up", "Closed"] as const;
+type MeUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  departmentId: number | null;
+  departmentName: string | null;
+};
+
+const STATUS_OPTIONS = LEAD_STAGE_OPTIONS;
 
 export default function HotLeadsPage() {
   const [leads, setLeads] = useState<HotLead[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [convertingLeadId, setConvertingLeadId] = useState<number | null>(null);
+  const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
@@ -60,7 +75,7 @@ export default function HotLeadsPage() {
   const [source, setSource] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
-  const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("New");
+  const [status, setStatus] = useState<LeadStage>("New");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -85,19 +100,78 @@ export default function HotLeadsPage() {
   useEffect(() => {
     async function loadMeta() {
       try {
-        const [d, u] = await Promise.all([
+        const [d, u, session] = await Promise.all([
           apiFetch<{ departments?: Department[] }>("/api/departments"),
-          apiFetch<{ users?: UserRow[] }>("/api/users")
+          apiFetch<{ users?: UserRow[] }>("/api/users"),
+          apiFetch<{ user: MeUser | null }>("/api/auth/me")
         ]);
         setDepartments(d.departments ?? []);
         setUsers(u.users ?? []);
+        setMe(session.user);
       } catch {
         setDepartments([]);
         setUsers([]);
+        setMe(null);
       }
     }
     void loadMeta();
   }, []);
+
+  const formDepartments = useMemo(() => {
+    if (!me) return departments;
+    if (me.role === "admin") return departments;
+    if (me.departmentId == null) return [];
+    if (me.role === "employee" || me.role === "manager") {
+      return departments.filter((d) => d.id === me.departmentId);
+    }
+    return departments;
+  }, [me, departments]);
+
+  const formUsers = useMemo(() => {
+    if (me?.role === "employee") {
+      return users.filter((u) => u.id === me.id);
+    }
+    return users;
+  }, [me, users]);
+
+  const departmentLocked =
+    !!me &&
+    me.role !== "admin" &&
+    me.departmentId != null &&
+    (me.role === "employee" || me.role === "manager");
+
+  const formHint = useMemo(() => {
+    if (!me) return undefined;
+    if (me.role === "employee") {
+      if (me.departmentId == null) {
+        return "Your profile has no department. An administrator must assign you to a department before you can save leads.";
+      }
+      return `You can only create leads for ${me.departmentName ?? "your department"}. Assign this lead to yourself or use Auto assign so the system can route it within your team.`;
+    }
+    if (me.role === "manager" && me.departmentId == null) {
+      return "Your manager profile has no department. Contact an administrator.";
+    }
+    if (me.role === "manager" && me.departmentId != null) {
+      return `Leads are scoped to ${me.departmentName ?? "your department"}. You can assign to teammates in that department.`;
+    }
+    return undefined;
+  }, [me]);
+
+  const applyMeFormDefaults = useCallback(() => {
+    if (!me) return;
+    if (editingLeadId) return;
+    if (me.role === "admin") return;
+    if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+      setDepartmentId(String(me.departmentId));
+    }
+    if (me.role === "employee") {
+      setAssignedUserId(String(me.id));
+    }
+  }, [me, editingLeadId]);
+
+  useEffect(() => {
+    applyMeFormDefaults();
+  }, [applyMeFormDefaults]);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -196,6 +270,43 @@ export default function HotLeadsPage() {
       ? "—"
       : users.find((u) => u.id === id)?.name ?? `#${id}`;
 
+  function resetForm() {
+    setClientName("");
+    setPhone("");
+    setEmail("");
+    setSource("");
+    setDepartmentId("");
+    setAssignedUserId("");
+    setStatus("New");
+    setNotes("");
+    setEditingLeadId(null);
+    queueMicrotask(() => {
+      if (!me) return;
+      if (me.role === "admin") return;
+      if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+        setDepartmentId(String(me.departmentId));
+      }
+      if (me.role === "employee") {
+        setAssignedUserId(String(me.id));
+      }
+    });
+  }
+
+  function startEdit(lead: HotLead) {
+    setEditingLeadId(lead.id);
+    setClientName(lead.clientName ?? "");
+    setPhone(lead.phone ?? "");
+    setEmail(lead.email ?? "");
+    setSource(lead.source ?? "");
+    setDepartmentId(lead.departmentId != null ? String(lead.departmentId) : "");
+    setAssignedUserId(lead.assignedUserId != null ? String(lead.assignedUserId) : "");
+    setStatus((lead.status as LeadStage) ?? "New");
+    setNotes(lead.notes ?? "");
+    document
+      .getElementById("hot-lead-form")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -214,31 +325,52 @@ export default function HotLeadsPage() {
       if (assignedUserId) body.assignedUserId = Number(assignedUserId);
       else body.assignedUserId = null;
 
-      await apiFetch.post("/api/leads/hot", body);
-      toast.success("Hot lead saved", {
-        description: `${clientName.trim()} was added to your pipeline.`
-      });
-      setClientName("");
-      setPhone("");
-      setEmail("");
-      setSource("");
-      setDepartmentId("");
-      setAssignedUserId("");
-      setStatus("New");
-      setNotes("");
+      if (editingLeadId) {
+        await apiFetch.patch(`/api/leads/hot/${editingLeadId}`, body);
+        toast.success("Lead updated", {
+          description: `${clientName.trim()} was updated successfully.`
+        });
+      } else {
+        await apiFetch.post("/api/leads/hot", body);
+        toast.success("Hot lead saved", {
+          description: `${clientName.trim()} was added to your pipeline.`
+        });
+      }
+      resetForm();
       await loadLeads();
     } catch (error) {
-      toast.error(
-        "Could not save lead",
-        {
-          description:
-            error instanceof ApiFetchError
-              ? error.message
-              : "Something went wrong while saving."
-        }
-      );
+      const detail =
+        error instanceof ApiFetchError
+          ? leadPermissionUserMessage(error.status, error.message)
+          : "Check your connection and try again.";
+      toast.error(detail, {
+        description: "Hot lead was not saved.",
+        duration: 9000
+      });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleConvertToSale(leadId: number) {
+    setConvertingLeadId(leadId);
+    try {
+      await apiFetch.post(`/api/leads/hot/${leadId}/convert`);
+      toast.success("Lead converted", {
+        description: "Hot lead moved to Sales leads with stage Won."
+      });
+      await loadLeads();
+    } catch (error) {
+      const detail =
+        error instanceof ApiFetchError
+          ? leadPermissionUserMessage(error.status, error.message)
+          : "Check your connection and try again.";
+      toast.error(detail, {
+        description: "Lead was not converted.",
+        duration: 9000
+      });
+    } finally {
+      setConvertingLeadId(null);
     }
   }
 
@@ -267,131 +399,45 @@ export default function HotLeadsPage() {
         </div>
       )}
 
-      <div className="data-card p-5" id="hot-lead-form">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Add hot lead (manual entry)
-        </h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Required: client name. Optional: phone, email, source, department,
-          assignee, notes.
-        </p>
-        <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Client name <span className="text-red-500">*</span>
-            </label>
-            <input
-              className="form-input mt-1"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Company or contact name"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Phone
-            </label>
-            <input
-              className="form-input mt-1"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 …"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Email
-            </label>
-            <input
-              type="email"
-              className="form-input mt-1"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@company.com"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Source
-            </label>
-            <input
-              className="form-input mt-1"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              placeholder="Referral, website, event…"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Department
-            </label>
-            <select
-              className="form-input mt-1"
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Assigned user
-            </label>
-            <select
-              className="form-input mt-1"
-              value={assignedUserId}
-              onChange={(e) => setAssignedUserId(e.target.value)}
-            >
-              <option value="">Auto assign (round robin)</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Status
-            </label>
-            <select
-              className="form-input mt-1"
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as (typeof STATUS_OPTIONS)[number])
-              }
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-              Notes
-            </label>
-            <textarea
-              className="form-input mt-1 min-h-[88px]"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Context, next step, objections…"
-            />
-          </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? "Saving…" : "Save hot lead"}
-            </Button>
-          </div>
-        </form>
-      </div>
+      {editingLeadId ? (
+        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <span>Editing lead #{editingLeadId}. Update fields and save.</span>
+          <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+            Cancel edit
+          </Button>
+        </div>
+      ) : null}
+
+      <LeadEntryForm
+        mode="hot"
+        formId="hot-lead-form"
+        title={editingLeadId ? "Edit hot lead" : "Add hot lead (manual entry)"}
+        description="Required: client name. Optional: phone, email, source, department, assignee, notes."
+        submitLabel={editingLeadId ? "Update lead" : "Save lead"}
+        saving={saving}
+        departments={formDepartments}
+        users={formUsers}
+        formHint={formHint}
+        departmentLocked={departmentLocked}
+        statusOptions={STATUS_OPTIONS}
+        clientName={clientName}
+        onClientNameChange={setClientName}
+        phone={phone}
+        onPhoneChange={setPhone}
+        email={email}
+        onEmailChange={setEmail}
+        source={source}
+        onSourceChange={setSource}
+        departmentId={departmentId}
+        onDepartmentIdChange={setDepartmentId}
+        assignedUserId={assignedUserId}
+        onAssignedUserIdChange={setAssignedUserId}
+        status={status}
+        onStatusChange={setStatus}
+        notes={notes}
+        onNotesChange={setNotes}
+        onSubmit={handleCreate}
+      />
 
       <div className="data-card p-4">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
@@ -446,7 +492,7 @@ export default function HotLeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
-                Status
+                Stage
               </label>
               <select
                 value={filterStatus}
@@ -530,6 +576,7 @@ export default function HotLeadsPage() {
                 {sortHead("status", "Status")}
                 <th className="pb-2 text-left font-medium">Notes</th>
                 {sortHead("created_at", "Created")}
+                <th className="pb-2 text-right font-medium">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -563,11 +610,14 @@ export default function HotLeadsPage() {
                     <td className="py-3">
                       <Skeleton className="h-4 w-24" />
                     </td>
+                    <td className="py-3 pl-2">
+                      <Skeleton className="ml-auto h-7 w-24" />
+                    </td>
                   </tr>
                 ))
               ) : !loading && leads.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-0">
+                  <td colSpan={10} className="p-0">
                     <EmptyState
                       icon={Flame}
                       title="No hot leads to show"
@@ -628,6 +678,27 @@ export default function HotLeadsPage() {
                       {lead.createdAt
                         ? new Date(lead.createdAt).toLocaleString()
                         : "—"}
+                    </td>
+                    <td className="py-2.5 pl-2 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startEdit(lead)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={convertingLeadId === lead.id}
+                          onClick={() => void handleConvertToSale(lead.id)}
+                        >
+                          {convertingLeadId === lead.id ? "Converting..." : "Convert to Sales"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))

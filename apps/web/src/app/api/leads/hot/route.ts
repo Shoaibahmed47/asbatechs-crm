@@ -7,6 +7,8 @@ import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { assignableUserRoles, isRole } from "@/lib/rbac";
 import { autoAssignLead } from "@/lib/lead-assignment";
 import { logActivity } from "@/lib/audit";
+import { LEAD_STAGE_OPTIONS } from "@/lib/lead-workflow";
+import { leadValidationUserMessage } from "@/lib/lead-api-errors";
 import {
   collectLeadListConditions,
   countLeads,
@@ -18,13 +20,29 @@ const emptyToUndef = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? undefined : v;
 
 const createHotLeadSchema = z.object({
-  clientName: z.string().min(1, "Client name is required"),
-  phone: z.preprocess(emptyToUndef, z.string().optional()),
-  email: z.preprocess(emptyToUndef, z.string().email().optional()),
+  clientName: z.string().min(1, "Enter the client or company name."),
+  phone: z.preprocess(
+    emptyToUndef,
+    z.union([
+      z.undefined(),
+      z
+        .string()
+        .min(7, "Enter a valid phone number (at least 7 digits).")
+        .max(40, "Phone number is too long.")
+        .regex(
+          /^[\d\s+().-]+$/,
+          "Phone can only include digits, spaces, and these symbols: + - ( )."
+        )
+    ])
+  ),
+  email: z.preprocess(
+    emptyToUndef,
+    z.string().email({ message: "Enter a valid email address (example: name@company.com)." }).optional()
+  ),
   source: z.preprocess(emptyToUndef, z.string().optional()),
   departmentId: z.union([z.number().int(), z.null()]).optional(),
   assignedUserId: z.union([z.number().int(), z.null()]).optional(),
-  status: z.enum(["New", "Contacted", "Follow Up", "Closed"]).optional(),
+  status: z.enum(LEAD_STAGE_OPTIONS).optional(),
   notes: z.preprocess(emptyToUndef, z.string().optional())
 });
 
@@ -83,7 +101,10 @@ export async function POST(req: NextRequest) {
   const parsed = createHotLeadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid lead data", details: parsed.error.flatten() },
+      {
+        error: leadValidationUserMessage(parsed.error),
+        details: parsed.error.flatten()
+      },
       { status: 400 }
     );
   }
@@ -91,20 +112,38 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
 
   if (!isRole(payload.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Your account role cannot create leads. Ask an administrator." },
+      { status: 403 }
+    );
   }
 
   const effectiveDepartmentId = data.departmentId ?? payload.departmentId;
   if (payload.role !== "admin") {
     if (!payload.departmentId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        {
+          error:
+            "Your profile has no department. An admin must assign you to a department before you can create leads."
+        },
+        { status: 403 }
+      );
     }
     if (data.departmentId != null && data.departmentId !== payload.departmentId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "You can only create leads for your own department." },
+        { status: 403 }
+      );
     }
   }
   if (payload.role !== "admin" && !effectiveDepartmentId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          "Choose your department on the form, or ask an admin to set your department on your profile."
+      },
+      { status: 403 }
+    );
   }
 
   const shouldAutoAssign = data.assignedUserId == null;
@@ -130,12 +169,18 @@ export async function POST(req: NextRequest) {
 
     if (payload.role === "employee") {
       if (requestedAssigned !== payload.userId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json(
+          { error: "You can only assign this lead to yourself, or leave “Assigned user” empty for auto-assign." },
+          { status: 403 }
+        );
       }
       assignedUserId = requestedAssigned;
     } else if (payload.role === "manager") {
       if (!payload.departmentId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Your manager profile has no department. Contact an administrator." },
+          { status: 403 }
+        );
       }
 
       const [targetUser] = await db
@@ -149,7 +194,10 @@ export async function POST(req: NextRequest) {
         );
 
       if (!targetUser) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json(
+          { error: "You can only assign leads to people in your own department." },
+          { status: 403 }
+        );
       }
       assignedUserId = requestedAssigned;
     } else {

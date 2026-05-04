@@ -7,11 +7,10 @@ import { schema, type ClientWorkAttachment } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isRole } from "@/lib/rbac";
 import { WorkUpdateDiscussion } from "@/components/WorkUpdateDiscussion";
-import { getClientPortalRequestOrigin } from "@/lib/client-portal-origin";
-import { getClientWorkFileDownloadLink } from "@/lib/client-work-attachment-storage";
+import { WorkUpdateMediaPreview } from "@/components/work-update-media-preview";
 
 type ResolvedMedia = {
-  url: string;
+  src: string;
   mimeType: string;
   fileName: string;
 };
@@ -19,27 +18,6 @@ type ResolvedMedia = {
 function normalizeAttachments(raw: unknown): ClientWorkAttachment[] {
   if (!Array.isArray(raw)) return [];
   return raw as ClientWorkAttachment[];
-}
-
-function MediaCard({ item }: { item: ResolvedMedia }) {
-  if (item.mimeType.startsWith("image/")) {
-    return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/50">
-        <div className="border-b border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
-          {item.fileName}
-        </div>
-        <img src={item.url} alt={item.fileName} className="max-h-[32rem] w-full object-contain p-3" />
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-      <p className="text-sm text-slate-600 dark:text-slate-300">{item.fileName}</p>
-      <a href={item.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-600 hover:underline">
-        Open file
-      </a>
-    </div>
-  );
 }
 
 export default async function InternalWorkUpdateDetail({
@@ -76,16 +54,13 @@ export default async function InternalWorkUpdateDetail({
 
   if (!row) notFound();
 
-  const origin = await getClientPortalRequestOrigin();
-  const resolvedList = (
-    await Promise.all(
-      normalizeAttachments(row.attachments).map(async (att) => {
-        const link = await getClientWorkFileDownloadLink(att.storagePath, origin, att.mimeType);
-        if (!link) return null;
-        return { url: link.url, mimeType: att.mimeType, fileName: att.fileName } satisfies ResolvedMedia;
-      })
-    )
-  ).filter((x): x is ResolvedMedia => x != null);
+  const resolvedList: ResolvedMedia[] = normalizeAttachments(row.attachments).map((att, idx) => ({
+    src: att.storagePath.startsWith("/uploads/")
+      ? att.storagePath
+      : `/api/work-updates/${row.id}/attachments/${idx}`,
+    mimeType: att.mimeType,
+    fileName: att.fileName
+  }));
 
   return (
     <div className="space-y-6">
@@ -107,9 +82,9 @@ export default async function InternalWorkUpdateDetail({
       </header>
 
       {resolvedList.length > 0 ? (
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className="flex flex-wrap gap-4">
           {resolvedList.map((item, idx) => (
-            <MediaCard key={`${idx}-${item.fileName}`} item={item} />
+            <WorkUpdateMediaPreview key={`${idx}-${item.fileName}`} item={item} />
           ))}
         </section>
       ) : null}
