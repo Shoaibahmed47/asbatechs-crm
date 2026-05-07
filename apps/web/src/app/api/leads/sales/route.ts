@@ -136,9 +136,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const effectiveDepartmentId = data.departmentId ?? payload.departmentId;
-  if (payload.role !== "admin") {
-    if (!payload.departmentId) {
+  const [currentUser] = await db
+    .select({
+      id: schema.users.id,
+      departmentId: schema.users.departmentId
+    })
+    .from(schema.users)
+    .where(eq(schema.users.id, payload.userId));
+  const currentDepartmentId = currentUser?.departmentId ?? null;
+
+  if (payload.role === "manager") {
+    if (!currentDepartmentId) {
       return NextResponse.json(
         {
           error:
@@ -147,30 +155,23 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    if (data.departmentId != null && data.departmentId !== payload.departmentId) {
+    if (data.departmentId != null && data.departmentId !== currentDepartmentId) {
       return NextResponse.json(
         { error: "You can only create sales leads for your own department." },
         { status: 403 }
       );
     }
   }
-  if (payload.role !== "admin" && !effectiveDepartmentId) {
-    return NextResponse.json(
-      {
-        error:
-          "Choose your department on the form, or ask an admin to set your department on your profile."
-      },
-      { status: 403 }
-    );
-  }
 
+  const assignmentDepartmentId =
+    payload.role === "manager" ? currentDepartmentId : null;
   const shouldAutoAssign = data.assignedUserId == null;
   let assignedUserId: number | null = null;
 
   if (shouldAutoAssign) {
     assignedUserId = await autoAssignLead({
       leadType: "sale",
-      departmentId: effectiveDepartmentId ?? null,
+      departmentId: assignmentDepartmentId,
       eligibleRoles: assignableUserRoles
     });
 
@@ -185,15 +186,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.role === "employee") {
-      if (requestedAssigned !== payload.userId) {
-        return NextResponse.json(
-          { error: "You can only assign this sale to yourself, or leave “Assigned user” empty for auto-assign." },
-          { status: 403 }
-        );
-      }
       assignedUserId = requestedAssigned;
     } else if (payload.role === "manager") {
-      if (!payload.departmentId) {
+      if (!currentDepartmentId) {
         return NextResponse.json(
           { error: "Your manager profile has no department. Contact an administrator." },
           { status: 403 }
@@ -206,7 +201,7 @@ export async function POST(req: NextRequest) {
         .where(
           and(
             eq(schema.users.id, requestedAssigned),
-            eq(schema.users.departmentId, payload.departmentId)
+            eq(schema.users.departmentId, currentDepartmentId)
           )
         );
 
@@ -221,6 +216,18 @@ export async function POST(req: NextRequest) {
       // admin
       assignedUserId = requestedAssigned;
     }
+  }
+
+  let effectiveDepartmentId: number | null = currentDepartmentId;
+  if (assignedUserId != null) {
+    const [assignee] = await db
+      .select({ departmentId: schema.users.departmentId })
+      .from(schema.users)
+      .where(eq(schema.users.id, assignedUserId));
+    if (!assignee) {
+      return NextResponse.json({ error: "Assigned user not found." }, { status: 400 });
+    }
+    effectiveDepartmentId = assignee.departmentId ?? null;
   }
 
   const saleDateStr =

@@ -120,6 +120,20 @@
       "when": 1776457800000,
       "tag": "0016_supabase_auth_id",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777059000000,
+      "tag": "0017_hot_lead_followup_datetime_timezone",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777061700000,
+      "tag": "0018_notifications_due_at",
+      "breakpoints": true
     }
   ]
 }

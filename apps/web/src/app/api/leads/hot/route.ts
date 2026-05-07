@@ -9,6 +9,12 @@ import { autoAssignLead } from "@/lib/lead-assignment";
 import { logActivity } from "@/lib/audit";
 import { LEAD_STAGE_OPTIONS } from "@/lib/lead-workflow";
 import { leadValidationUserMessage } from "@/lib/lead-api-errors";
+import { upsertLeadFollowUpReminder } from "@/lib/lead-follow-up-reminder";
+import {
+  buildFollowUpUtcIso,
+  isDateOnly,
+  isValidTimeZone
+} from "@/lib/follow-up-time";
 import {
   collectLeadListConditions,
   countLeads,
@@ -43,7 +49,10 @@ const createHotLeadSchema = z.object({
   departmentId: z.union([z.number().int(), z.null()]).optional(),
   assignedUserId: z.union([z.number().int(), z.null()]).optional(),
   status: z.enum(LEAD_STAGE_OPTIONS).optional(),
-  notes: z.preprocess(emptyToUndef, z.string().optional())
+  notes: z.preprocess(emptyToUndef, z.string().optional()),
+  nextFollowUpAtLocal: z.preprocess(emptyToUndef, z.string().optional()),
+  followUpTimezone: z.preprocess(emptyToUndef, z.string().optional()),
+  nextFollowUpDate: z.preprocess(emptyToUndef, z.string().optional())
 });
 
 function serializeHotLead(row: typeof schema.leads.$inferSelect) {
@@ -110,6 +119,57 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+  let nextFollowUpAt: Date | null = null;
+  let nextFollowUpDate: string | null = null;
+  let followUpTimezone: string | null = null;
+
+  if (data.nextFollowUpAtLocal) {
+    if (!data.followUpTimezone || !isValidTimeZone(data.followUpTimezone)) {
+      return NextResponse.json(
+        { error: "Pick a valid follow-up timezone." },
+        { status: 400 }
+      );
+    }
+    try {
+      const utcIso = buildFollowUpUtcIso({
+        localDateTime: data.nextFollowUpAtLocal,
+        timeZone: data.followUpTimezone
+      });
+      nextFollowUpAt = new Date(utcIso);
+      nextFollowUpDate = utcIso.slice(0, 10);
+      followUpTimezone = data.followUpTimezone;
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid follow-up date and time."
+        },
+        { status: 400 }
+      );
+    }
+  } else if (data.nextFollowUpDate) {
+    if (!isDateOnly(data.nextFollowUpDate)) {
+      return NextResponse.json(
+        { error: "Follow-up date must be in YYYY-MM-DD format." },
+        { status: 400 }
+      );
+    }
+    nextFollowUpDate = data.nextFollowUpDate;
+  }
+
+  const effectiveStatus = data.status ?? "New";
+  const isActiveStatus = effectiveStatus !== "Won" && effectiveStatus !== "Lost";
+  if (isActiveStatus && !nextFollowUpAt && !nextFollowUpDate) {
+    return NextResponse.json(
+      {
+        error:
+          "Active hot leads must have a follow-up date and time. Add a follow-up before saving."
+      },
+      { status: 400 }
+    );
+  }
 
   if (!isRole(payload.role)) {
     return NextResponse.json(
@@ -118,9 +178,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const effectiveDepartmentId = data.departmentId ?? payload.departmentId;
-  if (payload.role !== "admin") {
-    if (!payload.departmentId) {
+  const [currentUser] = await db
+    .select({
+      id: schema.users.id,
+      departmentId: schema.users.departmentId
+    })
+    .from(schema.users)
+    .where(eq(schema.users.id, payload.userId));
+  const currentDepartmentId = currentUser?.departmentId ?? null;
+
+  if (payload.role === "manager") {
+    if (!currentDepartmentId) {
       return NextResponse.json(
         {
           error:
@@ -129,30 +197,23 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    if (data.departmentId != null && data.departmentId !== payload.departmentId) {
+    if (data.departmentId != null && data.departmentId !== currentDepartmentId) {
       return NextResponse.json(
         { error: "You can only create leads for your own department." },
         { status: 403 }
       );
     }
   }
-  if (payload.role !== "admin" && !effectiveDepartmentId) {
-    return NextResponse.json(
-      {
-        error:
-          "Choose your department on the form, or ask an admin to set your department on your profile."
-      },
-      { status: 403 }
-    );
-  }
 
+  const assignmentDepartmentId =
+    payload.role === "manager" ? currentDepartmentId : null;
   const shouldAutoAssign = data.assignedUserId == null;
 
   let assignedUserId: number | null = null;
   if (shouldAutoAssign) {
     assignedUserId = await autoAssignLead({
       leadType: "hot",
-      departmentId: effectiveDepartmentId ?? null,
+      departmentId: assignmentDepartmentId,
       eligibleRoles: assignableUserRoles
     });
 
@@ -168,15 +229,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.role === "employee") {
-      if (requestedAssigned !== payload.userId) {
-        return NextResponse.json(
-          { error: "You can only assign this lead to yourself, or leave “Assigned user” empty for auto-assign." },
-          { status: 403 }
-        );
-      }
       assignedUserId = requestedAssigned;
     } else if (payload.role === "manager") {
-      if (!payload.departmentId) {
+      if (!currentDepartmentId) {
         return NextResponse.json(
           { error: "Your manager profile has no department. Contact an administrator." },
           { status: 403 }
@@ -189,7 +244,7 @@ export async function POST(req: NextRequest) {
         .where(
           and(
             eq(schema.users.id, requestedAssigned),
-            eq(schema.users.departmentId, payload.departmentId)
+            eq(schema.users.departmentId, currentDepartmentId)
           )
         );
 
@@ -206,6 +261,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let effectiveDepartmentId: number | null = currentDepartmentId;
+  if (assignedUserId != null) {
+    const [assignee] = await db
+      .select({ departmentId: schema.users.departmentId })
+      .from(schema.users)
+      .where(eq(schema.users.id, assignedUserId));
+    if (!assignee) {
+      return NextResponse.json({ error: "Assigned user not found." }, { status: 400 });
+    }
+    effectiveDepartmentId = assignee.departmentId ?? null;
+  }
+
   const [lead] = await db
     .insert(schema.leads)
     .values({
@@ -216,8 +283,11 @@ export async function POST(req: NextRequest) {
       source: data.source ?? null,
       departmentId: effectiveDepartmentId ?? null,
       assignedUserId,
-      status: data.status ?? "New",
+      status: effectiveStatus,
       notesSummary: data.notes ?? null,
+      nextFollowUpAt,
+      nextFollowUpDate: nextFollowUpDate ?? null,
+      followUpTimezone,
       saleAmount: null,
       servicePurchased: null,
       saleDate: null
@@ -243,6 +313,16 @@ export async function POST(req: NextRequest) {
       type: "lead_assigned",
       leadId: lead.id,
       message: `You have been assigned a new hot lead: ${lead.clientName}`
+    });
+  }
+
+  if (lead.assignedUserId) {
+    await upsertLeadFollowUpReminder({
+      userId: lead.assignedUserId,
+      leadId: lead.id,
+      clientName: lead.clientName,
+      nextFollowUpAt: lead.nextFollowUpAt,
+      nextFollowUpDate: lead.nextFollowUpDate
     });
   }
 

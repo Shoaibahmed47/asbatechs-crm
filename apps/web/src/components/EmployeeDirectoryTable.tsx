@@ -18,6 +18,7 @@ export type EmployeeUserRow = {
   name: string;
   email: string;
   role: string;
+  departmentId?: number | null;
   department: string;
   inviteStatus: string;
   assignedClientProjects?: Array<{ projectId: number; label: string }>;
@@ -27,6 +28,7 @@ export type EmployeeInviteRow = {
   kind: "invite";
   id: number;
   email: string;
+  departmentId?: number | null;
   department: string;
 };
 
@@ -35,8 +37,10 @@ export type EmployeeDirectoryRow = EmployeeUserRow | EmployeeInviteRow;
 export function EmployeeDirectoryTable({
   rows,
   allowAdminActions = true,
+  departments = [],
   clientProjectOptions = [],
   onAssignProject,
+  onUpdateDepartment,
   onDirectoryChanged,
   currentUserId,
   sortToolbar,
@@ -45,8 +49,10 @@ export function EmployeeDirectoryTable({
   rows: EmployeeDirectoryRow[];
   /** Invite resend / password reset (admin-only APIs). */
   allowAdminActions?: boolean;
+  departments?: Array<{ id: number; name: string }>;
   clientProjectOptions?: Array<{ projectId: number; label: string }>;
   onAssignProject?: (userId: number, projectIds: number[]) => Promise<void>;
+  onUpdateDepartment?: (userId: number, departmentId: number | null) => Promise<void>;
   onDirectoryChanged?: () => Promise<void> | void;
   currentUserId?: number | null;
   sortToolbar?: ReactNode;
@@ -55,6 +61,7 @@ export function EmployeeDirectoryTable({
   const [busy, setBusy] = useState(false);
   const [selectedByUser, setSelectedByUser] = useState<Record<number, number[]>>({});
   const [savingAssignByUser, setSavingAssignByUser] = useState<Record<number, boolean>>({});
+  const [savingDeptByUser, setSavingDeptByUser] = useState<Record<number, boolean>>({});
 
   const runAction = useCallback(
     async (
@@ -152,6 +159,25 @@ export function EmployeeDirectoryTable({
     void saveAssignments(row.id, next);
   };
 
+  const updateDepartment = async (row: EmployeeUserRow, departmentIdValue: string) => {
+    if (!onUpdateDepartment) return;
+    const parsedDepartmentId =
+      departmentIdValue === "" ? null : Number(departmentIdValue);
+    const nextDepartmentId =
+      parsedDepartmentId == null || Number.isNaN(parsedDepartmentId)
+        ? null
+        : parsedDepartmentId;
+    setSavingDeptByUser((prev) => ({ ...prev, [row.id]: true }));
+    try {
+      await onUpdateDepartment(row.id, nextDepartmentId);
+      toast.success("Department updated");
+    } catch {
+      toast.error("Could not update department");
+    } finally {
+      setSavingDeptByUser((prev) => ({ ...prev, [row.id]: false }));
+    }
+  };
+
   return (
     <div className="data-card overflow-hidden p-0">
       <div className="overflow-x-auto">
@@ -215,7 +241,30 @@ export function EmployeeDirectoryTable({
                       </span>
                     </td>
                     <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
-                      {row.department}
+                      {allowAdminActions && row.kind === "user" && onUpdateDepartment ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="form-input h-8 min-w-[9rem] py-1 text-xs"
+                            value={
+                              row.departmentId == null ? "" : String(row.departmentId)
+                            }
+                            onChange={(e) => void updateDepartment(row, e.target.value)}
+                            disabled={!!savingDeptByUser[row.id]}
+                          >
+                            <option value="">Unassigned</option>
+                            {departments.map((department) => (
+                              <option key={department.id} value={department.id}>
+                                {department.name}
+                              </option>
+                            ))}
+                          </select>
+                          {savingDeptByUser[row.id] ? (
+                            <span className="text-xs text-slate-400">Saving...</span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        row.department
+                      )}
                     </td>
                     <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
                       {allowAdminActions &&

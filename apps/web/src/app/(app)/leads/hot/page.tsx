@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TablePagination } from "@/components/TablePagination";
 import { LeadEntryForm } from "@/components/leads/lead-entry-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { leadPermissionUserMessage } from "@/lib/lead-api-errors";
@@ -24,6 +25,8 @@ type HotLead = {
   assignedUserId: number | null;
   status: string;
   notes: string | null;
+  nextFollowUpAt: string | null;
+  followUpTimezone: string | null;
   createdAt: string | null;
 };
 
@@ -40,6 +43,65 @@ type MeUser = {
 };
 
 const STATUS_OPTIONS = LEAD_STAGE_OPTIONS;
+const OTHER_TIMEZONE_VALUE = "__other_timezone__";
+const FOLLOW_UP_TIMEZONE_OPTIONS = [
+  { value: "America/New_York", label: "Eastern Time (America/New_York)" },
+  { value: "America/Chicago", label: "Central Time (America/Chicago)" },
+  { value: "America/Denver", label: "Mountain Time (America/Denver)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (America/Los_Angeles)" },
+  { value: "America/Anchorage", label: "Alaska Time (America/Anchorage)" },
+  { value: "Pacific/Honolulu", label: "Hawaii-Aleutian Time (Pacific/Honolulu)" }
+] as const;
+
+function toLocalDateTimeInputValue(iso: string): string {
+  const date = new Date(iso);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function formatFollowUpDateTime(iso: string, timeZone: string | null): string {
+  const date = new Date(iso);
+  if (!timeZone) {
+    return date.toLocaleString();
+  }
+  try {
+    return `${new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone
+    }).format(date)} (${timeZone})`;
+  } catch {
+    return `${date.toLocaleString()} (${timeZone})`;
+  }
+}
+
+function getFollowUpBadge(lead: HotLead) {
+  if (!lead.nextFollowUpAt) return null;
+  const now = new Date();
+  const follow = new Date(lead.nextFollowUpAt);
+  const diffMs = follow.getTime() - now.getTime();
+  const oneHourMs = 60 * 60 * 1000;
+
+  if (diffMs < 0) {
+    return (
+      <span className="ml-2 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:bg-red-900/40 dark:text-red-200">
+        Overdue
+      </span>
+    );
+  }
+  if (diffMs <= oneHourMs) {
+    return (
+      <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+        Due soon
+      </span>
+    );
+  }
+  return null;
+}
 
 export default function HotLeadsPage() {
   const [leads, setLeads] = useState<HotLead[]>([]);
@@ -49,6 +111,8 @@ export default function HotLeadsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [convertingLeadId, setConvertingLeadId] = useState<number | null>(null);
+  const [deletingLeadId, setDeletingLeadId] = useState<number | null>(null);
+  const [deleteTargetLead, setDeleteTargetLead] = useState<HotLead | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,8 +128,8 @@ export default function HotLeadsPage() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [sort, setSort] = useState("created_at");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
+  const [sort, setSort] = useState("next_follow_up_date");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -77,6 +141,21 @@ export default function HotLeadsPage() {
   const [assignedUserId, setAssignedUserId] = useState("");
   const [status, setStatus] = useState<LeadStage>("New");
   const [notes, setNotes] = useState("");
+  const [nextFollowUpAtLocal, setNextFollowUpAtLocal] = useState("");
+  const [followUpTimezone, setFollowUpTimezone] = useState("");
+  const [customFollowUpTimezone, setCustomFollowUpTimezone] = useState("");
+
+  useEffect(() => {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserTz) {
+      if (FOLLOW_UP_TIMEZONE_OPTIONS.some((option) => option.value === browserTz)) {
+        setFollowUpTimezone(browserTz);
+      } else {
+        setFollowUpTimezone(OTHER_TIMEZONE_VALUE);
+        setCustomFollowUpTimezone(browserTz);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -120,33 +199,29 @@ export default function HotLeadsPage() {
   const formDepartments = useMemo(() => {
     if (!me) return departments;
     if (me.role === "admin") return departments;
+    if (me.role === "employee") return departments;
     if (me.departmentId == null) return [];
-    if (me.role === "employee" || me.role === "manager") {
+    if (me.role === "manager") {
       return departments.filter((d) => d.id === me.departmentId);
     }
     return departments;
   }, [me, departments]);
 
   const formUsers = useMemo(() => {
-    if (me?.role === "employee") {
-      return users.filter((u) => u.id === me.id);
-    }
     return users;
-  }, [me, users]);
+  }, [users]);
 
   const departmentLocked =
     !!me &&
     me.role !== "admin" &&
+    me.role !== "employee" &&
     me.departmentId != null &&
-    (me.role === "employee" || me.role === "manager");
+    me.role === "manager";
 
   const formHint = useMemo(() => {
     if (!me) return undefined;
     if (me.role === "employee") {
-      if (me.departmentId == null) {
-        return "Your profile has no department. An administrator must assign you to a department before you can save leads.";
-      }
-      return `You can only create leads for ${me.departmentName ?? "your department"}. Assign this lead to yourself or use Auto assign so the system can route it within your team.`;
+      return "You can choose any department and assign this lead to any user.";
     }
     if (me.role === "manager" && me.departmentId == null) {
       return "Your manager profile has no department. Contact an administrator.";
@@ -156,16 +231,19 @@ export default function HotLeadsPage() {
     }
     return undefined;
   }, [me]);
+  const submitDisabledReason = useMemo(() => {
+    if (me?.role === "manager" && me.departmentId == null) {
+      return "Save is disabled until an administrator assigns your department.";
+    }
+    return undefined;
+  }, [me]);
 
   const applyMeFormDefaults = useCallback(() => {
     if (!me) return;
     if (editingLeadId) return;
-    if (me.role === "admin") return;
-    if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+    if (me.role === "admin" || me.role === "employee") return;
+    if (me.departmentId != null && me.role === "manager") {
       setDepartmentId(String(me.departmentId));
-    }
-    if (me.role === "employee") {
-      setAssignedUserId(String(me.id));
     }
   }, [me, editingLeadId]);
 
@@ -279,15 +357,14 @@ export default function HotLeadsPage() {
     setAssignedUserId("");
     setStatus("New");
     setNotes("");
+    setNextFollowUpAtLocal("");
+    setCustomFollowUpTimezone("");
     setEditingLeadId(null);
     queueMicrotask(() => {
       if (!me) return;
-      if (me.role === "admin") return;
-      if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+      if (me.role === "admin" || me.role === "employee") return;
+      if (me.departmentId != null && me.role === "manager") {
         setDepartmentId(String(me.departmentId));
-      }
-      if (me.role === "employee") {
-        setAssignedUserId(String(me.id));
       }
     });
   }
@@ -302,6 +379,18 @@ export default function HotLeadsPage() {
     setAssignedUserId(lead.assignedUserId != null ? String(lead.assignedUserId) : "");
     setStatus((lead.status as LeadStage) ?? "New");
     setNotes(lead.notes ?? "");
+    setNextFollowUpAtLocal(
+      lead.nextFollowUpAt ? toLocalDateTimeInputValue(lead.nextFollowUpAt) : ""
+    );
+    const resolvedTimezone =
+      lead.followUpTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (FOLLOW_UP_TIMEZONE_OPTIONS.some((option) => option.value === resolvedTimezone)) {
+      setFollowUpTimezone(resolvedTimezone);
+      setCustomFollowUpTimezone("");
+    } else {
+      setFollowUpTimezone(OTHER_TIMEZONE_VALUE);
+      setCustomFollowUpTimezone(resolvedTimezone);
+    }
     document
       .getElementById("hot-lead-form")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -309,6 +398,13 @@ export default function HotLeadsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    const isActiveStatus = status !== "Won" && status !== "Lost";
+    if (isActiveStatus && !nextFollowUpAtLocal.trim()) {
+      toast.error("Add a follow-up date and time.", {
+        description: "Active hot leads must have a scheduled follow-up."
+      });
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -320,8 +416,16 @@ export default function HotLeadsPage() {
         status,
         notes: notes.trim() || undefined
       };
-      if (departmentId) body.departmentId = Number(departmentId);
-      else body.departmentId = null;
+      const effectiveTimezone =
+        followUpTimezone === OTHER_TIMEZONE_VALUE
+          ? customFollowUpTimezone.trim()
+          : followUpTimezone;
+      if (nextFollowUpAtLocal) {
+        body.nextFollowUpAtLocal = nextFollowUpAtLocal;
+        body.followUpTimezone = effectiveTimezone || undefined;
+      } else {
+        body.nextFollowUpAtLocal = undefined;
+      }
       if (assignedUserId) body.assignedUserId = Number(assignedUserId);
       else body.assignedUserId = null;
 
@@ -374,6 +478,33 @@ export default function HotLeadsPage() {
     }
   }
 
+  async function handleDeleteLead() {
+    if (!deleteTargetLead) return;
+    setDeletingLeadId(deleteTargetLead.id);
+    try {
+      await apiFetch.post(`/api/leads/hot/${deleteTargetLead.id}/delete`);
+      toast.success("Lead deleted", {
+        description: `${deleteTargetLead.clientName} was removed from hot leads.`
+      });
+      if (editingLeadId === deleteTargetLead.id) {
+        resetForm();
+      }
+      await loadLeads();
+    } catch (error) {
+      const detail =
+        error instanceof ApiFetchError
+          ? leadPermissionUserMessage(error.status, error.message)
+          : "Check your connection and try again.";
+      toast.error(detail, {
+        description: "Lead was not deleted.",
+        duration: 9000
+      });
+    } finally {
+      setDeletingLeadId(null);
+      setDeleteTargetLead(null);
+    }
+  }
+
   const filterControlClass =
     "form-input h-9 py-2 text-sm md:h-9 md:py-2";
 
@@ -400,11 +531,8 @@ export default function HotLeadsPage() {
       )}
 
       {editingLeadId ? (
-        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
           <span>Editing lead #{editingLeadId}. Update fields and save.</span>
-          <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-            Cancel edit
-          </Button>
         </div>
       ) : null}
 
@@ -412,12 +540,13 @@ export default function HotLeadsPage() {
         mode="hot"
         formId="hot-lead-form"
         title={editingLeadId ? "Edit hot lead" : "Add hot lead (manual entry)"}
-        description="Required: client name. Optional: phone, email, source, department, assignee, notes."
+        description="Required: client name. Optional: phone, email, source, follow-up datetime/timezone, assignee, notes."
         submitLabel={editingLeadId ? "Update lead" : "Save lead"}
         saving={saving}
         departments={formDepartments}
         users={formUsers}
         formHint={formHint}
+        submitDisabledReason={submitDisabledReason}
         departmentLocked={departmentLocked}
         statusOptions={STATUS_OPTIONS}
         clientName={clientName}
@@ -430,12 +559,26 @@ export default function HotLeadsPage() {
         onSourceChange={setSource}
         departmentId={departmentId}
         onDepartmentIdChange={setDepartmentId}
+        showDepartment={false}
         assignedUserId={assignedUserId}
         onAssignedUserIdChange={setAssignedUserId}
         status={status}
         onStatusChange={setStatus}
         notes={notes}
         onNotesChange={setNotes}
+        nextFollowUpAtLocal={nextFollowUpAtLocal}
+        onNextFollowUpAtLocalChange={setNextFollowUpAtLocal}
+        followUpTimezone={followUpTimezone}
+        onFollowUpTimezoneChange={setFollowUpTimezone}
+        timezoneOptions={[
+          ...FOLLOW_UP_TIMEZONE_OPTIONS,
+          { value: OTHER_TIMEZONE_VALUE, label: "Other (IANA timezone)" }
+        ]}
+        showCustomTimezoneInput={followUpTimezone === OTHER_TIMEZONE_VALUE}
+        customTimezone={customFollowUpTimezone}
+        onCustomTimezoneChange={setCustomFollowUpTimezone}
+        onCancel={editingLeadId ? resetForm : undefined}
+        cancelLabel="Cancel edit"
         onSubmit={handleCreate}
       />
 
@@ -574,6 +717,7 @@ export default function HotLeadsPage() {
                 {sortHead("department_id", "Department")}
                 {sortHead("assigned_user_id", "Assigned")}
                 {sortHead("status", "Status")}
+                {sortHead("next_follow_up_date", "Follow-up")}
                 <th className="pb-2 text-left font-medium">Notes</th>
                 {sortHead("created_at", "Created")}
                 <th className="pb-2 text-right font-medium">Action</th>
@@ -607,6 +751,9 @@ export default function HotLeadsPage() {
                     <td className="py-3 pr-2">
                       <Skeleton className="h-4 w-28" />
                     </td>
+                    <td className="py-3 pr-2">
+                      <Skeleton className="h-4 w-36" />
+                    </td>
                     <td className="py-3">
                       <Skeleton className="h-4 w-24" />
                     </td>
@@ -617,7 +764,7 @@ export default function HotLeadsPage() {
                 ))
               ) : !loading && leads.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-0">
+                  <td colSpan={11} className="p-0">
                     <EmptyState
                       icon={Flame}
                       title="No hot leads to show"
@@ -648,7 +795,10 @@ export default function HotLeadsPage() {
                     className="border-b border-slate-100/90 last:border-b-0 dark:border-slate-800/90"
                   >
                     <td className="py-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {lead.clientName}
+                      <div className="flex items-center gap-2">
+                        <span>{lead.clientName}</span>
+                        {getFollowUpBadge(lead)}
+                      </div>
                     </td>
                     <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
                       {lead.phone || "—"}
@@ -667,6 +817,14 @@ export default function HotLeadsPage() {
                     </td>
                     <td className="py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200">
                       {lead.status}
+                    </td>
+                    <td className="whitespace-nowrap py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                      {lead.nextFollowUpAt
+                        ? formatFollowUpDateTime(
+                            lead.nextFollowUpAt,
+                            lead.followUpTimezone
+                          )
+                        : "—"}
                     </td>
                     <td
                       className="max-w-[140px] truncate py-2.5 text-xs text-slate-600 dark:text-slate-300"
@@ -688,6 +846,15 @@ export default function HotLeadsPage() {
                           onClick={() => startEdit(lead)}
                         >
                           Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={deletingLeadId === lead.id}
+                            onClick={() => setDeleteTargetLead(lead)}
+                        >
+                          {deletingLeadId === lead.id ? "Deleting..." : "Delete"}
                         </Button>
                         <Button
                           type="button"
@@ -720,6 +887,22 @@ export default function HotLeadsPage() {
           }}
         />
       </div>
+      <ConfirmDialog
+        open={!!deleteTargetLead}
+        title="Delete lead?"
+        description={
+          deleteTargetLead
+            ? `Delete lead "${deleteTargetLead.clientName}"? This will remove it from active lists.`
+            : ""
+        }
+        confirmLabel={deletingLeadId ? "Deleting..." : "Delete"}
+        confirmDisabled={deletingLeadId != null}
+        onCancel={() => {
+          if (deletingLeadId != null) return;
+          setDeleteTargetLead(null);
+        }}
+        onConfirm={() => void handleDeleteLead()}
+      />
     </div>
   );
 }

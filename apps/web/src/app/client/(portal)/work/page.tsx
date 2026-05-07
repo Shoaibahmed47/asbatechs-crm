@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
@@ -305,6 +306,7 @@ export default function ClientWorkPage() {
   const [editingAttachments, setEditingAttachments] = useState<WorkAttachment[]>([]);
   const [editingLegacyMedia, setEditingLegacyMedia] = useState<LegacyMediaPreview[]>([]);
   const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -489,13 +491,15 @@ export default function ClientWorkPage() {
     }
   }
 
-  async function remove(id: number) {
-    if (!confirm("Remove this work update?")) return;
+  async function remove() {
+    if (deleteTargetId == null) return;
     try {
-      await apiFetch.del(`/api/client/work-updates/${id}`);
+      await apiFetch.del(`/api/client/work-updates/${deleteTargetId}`);
       await load();
     } catch (err) {
       setError(err instanceof ApiFetchError ? err.message : "Delete failed");
+    } finally {
+      setDeleteTargetId(null);
     }
   }
 
@@ -796,7 +800,7 @@ export default function ClientWorkPage() {
                       variant="outline"
                       size="sm"
                       className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-                      onClick={() => void remove(u.id)}
+                      onClick={() => setDeleteTargetId(u.id)}
                     >
                       Delete
                     </Button>
@@ -807,6 +811,14 @@ export default function ClientWorkPage() {
           </ul>
         )}
       </div>
+      <ConfirmDialog
+        open={deleteTargetId != null}
+        title="Delete work update?"
+        description="Remove this work update?"
+        confirmLabel="Delete"
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={() => void remove()}
+      />
     </div>
   );
 }

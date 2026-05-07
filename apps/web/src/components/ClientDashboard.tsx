@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
@@ -47,6 +48,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -102,14 +104,16 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
     }
   }
 
-  async function removeUpdate(id: number) {
-    if (!confirm("Remove this work update?")) return;
+  async function removeUpdate() {
+    if (deleteTargetId == null) return;
     setError(null);
     try {
-      await apiFetch.del(`/api/client/work-updates/${id}`);
+      await apiFetch.del(`/api/client/work-updates/${deleteTargetId}`);
       await load();
     } catch (err) {
       setError(err instanceof ApiFetchError ? err.message : "Delete failed");
+    } finally {
+      setDeleteTargetId(null);
     }
   }
 
@@ -345,7 +349,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
                             variant="outline"
                             size="sm"
                             className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-                            onClick={() => void removeUpdate(u.id)}
+                            onClick={() => setDeleteTargetId(u.id)}
                           >
                             Delete
                           </Button>
@@ -358,6 +362,14 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
             )}
           </div>
         </section>
+        <ConfirmDialog
+          open={deleteTargetId != null}
+          title="Delete work update?"
+          description="Remove this work update?"
+          confirmLabel="Delete"
+          onCancel={() => setDeleteTargetId(null)}
+          onConfirm={() => void removeUpdate()}
+        />
       </div>
     </div>
   );

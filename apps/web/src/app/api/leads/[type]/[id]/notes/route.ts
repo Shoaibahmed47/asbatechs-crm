@@ -51,11 +51,6 @@ export async function GET(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  if (payload.role === "employee") {
-    if (leadRow.assignedUserId !== payload.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
   if (payload.role === "manager") {
     if (!payload.departmentId || leadRow.departmentId !== payload.departmentId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -100,11 +95,6 @@ export async function POST(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  if (payload.role === "employee") {
-    if (leadRow.assignedUserId !== payload.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
   if (payload.role === "manager") {
     if (!payload.departmentId || leadRow.departmentId !== payload.departmentId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

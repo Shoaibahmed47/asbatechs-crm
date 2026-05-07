@@ -160,6 +160,23 @@ export function EmployeeDirectoryPanel({
     [loadDirectory]
   );
 
+  const updateUserDepartment = useCallback(
+    async (userId: number, departmentId: number | null) => {
+      try {
+        await apiFetch.patch(`/api/users/${userId}`, { departmentId });
+        await loadDirectory();
+      } catch (e) {
+        if (e instanceof ApiFetchError) {
+          setError(e.message);
+          throw e;
+        }
+        setError("Could not update department.");
+        throw e;
+      }
+    },
+    [loadDirectory]
+  );
+
   useEffect(() => {
     void loadDirectory();
   }, [loadDirectory]);
@@ -326,8 +343,10 @@ export function EmployeeDirectoryPanel({
         <EmployeeDirectoryTable
           rows={rows}
           allowAdminActions={allowAdminActions}
+          departments={departments}
           clientProjectOptions={clientProjectOptions}
           onAssignProject={allowAdminActions ? assignClientProject : undefined}
+          onUpdateDepartment={allowAdminActions ? updateUserDepartment : undefined}
           onDirectoryChanged={loadDirectory}
           currentUserId={viewerUserId}
           sortToolbar={

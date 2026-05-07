@@ -69,23 +69,8 @@ export function collectLeadListConditions(
     }
     conditions.push(eq(schema.leads.departmentId, payload.departmentId));
   }
-  if (payload.role === "employee") {
-    conditions.push(eq(schema.leads.assignedUserId, payload.userId));
-  }
-
   const departmentId = sp.get("departmentId");
   const assignedUserId = sp.get("assignedUserId");
-
-  if (payload.role === "employee" && assignedUserId) {
-    const requested = Number(assignedUserId);
-    if (!Number.isNaN(requested) && requested !== payload.userId) {
-      return {
-        ok: false,
-        status: 403,
-        error: "You can only filter by your own user in “Assigned”."
-      };
-    }
-  }
   if (payload.role === "manager" && departmentId) {
     const requested = Number(departmentId);
     if (

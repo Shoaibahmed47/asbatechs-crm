@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 type Project = {
@@ -18,6 +19,7 @@ export default function ClientProjectsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -62,14 +64,15 @@ export default function ClientProjectsPage() {
     }
   }
 
-  async function remove(id: number) {
-    if (!confirm("Delete this project? Work updates linked to it will keep the update but lose the project link."))
-      return;
+  async function remove() {
+    if (deleteTargetId == null) return;
     try {
-      await apiFetch.del(`/api/client/projects/${id}`);
+      await apiFetch.del(`/api/client/projects/${deleteTargetId}`);
       await load();
     } catch (err) {
       setError(err instanceof ApiFetchError ? err.message : "Delete failed");
+    } finally {
+      setDeleteTargetId(null);
     }
   }
 
@@ -142,7 +145,7 @@ export default function ClientProjectsPage() {
               <button
                 type="button"
                 className="inline-flex min-w-[108px] whitespace-nowrap items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-700"
-                onClick={() => void remove(p.id)}
+                onClick={() => setDeleteTargetId(p.id)}
               >
                 <Trash2 className="h-3.5 w-3.5 text-red-300" />
                 Delete
@@ -151,6 +154,14 @@ export default function ClientProjectsPage() {
           ))
         )}
       </ul>
+      <ConfirmDialog
+        open={deleteTargetId != null}
+        title="Delete project?"
+        description="Delete this project? Work updates linked to it will keep the update but lose the project link."
+        confirmLabel="Delete"
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={() => void remove()}
+      />
     </div>
   );
 }

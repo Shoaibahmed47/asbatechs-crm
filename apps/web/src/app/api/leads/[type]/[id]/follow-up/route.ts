@@ -6,8 +6,16 @@ import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isRole } from "@/lib/rbac";
 import { logActivity } from "@/lib/audit";
+import { upsertLeadFollowUpReminder } from "@/lib/lead-follow-up-reminder";
+import {
+  buildFollowUpUtcIso,
+  isDateOnly,
+  isValidTimeZone
+} from "@/lib/follow-up-time";
 
 const followUpSchema = z.object({
+  nextFollowUpAtLocal: z.string().optional().nullable(),
+  followUpTimezone: z.string().optional().nullable(),
   nextFollowUpDate: z
     .string()
     .regex(/^\\d{4}-\\d{2}-\\d{2}$/)
@@ -62,24 +70,64 @@ export async function POST(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  if (payload.role === "employee") {
-    if (leadRow.assignedUserId !== payload.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
   if (payload.role === "manager") {
     if (!payload.departmentId || leadRow.departmentId !== payload.departmentId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
-  const nextFollowUpDate =
-    parsed.data.nextFollowUpDate === "" ? null : parsed.data.nextFollowUpDate ?? null;
+  let nextFollowUpAt: Date | null = null;
+  let nextFollowUpDate: string | null = null;
+  let followUpTimezone: string | null = null;
+
+  if (parsed.data.nextFollowUpAtLocal) {
+    if (
+      !parsed.data.followUpTimezone ||
+      !isValidTimeZone(parsed.data.followUpTimezone)
+    ) {
+      return NextResponse.json(
+        { error: "Pick a valid follow-up timezone." },
+        { status: 400 }
+      );
+    }
+    try {
+      const utcIso = buildFollowUpUtcIso({
+        localDateTime: parsed.data.nextFollowUpAtLocal,
+        timeZone: parsed.data.followUpTimezone
+      });
+      nextFollowUpAt = new Date(utcIso);
+      nextFollowUpDate = utcIso.slice(0, 10);
+      followUpTimezone = parsed.data.followUpTimezone;
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid follow-up date and time."
+        },
+        { status: 400 }
+      );
+    }
+  } else {
+    const fallbackDate = parsed.data.nextFollowUpDate;
+    if (fallbackDate) {
+      if (!isDateOnly(fallbackDate)) {
+        return NextResponse.json(
+          { error: "Follow-up date must be in YYYY-MM-DD format." },
+          { status: 400 }
+        );
+      }
+      nextFollowUpDate = fallbackDate;
+    }
+  }
 
   const [updatedLead] = await db
     .update(schema.leads)
     .set({
-      nextFollowUpDate: nextFollowUpDate ?? null
+      nextFollowUpAt: nextFollowUpAt ?? null,
+      nextFollowUpDate: nextFollowUpDate ?? null,
+      followUpTimezone
     })
     .where(eq(schema.leads.id, id))
     .returning();
@@ -91,19 +139,15 @@ export async function POST(
     entityId: id
   });
 
-  const recipientUserId = updatedLead.nextFollowUpDate && updatedLead.assignedUserId
-    ? updatedLead.assignedUserId
-    : updatedLead.assignedUserId ?? payload.userId;
-
-  if (nextFollowUpDate && recipientUserId) {
-    await db.insert(schema.notifications).values({
+  const recipientUserId = updatedLead.assignedUserId ?? payload.userId;
+  if (recipientUserId) {
+    await upsertLeadFollowUpReminder({
       userId: recipientUserId,
-      type: "follow_up_reminder",
       leadId: id,
-      dueDate: nextFollowUpDate,
-      message:
-        parsed.data.message ??
-        `Follow up with ${updatedLead.clientName} on ${nextFollowUpDate}.`
+      clientName: updatedLead.clientName,
+      nextFollowUpAt: updatedLead.nextFollowUpAt,
+      nextFollowUpDate: updatedLead.nextFollowUpDate,
+      message: parsed.data.message
     });
   }
 

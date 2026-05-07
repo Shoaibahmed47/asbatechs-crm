@@ -96,6 +96,8 @@ export const leads = pgTable("leads", {
   status: text("status").notNull(),
   notesSummary: text("notes_summary"),
   nextFollowUpDate: date("next_follow_up_date"),
+  nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
+  followUpTimezone: text("follow_up_timezone"),
   isDeleted: boolean("is_deleted").notNull().default(false),
   saleAmount: numeric("sale_amount", { precision: 12, scale: 2 }),
   servicePurchased: text("service_purchased"),
@@ -112,6 +114,7 @@ export const notifications = pgTable("notifications", {
   type: text("type").notNull(),
   leadId: integer("lead_id").references(() => leads.id),
   message: text("message").notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true }),
   dueDate: date("due_date"),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()

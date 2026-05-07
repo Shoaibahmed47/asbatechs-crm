@@ -311,6 +311,7 @@ export async function GET(req: NextRequest) {
         kind: "invite" as const,
         id: r.id,
         email: r.email,
+        departmentId: r.departmentId,
         department: deptLabel,
         createdAt: r.createdAt?.toISOString() ?? null
       };
@@ -321,6 +322,7 @@ export async function GET(req: NextRequest) {
       name: r.name ?? "",
       email: r.email,
       role: r.role,
+      departmentId: r.departmentId,
       department: deptLabel,
       inviteStatus: r.inviteStatus ?? "accepted",
       createdAt: r.createdAt?.toISOString() ?? null

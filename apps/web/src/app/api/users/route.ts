@@ -27,9 +27,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const baseSelect = {
+    id: schema.users.id,
+    name: schema.users.name,
+    email: schema.users.email,
+    role: schema.users.role,
+    departmentId: schema.users.departmentId,
+    createdAt: schema.users.createdAt
+  };
+
   if (payload.role === "admin") {
     const users = await db
-      .select()
+      .select(baseSelect)
       .from(schema.users)
       .orderBy(schema.users.createdAt);
     return NextResponse.json({ users });
@@ -40,18 +49,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const users = await db
-      .select()
+      .select(baseSelect)
       .from(schema.users)
       .where(eq(schema.users.departmentId, payload.departmentId))
       .orderBy(schema.users.createdAt);
     return NextResponse.json({ users });
   }
 
-  // employee
+  // employee: allow selecting from all users (including admin) in lead forms.
   const users = await db
-    .select()
+    .select(baseSelect)
     .from(schema.users)
-    .where(eq(schema.users.id, payload.userId))
     .orderBy(schema.users.createdAt);
   return NextResponse.json({ users });
 }

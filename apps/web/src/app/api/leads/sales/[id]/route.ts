@@ -9,17 +9,11 @@ import { autoAssignLead } from "@/lib/lead-assignment";
 import { logActivity } from "@/lib/audit";
 import { LEAD_STAGE_OPTIONS } from "@/lib/lead-workflow";
 import { leadValidationUserMessage } from "@/lib/lead-api-errors";
-import { upsertLeadFollowUpReminder } from "@/lib/lead-follow-up-reminder";
-import {
-  buildFollowUpUtcIso,
-  isDateOnly,
-  isValidTimeZone
-} from "@/lib/follow-up-time";
 
 const emptyToUndef = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? undefined : v;
 
-const updateHotLeadSchema = z.object({
+const updateSaleLeadSchema = z.object({
   clientName: z.string().min(1, "Enter the client or company name."),
   phone: z.preprocess(
     emptyToUndef,
@@ -37,16 +31,22 @@ const updateHotLeadSchema = z.object({
   ),
   email: z.preprocess(
     emptyToUndef,
-    z.string().email({ message: "Enter a valid email address (example: name@company.com)." }).optional()
+    z
+      .string()
+      .email({ message: "Enter a valid email address (example: name@company.com)." })
+      .optional()
   ),
   source: z.preprocess(emptyToUndef, z.string().optional()),
   departmentId: z.union([z.number().int(), z.null()]).optional(),
   assignedUserId: z.union([z.number().int(), z.null()]).optional(),
-  status: z.enum(LEAD_STAGE_OPTIONS).optional(),
+  saleAmount: z
+    .number({ invalid_type_error: "Sale amount must be a number." })
+    .nonnegative("Sale amount cannot be negative.")
+    .optional(),
+  servicePurchased: z.preprocess(emptyToUndef, z.string().optional()),
   notes: z.preprocess(emptyToUndef, z.string().optional()),
-  nextFollowUpAtLocal: z.preprocess(emptyToUndef, z.string().optional()),
-  followUpTimezone: z.preprocess(emptyToUndef, z.string().optional()),
-  nextFollowUpDate: z.preprocess(emptyToUndef, z.string().optional())
+  saleDate: z.preprocess(emptyToUndef, z.string().optional()),
+  status: z.enum(LEAD_STAGE_OPTIONS).optional()
 });
 
 export async function PATCH(
@@ -66,10 +66,7 @@ export async function PATCH(
   }
 
   const body = await req.json().catch(() => null);
-  const rawBody = (body ?? {}) as Record<string, unknown>;
-  const hasFollowUpInput =
-    "nextFollowUpAtLocal" in rawBody || "nextFollowUpDate" in rawBody;
-  const parsed = updateHotLeadSchema.safeParse(body);
+  const parsed = updateSaleLeadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       {
@@ -80,45 +77,6 @@ export async function PATCH(
     );
   }
   const data = parsed.data;
-  let nextFollowUpAt: Date | null = null;
-  let nextFollowUpDate: string | null = null;
-  let followUpTimezone: string | null = null;
-
-  if (data.nextFollowUpAtLocal) {
-    if (!data.followUpTimezone || !isValidTimeZone(data.followUpTimezone)) {
-      return NextResponse.json(
-        { error: "Pick a valid follow-up timezone." },
-        { status: 400 }
-      );
-    }
-    try {
-      const utcIso = buildFollowUpUtcIso({
-        localDateTime: data.nextFollowUpAtLocal,
-        timeZone: data.followUpTimezone
-      });
-      nextFollowUpAt = new Date(utcIso);
-      nextFollowUpDate = utcIso.slice(0, 10);
-      followUpTimezone = data.followUpTimezone;
-    } catch (error) {
-      return NextResponse.json(
-        {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Invalid follow-up date and time."
-        },
-        { status: 400 }
-      );
-    }
-  } else if (data.nextFollowUpDate) {
-    if (!isDateOnly(data.nextFollowUpDate)) {
-      return NextResponse.json(
-        { error: "Follow-up date must be in YYYY-MM-DD format." },
-        { status: 400 }
-      );
-    }
-    nextFollowUpDate = data.nextFollowUpDate;
-  }
 
   const [existingLead] = await db
     .select()
@@ -126,11 +84,10 @@ export async function PATCH(
     .where(
       and(
         eq(schema.leads.id, id),
-        eq(schema.leads.type, "hot"),
+        eq(schema.leads.type, "sale"),
         eq(schema.leads.isDeleted, false)
       )
     );
-
   if (!existingLead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
@@ -159,7 +116,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Your profile has no department. An admin must assign you to a department before you can update leads."
+            "Your profile has no department. An admin must assign you to a department before you can update sales leads."
         },
         { status: 403 }
       );
@@ -175,7 +132,7 @@ export async function PATCH(
   let assignedUserId: number | null = null;
   if (data.assignedUserId == null) {
     assignedUserId = await autoAssignLead({
-      leadType: "hot",
+      leadType: "sale",
       departmentId: currentDepartmentId ?? existingLead.departmentId ?? null,
       eligibleRoles: assignableUserRoles
     });
@@ -196,7 +153,7 @@ export async function PATCH(
       );
     if (!targetUser) {
       return NextResponse.json(
-        { error: "You can only assign leads to people in your own department." },
+        { error: "You can only assign sales leads to people in your own department." },
         { status: 403 }
       );
     }
@@ -219,22 +176,11 @@ export async function PATCH(
     effectiveDepartmentId = null;
   }
 
-  const resultingStatus = data.status ?? existingLead.status;
-  const isActiveStatus = resultingStatus !== "Won" && resultingStatus !== "Lost";
-  const hasExistingFollowUp =
-    existingLead.nextFollowUpAt != null || existingLead.nextFollowUpDate != null;
-  if (isActiveStatus) {
-    const hasNewFollowUp = !!nextFollowUpAt || !!nextFollowUpDate;
-    if (!hasNewFollowUp && !hasExistingFollowUp) {
-      return NextResponse.json(
-        {
-          error:
-            "Active hot leads must have a follow-up date and time. Add a follow-up before saving."
-        },
-        { status: 400 }
-      );
-    }
-  }
+  const saleDateStr =
+    data.saleDate && /^\d{4}-\d{2}-\d{2}$/.test(data.saleDate)
+      ? data.saleDate
+      : null;
+  const amountStr = data.saleAmount != null ? data.saleAmount.toFixed(2) : null;
 
   const [lead] = await db
     .update(schema.leads)
@@ -245,15 +191,11 @@ export async function PATCH(
       source: data.source ?? null,
       departmentId: effectiveDepartmentId,
       assignedUserId,
-      status: resultingStatus,
+      status: data.status ?? existingLead.status,
       notesSummary: data.notes ?? null,
-      nextFollowUpAt: hasFollowUpInput ? nextFollowUpAt : existingLead.nextFollowUpAt,
-      nextFollowUpDate: hasFollowUpInput
-        ? nextFollowUpDate ?? null
-        : existingLead.nextFollowUpDate,
-      followUpTimezone: hasFollowUpInput
-        ? followUpTimezone
-        : existingLead.followUpTimezone,
+      saleAmount: amountStr,
+      servicePurchased: data.servicePurchased ?? null,
+      saleDate: saleDateStr as any,
       updatedAt: new Date()
     })
     .where(eq(schema.leads.id, id))
@@ -271,17 +213,7 @@ export async function PATCH(
       userId: lead.assignedUserId,
       type: "lead_assigned",
       leadId: lead.id,
-      message: `You have been assigned an updated hot lead: ${lead.clientName}`
-    });
-  }
-
-  if (lead.assignedUserId) {
-    await upsertLeadFollowUpReminder({
-      userId: lead.assignedUserId,
-      leadId: lead.id,
-      clientName: lead.clientName,
-      nextFollowUpAt: lead.nextFollowUpAt,
-      nextFollowUpDate: lead.nextFollowUpDate
+      message: `You have been assigned an updated sales lead: ${lead.clientName}`
     });
   }
 

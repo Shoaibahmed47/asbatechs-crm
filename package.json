@@ -15,7 +15,7 @@
     "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
     "prebuild": "npm run db:build",
     "build": "npm --workspace apps/web run build",
-    "prestart": "npx kill-port 3000 && npm run db:build",
+    "prestart": "npx kill-port 3000 && npm run build",
     "start": "npx kill-port 3000 && npm --workspace apps/web run start",
     "lint": "npm --workspace apps/web run lint",
     "db:create": "createdb asbatechs-crm-db -U postgres",

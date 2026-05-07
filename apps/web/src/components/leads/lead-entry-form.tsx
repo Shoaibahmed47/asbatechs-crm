@@ -5,6 +5,7 @@ import type { LeadStage } from "@/lib/lead-workflow";
 
 type Department = { id: number; name: string };
 type UserRow = { id: number; name: string; email: string };
+type TimezoneOption = { value: string; label: string };
 
 type LeadEntryFormProps = {
   mode: "hot" | "sale";
@@ -32,6 +33,14 @@ type LeadEntryFormProps = {
   onStatusChange: (value: LeadStage) => void;
   notes: string;
   onNotesChange: (value: string) => void;
+  nextFollowUpAtLocal?: string;
+  onNextFollowUpAtLocalChange?: (value: string) => void;
+  followUpTimezone?: string;
+  onFollowUpTimezoneChange?: (value: string) => void;
+  timezoneOptions?: TimezoneOption[];
+  showCustomTimezoneInput?: boolean;
+  customTimezone?: string;
+  onCustomTimezoneChange?: (value: string) => void;
   saleAmount?: string;
   onSaleAmountChange?: (value: string) => void;
   servicePurchased?: string;
@@ -43,6 +52,13 @@ type LeadEntryFormProps = {
   formHint?: string;
   /** When true, department cannot be changed (non-admin users tied to one department). */
   departmentLocked?: boolean;
+  /** Show/hide department field. */
+  showDepartment?: boolean;
+  /** Optional guard to disable submit with user-facing reason. */
+  submitDisabledReason?: string;
+  /** Optional secondary action (e.g. cancel editing). */
+  onCancel?: () => void;
+  cancelLabel?: string;
 };
 
 export function LeadEntryForm({
@@ -71,6 +87,14 @@ export function LeadEntryForm({
   onStatusChange,
   notes,
   onNotesChange,
+  nextFollowUpAtLocal,
+  onNextFollowUpAtLocalChange,
+  followUpTimezone,
+  onFollowUpTimezoneChange,
+  timezoneOptions,
+  showCustomTimezoneInput,
+  customTimezone,
+  onCustomTimezoneChange,
   saleAmount,
   onSaleAmountChange,
   servicePurchased,
@@ -79,9 +103,15 @@ export function LeadEntryForm({
   onSaleDateChange,
   onSubmit,
   formHint,
-  departmentLocked
+  departmentLocked,
+  showDepartment = true,
+  submitDisabledReason,
+  onCancel,
+  cancelLabel
 }: LeadEntryFormProps) {
   const isSales = mode === "sale";
+
+  const isSubmitDisabled = saving || !!submitDisabledReason;
 
   return (
     <div className="data-card p-5" id={formId}>
@@ -107,6 +137,51 @@ export function LeadEntryForm({
             required
           />
         </div>
+        {!isSales ? (
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              Follow-up date and time
+            </label>
+            <input
+              type="datetime-local"
+              className="form-input mt-1"
+              value={nextFollowUpAtLocal ?? ""}
+              onChange={(e) => onNextFollowUpAtLocalChange?.(e.target.value)}
+            />
+          </div>
+        ) : null}
+        {!isSales ? (
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              Follow-up timezone
+            </label>
+            <select
+              className="form-input mt-1"
+              value={followUpTimezone ?? ""}
+              onChange={(e) => onFollowUpTimezoneChange?.(e.target.value)}
+            >
+              <option value="">Select timezone</option>
+              {(timezoneOptions ?? []).map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        {!isSales && showCustomTimezoneInput ? (
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              Other timezone (IANA)
+            </label>
+            <input
+              className="form-input mt-1"
+              value={customTimezone ?? ""}
+              onChange={(e) => onCustomTimezoneChange?.(e.target.value)}
+              placeholder="e.g. Europe/London"
+            />
+          </div>
+        ) : null}
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
             Phone
@@ -187,24 +262,26 @@ export function LeadEntryForm({
           </div>
         ) : null}
 
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
-            Department
-          </label>
-          <select
-            className="form-input mt-1 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={departmentLocked}
-            value={departmentId}
-            onChange={(e) => onDepartmentIdChange(e.target.value)}
-          >
-            <option value="">Unassigned</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {showDepartment ? (
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              Department (optional)
+            </label>
+            <select
+              className="form-input mt-1 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={departmentLocked}
+              value={departmentId}
+              onChange={(e) => onDepartmentIdChange(e.target.value)}
+            >
+              <option value="">Unassigned</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
             Assigned user
@@ -249,10 +326,22 @@ export function LeadEntryForm({
             placeholder="Context, next step, objections…"
           />
         </div>
-        <div className="md:col-span-2 flex justify-end">
-          <Button type="submit" size="sm" disabled={saving}>
-            {saving ? "Saving…" : submitLabel}
-          </Button>
+        <div className="md:col-span-2 space-y-2">
+          {submitDisabledReason ? (
+            <p className="text-right text-xs text-amber-700 dark:text-amber-300">
+              {submitDisabledReason}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            {onCancel ? (
+              <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+                {cancelLabel ?? "Cancel"}
+              </Button>
+            ) : null}
+            <Button type="submit" size="sm" disabled={isSubmitDisabled}>
+              {saving ? "Saving…" : submitLabel}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

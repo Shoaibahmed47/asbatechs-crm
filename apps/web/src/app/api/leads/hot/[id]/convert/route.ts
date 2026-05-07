@@ -39,13 +39,6 @@ export async function POST(
     );
   }
 
-  if (payload.role === "employee" && leadRow.assignedUserId !== payload.userId) {
-    return NextResponse.json(
-      { error: "You can only convert leads that are assigned to you." },
-      { status: 403 }
-    );
-  }
-
   if (
     payload.role === "manager" &&
     (!payload.departmentId || leadRow.departmentId !== payload.departmentId)

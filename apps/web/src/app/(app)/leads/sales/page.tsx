@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TablePagination } from "@/components/TablePagination";
 import { LeadEntryForm } from "@/components/leads/lead-entry-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
@@ -20,6 +21,7 @@ type SaleLead = {
   clientName: string;
   phone: string | null;
   email: string | null;
+  source: string | null;
   departmentId: number | null;
   assignedUserId: number | null;
   saleAmount: string | null;
@@ -51,6 +53,9 @@ export default function SalesLeadsPage() {
   const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingLeadId, setDeletingLeadId] = useState<number | null>(null);
+  const [deleteTargetLead, setDeleteTargetLead] = useState<SaleLead | null>(null);
+  const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
@@ -125,33 +130,29 @@ export default function SalesLeadsPage() {
   const formDepartments = useMemo(() => {
     if (!me) return departments;
     if (me.role === "admin") return departments;
+    if (me.role === "employee") return departments;
     if (me.departmentId == null) return [];
-    if (me.role === "employee" || me.role === "manager") {
+    if (me.role === "manager") {
       return departments.filter((d) => d.id === me.departmentId);
     }
     return departments;
   }, [me, departments]);
 
   const formUsers = useMemo(() => {
-    if (me?.role === "employee") {
-      return users.filter((u) => u.id === me.id);
-    }
     return users;
-  }, [me, users]);
+  }, [users]);
 
   const departmentLocked =
     !!me &&
     me.role !== "admin" &&
+    me.role !== "employee" &&
     me.departmentId != null &&
-    (me.role === "employee" || me.role === "manager");
+    me.role === "manager";
 
   const formHint = useMemo(() => {
     if (!me) return undefined;
     if (me.role === "employee") {
-      if (me.departmentId == null) {
-        return "Your profile has no department. An administrator must assign you to a department before you can save leads.";
-      }
-      return `You can only record sales for ${me.departmentName ?? "your department"}. Assign to yourself or use Auto assign.`;
+      return "You can choose any department and assign this lead to any user.";
     }
     if (me.role === "manager" && me.departmentId == null) {
       return "Your manager profile has no department. Contact an administrator.";
@@ -161,17 +162,21 @@ export default function SalesLeadsPage() {
     }
     return undefined;
   }, [me]);
+  const submitDisabledReason = useMemo(() => {
+    if (me?.role === "manager" && me.departmentId == null) {
+      return "Save is disabled until an administrator assigns your department.";
+    }
+    return undefined;
+  }, [me]);
 
   const applyMeFormDefaults = useCallback(() => {
     if (!me) return;
-    if (me.role === "admin") return;
-    if (me.departmentId != null && (me.role === "employee" || me.role === "manager")) {
+    if (editingLeadId) return;
+    if (me.role === "admin" || me.role === "employee") return;
+    if (me.departmentId != null && me.role === "manager") {
       setDepartmentId(String(me.departmentId));
     }
-    if (me.role === "employee") {
-      setAssignedUserId(String(me.id));
-    }
-  }, [me]);
+  }, [me, editingLeadId]);
 
   useEffect(() => {
     applyMeFormDefaults();
@@ -276,6 +281,40 @@ export default function SalesLeadsPage() {
 
   const totalSales = Number(sumSaleAmount) || 0;
 
+  function resetForm() {
+    setClientName("");
+    setPhone("");
+    setEmail("");
+    setSource("");
+    setDepartmentId("");
+    setAssignedUserId("");
+    setSaleAmount("");
+    setServicePurchased("");
+    setSaleDate(getLocalDateString());
+    setStatus("Won");
+    setNotes("");
+    setEditingLeadId(null);
+    queueMicrotask(() => applyMeFormDefaults());
+  }
+
+  function startEdit(lead: SaleLead) {
+    setEditingLeadId(lead.id);
+    setClientName(lead.clientName ?? "");
+    setPhone(lead.phone ?? "");
+    setEmail(lead.email ?? "");
+    setSource(lead.source ?? "");
+    setDepartmentId(lead.departmentId != null ? String(lead.departmentId) : "");
+    setAssignedUserId(lead.assignedUserId != null ? String(lead.assignedUserId) : "");
+    setSaleAmount(lead.saleAmount ?? "");
+    setServicePurchased(lead.servicePurchased ?? "");
+    setSaleDate(lead.dateOfSale ?? getLocalDateString());
+    setStatus((lead.status as LeadStage) ?? "Won");
+    setNotes(lead.notes ?? "");
+    document
+      .getElementById("sale-lead-form")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -306,27 +345,21 @@ export default function SalesLeadsPage() {
       if (amountNum != null && !Number.isNaN(amountNum)) {
         body.saleAmount = amountNum;
       }
-      if (departmentId) body.departmentId = Number(departmentId);
-      else body.departmentId = null;
       if (assignedUserId) body.assignedUserId = Number(assignedUserId);
       else body.assignedUserId = null;
 
-      await apiFetch.post("/api/leads/sales", body);
-      toast.success("Sale recorded", {
-        description: `${clientName.trim()} was added to sales leads.`
-      });
-      setClientName("");
-      setPhone("");
-      setEmail("");
-      setSource("");
-      setDepartmentId("");
-      setAssignedUserId("");
-      setSaleAmount("");
-      setServicePurchased("");
-      setSaleDate(getLocalDateString());
-      setStatus("Won");
-      setNotes("");
-      queueMicrotask(() => applyMeFormDefaults());
+      if (editingLeadId) {
+        await apiFetch.patch(`/api/leads/sales/${editingLeadId}`, body);
+        toast.success("Lead updated", {
+          description: `${clientName.trim()} was updated successfully.`
+        });
+      } else {
+        await apiFetch.post("/api/leads/sales", body);
+        toast.success("Sale recorded", {
+          description: `${clientName.trim()} was added to sales leads.`
+        });
+      }
+      resetForm();
       await loadLeads();
     } catch (error) {
       const detail =
@@ -334,11 +367,40 @@ export default function SalesLeadsPage() {
           ? leadPermissionUserMessage(error.status, error.message)
           : "Check your connection and try again.";
       toast.error(detail, {
-        description: "Sales lead was not saved.",
+        description: editingLeadId
+          ? "Sales lead was not updated."
+          : "Sales lead was not saved.",
         duration: 9000
       });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteLead() {
+    if (!deleteTargetLead) return;
+    setDeletingLeadId(deleteTargetLead.id);
+    try {
+      await apiFetch.post(`/api/leads/sales/${deleteTargetLead.id}/delete`);
+      toast.success("Lead deleted", {
+        description: `${deleteTargetLead.clientName} was removed from sales leads.`
+      });
+      if (editingLeadId === deleteTargetLead.id) {
+        resetForm();
+      }
+      await loadLeads();
+    } catch (error) {
+      const detail =
+        error instanceof ApiFetchError
+          ? leadPermissionUserMessage(error.status, error.message)
+          : "Check your connection and try again.";
+      toast.error(detail, {
+        description: "Lead was not deleted.",
+        duration: 9000
+      });
+    } finally {
+      setDeletingLeadId(null);
+      setDeleteTargetLead(null);
     }
   }
 
@@ -369,15 +431,22 @@ export default function SalesLeadsPage() {
         </div>
       )}
 
+      {editingLeadId ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <span>Editing lead #{editingLeadId}. Update fields and save.</span>
+        </div>
+      ) : null}
+
       <LeadEntryForm
         mode="sale"
         formId="sale-lead-form"
-        title="Add sales lead (manual entry)"
-        submitLabel="Save lead"
+        title={editingLeadId ? "Edit sales lead" : "Add sales lead (manual entry)"}
+        submitLabel={editingLeadId ? "Update lead" : "Save lead"}
         saving={saving}
         departments={formDepartments}
         users={formUsers}
         formHint={formHint}
+        submitDisabledReason={submitDisabledReason}
         departmentLocked={departmentLocked}
         statusOptions={STATUS_OPTIONS}
         clientName={clientName}
@@ -390,6 +459,7 @@ export default function SalesLeadsPage() {
         onSourceChange={setSource}
         departmentId={departmentId}
         onDepartmentIdChange={setDepartmentId}
+        showDepartment={false}
         assignedUserId={assignedUserId}
         onAssignedUserIdChange={setAssignedUserId}
         status={status}
@@ -402,6 +472,8 @@ export default function SalesLeadsPage() {
         onServicePurchasedChange={setServicePurchased}
         saleDate={saleDate}
         onSaleDateChange={setSaleDate}
+        onCancel={editingLeadId ? resetForm : undefined}
+        cancelLabel="Cancel edit"
         onSubmit={handleCreate}
       />
 
@@ -541,6 +613,7 @@ export default function SalesLeadsPage() {
                   {sortHead("department_id", "Dept")}
                   {sortHead("assigned_user_id", "Assigned")}
                   {sortHead("status", "Stage")}
+                  <th className="pb-2 text-right font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -568,11 +641,14 @@ export default function SalesLeadsPage() {
                       <td className="py-3">
                         <Skeleton className="h-4 w-16" />
                       </td>
+                      <td className="py-3 pl-2">
+                        <Skeleton className="ml-auto h-7 w-20" />
+                      </td>
                     </tr>
                   ))
                 ) : !loading && leads.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-0">
+                    <td colSpan={8} className="p-0">
                       <EmptyState
                         icon={CircleDollarSign}
                         title="No sales leads to show"
@@ -630,6 +706,27 @@ export default function SalesLeadsPage() {
                       <td className="py-2 text-xs font-medium text-slate-800 dark:text-slate-200">
                         {lead.status}
                       </td>
+                      <td className="py-2 pl-2 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startEdit(lead)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={deletingLeadId === lead.id}
+                            onClick={() => setDeleteTargetLead(lead)}
+                          >
+                            {deletingLeadId === lead.id ? "Deleting..." : "Delete"}
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -665,6 +762,22 @@ export default function SalesLeadsPage() {
           </p>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deleteTargetLead}
+        title="Delete lead?"
+        description={
+          deleteTargetLead
+            ? `Delete lead "${deleteTargetLead.clientName}"? This will remove it from active lists.`
+            : ""
+        }
+        confirmLabel={deletingLeadId ? "Deleting..." : "Delete"}
+        confirmDisabled={deletingLeadId != null}
+        onCancel={() => {
+          if (deletingLeadId != null) return;
+          setDeleteTargetLead(null);
+        }}
+        onConfirm={() => void handleDeleteLead()}
+      />
     </div>
   );
 }
