@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Building2,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -15,7 +14,6 @@ import {
   UserCircle
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
-import { isAdminRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
 const MENU_WIDTH_PX = 272;
@@ -177,17 +175,6 @@ export function AppHeaderUser() {
                 <UserCircle className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                 Profile
               </Link>
-              {me && isAdminRole(me.role) ? (
-                <Link
-                  href="/settings/departments"
-                  className={menuLinkClass}
-                  role="menuitem"
-                  onClick={() => setAccountOpen(false)}
-                >
-                  <Building2 className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
-                  Department settings
-                </Link>
-              ) : null}
             </div>
             <div className="border-t border-slate-100 pt-1 dark:border-slate-700">
               <button
@@ -268,7 +255,6 @@ export function AppHeaderUser() {
               height={40}
               className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200/80 dark:ring-slate-600"
               aria-hidden
-              priority
             />
             <ChevronDown
               className={cn(
