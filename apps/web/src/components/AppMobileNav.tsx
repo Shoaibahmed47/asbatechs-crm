@@ -76,7 +76,7 @@ export function AppMobileNav({ userRole }: AppMobileNavProps) {
             onClick={() => setIsOpen(false)}
           />
 
-          <aside className="app-panel surface-reveal absolute inset-y-0 left-0 z-10 flex h-full w-[92vw] max-w-[380px] flex-col overflow-hidden border-r border-slate-200 p-4 shadow-2xl dark:border-slate-800">
+          <aside className="app-panel drawer-enter-left absolute inset-y-0 left-0 z-10 flex h-full w-[92vw] max-w-[380px] flex-col overflow-hidden border-r border-slate-200 p-4 shadow-2xl dark:border-slate-800">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300">
