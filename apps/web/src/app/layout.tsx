@@ -1,10 +1,17 @@
 import "@/app/globals.css";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import { AppToaster } from "@/components/AppToaster";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap"
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
   display: "swap"
 });
 
@@ -19,7 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body className={`${inter.className} min-h-screen`}>
+      <body className={`${manrope.variable} ${spaceGrotesk.variable} min-h-screen font-sans`}>
         {children}
         <AppToaster />
       </body>

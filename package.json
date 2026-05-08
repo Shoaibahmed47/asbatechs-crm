@@ -24,7 +24,7 @@
     "db:migrate": "npm --workspace packages/database run drizzle:migrate",
     "db:push": "npm --workspace packages/database run drizzle:push",
     "db:seed": "npm --workspace packages/database run db:seed",
-    "db:supabase:clear": "npm --workspace packages/database run db:reset",
+    "db:clear": "npm --workspace packages/database run db:reset",
     "db:supabase:seed-push": "npm run db:push && npm run db:seed",
     "db:cleanup-invalid-departments": "npm --workspace packages/database run db:cleanup-invalid-departments"
   },

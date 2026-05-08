@@ -18,7 +18,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { isAdminRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
-const MENU_WIDTH_PX = 256;
+const MENU_WIDTH_PX = 272;
 
 type MeUser = {
   name: string;
@@ -28,7 +28,7 @@ type MeUser = {
 };
 
 function formatRoleLabel(role: string): string {
-  if (!role) return "—";
+  if (!role) return "-";
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }
 
@@ -84,10 +84,7 @@ export function AppHeaderUser() {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const left = Math.min(
-      Math.max(8, rect.right - MENU_WIDTH_PX),
-      window.innerWidth - MENU_WIDTH_PX - 8
-    );
+    const left = Math.min(Math.max(8, rect.right - MENU_WIDTH_PX), window.innerWidth - MENU_WIDTH_PX - 8);
     setMenuPos({
       top: rect.bottom + 8,
       left
@@ -163,32 +160,20 @@ export function AppHeaderUser() {
                 {me?.name ?? "Account"}
               </div>
               {me?.email ? (
-                <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {me.email}
-                </div>
+                <div className="truncate text-xs text-slate-500 dark:text-slate-400">{me.email}</div>
               ) : null}
               {me ? (
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {me.departmentName ?? "No department"} · {formatRoleLabel(me.role)}
+                  {me.departmentName ?? "No department"} | {formatRoleLabel(me.role)}
                 </div>
               ) : null}
             </div>
             <div className="py-1">
-              <Link
-                href="/dashboard"
-                className={menuLinkClass}
-                role="menuitem"
-                onClick={() => setAccountOpen(false)}
-              >
+              <Link href="/dashboard" className={menuLinkClass} role="menuitem" onClick={() => setAccountOpen(false)}>
                 <LayoutDashboard className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                 Dashboard
               </Link>
-              <Link
-                href="/account"
-                className={menuLinkClass}
-                role="menuitem"
-                onClick={() => setAccountOpen(false)}
-              >
+              <Link href="/account" className={menuLinkClass} role="menuitem" onClick={() => setAccountOpen(false)}>
                 <UserCircle className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                 Profile
               </Link>
@@ -228,21 +213,17 @@ export function AppHeaderUser() {
       {accountMenu}
 
       <div className="hidden text-right sm:block">
-        <div className="text-sm font-semibold text-slate-950 dark:text-white">
-          {me?.name ?? "Current user"}
-        </div>
+        <div className="text-sm font-semibold text-slate-950 dark:text-white">{me?.name ?? "Current user"}</div>
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          {me
-            ? `${me.departmentName ?? "No department"} · ${formatRoleLabel(me.role)}`
-            : "Department · Role"}
+          {me ? `${me.departmentName ?? "No department"} | ${formatRoleLabel(me.role)}` : "Department | Role"}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center rounded-2xl border border-slate-200/80 bg-white/80 p-1 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/80">
+        <div className="flex items-center rounded-2xl border border-slate-200/80 bg-white/85 p-1 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/85">
           <button
             type="button"
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 ${
               theme === "light"
                 ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -254,7 +235,7 @@ export function AppHeaderUser() {
           </button>
           <button
             type="button"
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 ${
               theme === "dark"
                 ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -266,7 +247,7 @@ export function AppHeaderUser() {
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/80">
+        <div className="rounded-2xl border border-slate-200/80 bg-white/85 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/85">
           <button
             ref={triggerRef}
             type="button"

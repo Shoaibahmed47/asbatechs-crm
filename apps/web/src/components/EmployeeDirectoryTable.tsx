@@ -43,6 +43,7 @@ export function EmployeeDirectoryTable({
   onUpdateDepartment,
   onDirectoryChanged,
   currentUserId,
+  mobileView = "cards",
   sortToolbar,
   footer
 }: {
@@ -55,6 +56,7 @@ export function EmployeeDirectoryTable({
   onUpdateDepartment?: (userId: number, departmentId: number | null) => Promise<void>;
   onDirectoryChanged?: () => Promise<void> | void;
   currentUserId?: number | null;
+  mobileView?: "cards" | "table";
   sortToolbar?: ReactNode;
   footer?: ReactNode;
 }) {
@@ -180,15 +182,123 @@ export function EmployeeDirectoryTable({
 
   return (
     <div className="data-card overflow-hidden p-0">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
+      {sortToolbar ? (
+        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-slate-800/80">
+          <div className="overflow-x-auto">{sortToolbar}</div>
+        </div>
+      ) : null}
+      <div className={`${mobileView === "table" ? "block" : "hidden"} md:hidden`}>
+        {rows.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No team members yet"
+            description="When people are added or invited, they will appear in this directory."
+          />
+        ) : (
+          <div className="space-y-3 p-3">
+            {rows.map((row) => {
+              const email = row.email;
+              const role = row.kind === "user" ? row.role : "Pending";
+              const showResend =
+                allowAdminActions &&
+                (row.kind === "invite" ||
+                  (row.kind === "user" && row.inviteStatus === "pending"));
+              const showReset =
+                allowAdminActions &&
+                row.kind === "user" &&
+                row.inviteStatus !== "pending";
+              const showRemove =
+                allowAdminActions &&
+                (row.kind === "invite" ||
+                  (row.kind === "user" &&
+                    row.role.toLowerCase() !== "admin" &&
+                    row.id !== currentUserId));
+
+              return (
+                <article
+                  key={row.kind === "user" ? `mobile-u-${row.id}` : `mobile-i-${row.id}`}
+                  className="rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/70"
+                >
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {row.kind === "user" ? row.name : "Pending invitation"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">{email}</div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {role} · {row.department || "Unassigned"}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-2">
+                    {showResend ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full justify-center gap-2"
+                        disabled={busy}
+                        onClick={() =>
+                          runAction(
+                            "/api/users/resend-invite",
+                            { email },
+                            "Invitation sent again",
+                            "Could not resend invitation."
+                          )
+                        }
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Resend invite
+                      </Button>
+                    ) : null}
+                    {showReset ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full justify-center gap-2"
+                        disabled={busy}
+                        onClick={() =>
+                          runAction(
+                            "/api/users/reset-password",
+                            { email },
+                            "Password reset link sent",
+                            "Could not send reset link."
+                          )
+                        }
+                      >
+                        <Lock className="h-4 w-4" />
+                        Reset password
+                      </Button>
+                    ) : null}
+                    {showRemove ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                        disabled={busy}
+                        onClick={() => void runDeleteRow(row)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    ) : null}
+                    {!showResend && !showReset && !showRemove ? (
+                      <span className="text-center text-xs text-slate-400 dark:text-slate-500">—</span>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className={`overflow-x-auto ${mobileView === "table" ? "block" : "hidden md:block"}`}>
+        <table className="min-w-[62rem] text-left text-sm lg:min-w-full">
           <thead className="bg-slate-50/90 dark:bg-slate-900/70">
             <tr className="border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
               <th className="px-5 py-4">Name</th>
-              <th className="px-5 py-4">Email</th>
-              <th className="px-5 py-4">Role</th>
-              <th className="px-5 py-4">Department</th>
-              <th className="px-5 py-4">Client project</th>
+              <th className="hidden px-5 py-4 md:table-cell">Email</th>
+              <th className="hidden px-5 py-4 md:table-cell">Role</th>
+              <th className="hidden px-5 py-4 md:table-cell">Department</th>
+              <th className="hidden px-5 py-4 lg:table-cell">Client project</th>
               <th className="px-5 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -233,14 +343,21 @@ export function EmployeeDirectoryTable({
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         {row.kind === "user" ? "Active employee record" : "Awaiting acceptance"}
                       </div>
+                      <div className="mt-1 space-y-0.5 text-xs text-slate-500 dark:text-slate-400 md:hidden">
+                        <div>{email}</div>
+                        <div className="capitalize">{role}</div>
+                        <div>{row.department || "Unassigned"}</div>
+                      </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{email}</td>
-                    <td className="px-5 py-4">
+                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 md:table-cell">
+                      {email}
+                    </td>
+                    <td className="hidden px-5 py-4 md:table-cell">
                       <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {role}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 md:table-cell">
                       {allowAdminActions && row.kind === "user" && onUpdateDepartment ? (
                         <div className="flex items-center gap-2">
                           <select
@@ -266,7 +383,7 @@ export function EmployeeDirectoryTable({
                         row.department
                       )}
                     </td>
-                    <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 lg:table-cell">
                       {allowAdminActions &&
                       row.kind === "user" &&
                       row.role.toLowerCase() === "employee" &&
@@ -277,7 +394,7 @@ export function EmployeeDirectoryTable({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="min-w-[15rem] justify-between gap-2 border-slate-600"
+                              className="min-w-[12rem] justify-between gap-2 border-slate-600 lg:min-w-[15rem]"
                             >
                               <span className="truncate text-left">
                                 {(() => {
@@ -333,7 +450,7 @@ export function EmployeeDirectoryTable({
                           <Button
                             type="button"
                             size="sm"
-                            className="min-w-[9.5rem] justify-center gap-2"
+                            className="w-full justify-center gap-2 sm:min-w-[9.5rem]"
                             disabled={busy}
                             onClick={() =>
                               runAction(
@@ -354,7 +471,7 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="min-w-[9.5rem] justify-center gap-2"
+                            className="w-full justify-center gap-2 sm:min-w-[9.5rem]"
                             disabled={busy}
                             onClick={() =>
                               runAction(
@@ -375,7 +492,7 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="min-w-[6.5rem] justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                            className="w-full justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 sm:min-w-[6.5rem] dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
                             disabled={busy}
                             onClick={() => void runDeleteRow(row)}
                           >

@@ -11,7 +11,7 @@ import { and, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 
 function monthKeysLast(n: number): string[] {
   const out: string[] = [];
-const now = new Date();
+  const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
@@ -149,13 +149,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <section className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
+      <section className="app-panel rounded-[24px] px-4 py-5 sm:rounded-[28px] sm:px-8 sm:py-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+            <div className="glass-chip inline-flex text-sky-700 dark:text-sky-200">
               Executive overview
             </div>
-            <h1 className="page-title mt-3">CRM dashboard</h1>
+            <h1 className="page-title mt-4">CRM dashboard</h1>
             <p className="page-subtitle">
               Track lead pipeline health, revenue momentum
               {isAdminViewer ? ", and live team attendance " : " "}
@@ -169,6 +169,9 @@ export default async function DashboardPage() {
               </div>
               <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
                 {totalUsers}
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
+                <div className="h-full w-3/5 rounded-full bg-sky-500/85" />
               </div>
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
@@ -202,6 +205,9 @@ export default async function DashboardPage() {
                   page. Live team status is available to administrators only.
                 </p>
               )}
+              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
+                <div className="h-full w-1/2 rounded-full bg-emerald-500/80" />
+              </div>
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -212,6 +218,9 @@ export default async function DashboardPage() {
                   style: "currency",
                   currency: "USD"
                 })}
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
+                <div className="h-full w-2/3 rounded-full bg-cyan-500/80" />
               </div>
             </div>
           </div>
@@ -260,7 +269,7 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="metric-card">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Total leads

@@ -55,6 +55,7 @@ export function EmployeeDirectoryPanel({
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [viewerUserId, setViewerUserId] = useState<number | null>(null);
+  const [mobileView, setMobileView] = useState<"cards" | "table">("cards");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -200,7 +201,7 @@ export function EmployeeDirectoryPanel({
     );
   };
 
-  const filterClass = "form-input h-9 py-2 text-sm md:h-9 md:py-2";
+  const filterClass = "form-input h-9 w-full py-2 text-sm md:h-9 md:py-2";
 
   return (
     <div className="space-y-4">
@@ -215,7 +216,39 @@ export function EmployeeDirectoryPanel({
 
       <div className="data-card p-4">
         <div className="mb-4 flex flex-col gap-3">
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex items-center justify-between gap-3 md:hidden">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              Mobile view
+            </p>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                  mobileView === "cards"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 dark:text-slate-300"
+                )}
+                onClick={() => setMobileView("cards")}
+              >
+                Cards
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                  mobileView === "table"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 dark:text-slate-300"
+                )}
+                onClick={() => setMobileView("table")}
+              >
+                Table
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <div>
               <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
                 Search
@@ -224,7 +257,7 @@ export function EmployeeDirectoryPanel({
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Name or email"
-                className={`${filterClass} mt-1 w-44`}
+                className={`${filterClass} mt-1`}
               />
             </div>
             <div>
@@ -234,7 +267,7 @@ export function EmployeeDirectoryPanel({
               <select
                 value={kind}
                 onChange={(e) => setKind(e.target.value)}
-                className={`${filterClass} mt-1 min-w-[7rem]`}
+                className={`${filterClass} mt-1`}
               >
                 <option value="">All</option>
                 <option value="user">Users only</option>
@@ -248,7 +281,7 @@ export function EmployeeDirectoryPanel({
               <select
                 value={filterDept}
                 onChange={(e) => setFilterDept(e.target.value)}
-                className={`${filterClass} mt-1 min-w-[8rem]`}
+                className={`${filterClass} mt-1`}
               >
                 <option value="">All</option>
                 {departments.map((d) => (
@@ -265,7 +298,7 @@ export function EmployeeDirectoryPanel({
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className={`${filterClass} mt-1 min-w-[7rem]`}
+                className={`${filterClass} mt-1`}
               >
                 <option value="">All</option>
                 <option value="admin">Admin</option>
@@ -280,7 +313,7 @@ export function EmployeeDirectoryPanel({
               <select
                 value={filterInviteStatus}
                 onChange={(e) => setFilterInviteStatus(e.target.value)}
-                className={`${filterClass} mt-1 min-w-[7rem]`}
+                className={`${filterClass} mt-1`}
               >
                 <option value="">All</option>
                 <option value="pending">Pending</option>
@@ -295,7 +328,7 @@ export function EmployeeDirectoryPanel({
                 value={filterUserId}
                 onChange={(e) => setFilterUserId(e.target.value.replace(/\D/g, ""))}
                 placeholder="Exact id"
-                className={`${filterClass} mt-1 w-24`}
+                className={`${filterClass} mt-1`}
               />
             </div>
             <div>
@@ -306,7 +339,7 @@ export function EmployeeDirectoryPanel({
                 type="date"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
-                className={`${filterClass} mt-1 w-[11rem]`}
+                className={`${filterClass} mt-1`}
               />
             </div>
             <div>
@@ -317,13 +350,14 @@ export function EmployeeDirectoryPanel({
                 type="date"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
-                className={`${filterClass} mt-1 w-[11rem]`}
+                className={`${filterClass} mt-1`}
               />
             </div>
             <Button
               type="button"
               size="sm"
               variant="outline"
+              className="h-9 w-full lg:w-auto"
               disabled={loading}
               onClick={() => void loadDirectory()}
             >
@@ -349,6 +383,7 @@ export function EmployeeDirectoryPanel({
           onUpdateDepartment={allowAdminActions ? updateUserDepartment : undefined}
           onDirectoryChanged={loadDirectory}
           currentUserId={viewerUserId}
+          mobileView={mobileView}
           sortToolbar={
             <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               <span className="text-slate-400 dark:text-slate-500">Sort</span>
