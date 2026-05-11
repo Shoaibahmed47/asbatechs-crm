@@ -42,6 +42,8 @@ type MeUser = {
   departmentName: string | null;
 };
 
+type LeadFieldErrors = Partial<Record<string, string>>;
+
 const STATUS_OPTIONS = LEAD_STAGE_OPTIONS;
 const OTHER_TIMEZONE_VALUE = "__other_timezone__";
 const FOLLOW_UP_TIMEZONE_OPTIONS = [
@@ -103,6 +105,40 @@ function getFollowUpBadge(lead: HotLead) {
   return null;
 }
 
+function apiErrorDetail(error: ApiFetchError): string | null {
+  const details = error.details;
+  if (!details || typeof details !== "object") return null;
+  const record = details as Record<string, unknown>;
+  if (typeof record.error === "string" && record.error.trim()) {
+    return record.error;
+  }
+  if (typeof record.detail === "string" && record.detail.trim()) {
+    return record.detail;
+  }
+  return null;
+}
+
+function apiLeadFieldErrors(error: ApiFetchError): LeadFieldErrors {
+  const details = error.details;
+  if (!details || typeof details !== "object") return {};
+  const record = details as Record<string, unknown>;
+  const flattened = record.details;
+  if (!flattened || typeof flattened !== "object") return {};
+  const fieldErrorsRaw = (flattened as Record<string, unknown>).fieldErrors;
+  if (!fieldErrorsRaw || typeof fieldErrorsRaw !== "object") return {};
+
+  const output: LeadFieldErrors = {};
+  for (const [key, value] of Object.entries(fieldErrorsRaw as Record<string, unknown>)) {
+    if (Array.isArray(value) && value.length > 0) {
+      const first = value.find((entry) => typeof entry === "string");
+      if (typeof first === "string" && first.trim()) {
+        output[key] = first;
+      }
+    }
+  }
+  return output;
+}
+
 export default function HotLeadsPage() {
   const [leads, setLeads] = useState<HotLead[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -115,6 +151,7 @@ export default function HotLeadsPage() {
   const [deleteTargetLead, setDeleteTargetLead] = useState<HotLead | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formFieldErrors, setFormFieldErrors] = useState<LeadFieldErrors>({});
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -144,6 +181,15 @@ export default function HotLeadsPage() {
   const [nextFollowUpAtLocal, setNextFollowUpAtLocal] = useState("");
   const [followUpTimezone, setFollowUpTimezone] = useState("");
   const [customFollowUpTimezone, setCustomFollowUpTimezone] = useState("");
+
+  const clearFieldError = useCallback((field: string) => {
+    setFormFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -359,6 +405,7 @@ export default function HotLeadsPage() {
     setNotes("");
     setNextFollowUpAtLocal("");
     setCustomFollowUpTimezone("");
+    setFormFieldErrors({});
     setEditingLeadId(null);
     queueMicrotask(() => {
       if (!me) return;
@@ -407,6 +454,7 @@ export default function HotLeadsPage() {
     }
     setSaving(true);
     setError(null);
+    setFormFieldErrors({});
     try {
       const body: Record<string, unknown> = {
         clientName: clientName.trim(),
@@ -443,14 +491,26 @@ export default function HotLeadsPage() {
       resetForm();
       await loadLeads();
     } catch (error) {
-      const detail =
-        error instanceof ApiFetchError
-          ? leadPermissionUserMessage(error.status, error.message)
-          : "Check your connection and try again.";
-      toast.error(detail, {
-        description: "Hot lead was not saved.",
-        duration: 9000
-      });
+      if (error instanceof ApiFetchError) {
+        const fieldErrors = apiLeadFieldErrors(error);
+        if (Object.keys(fieldErrors).length > 0) {
+          setFormFieldErrors(fieldErrors);
+        }
+        const rootCause = apiErrorDetail(error);
+        const detail = leadPermissionUserMessage(error.status, rootCause ?? error.message);
+        toast.error(detail, {
+          description:
+            error.status >= 500
+              ? "Server error while saving hot lead."
+              : "Hot lead was not saved.",
+          duration: 10000
+        });
+      } else {
+        toast.error("Check your connection and try again.", {
+          description: "Hot lead was not saved.",
+          duration: 9000
+        });
+      }
     } finally {
       setSaving(false);
     }
@@ -550,35 +610,69 @@ export default function HotLeadsPage() {
         departmentLocked={departmentLocked}
         statusOptions={STATUS_OPTIONS}
         clientName={clientName}
-        onClientNameChange={setClientName}
+        onClientNameChange={(value) => {
+          setClientName(value);
+          clearFieldError("clientName");
+        }}
         phone={phone}
-        onPhoneChange={setPhone}
+        onPhoneChange={(value) => {
+          setPhone(value);
+          clearFieldError("phone");
+        }}
         email={email}
-        onEmailChange={setEmail}
+        onEmailChange={(value) => {
+          setEmail(value);
+          clearFieldError("email");
+        }}
         source={source}
-        onSourceChange={setSource}
+        onSourceChange={(value) => {
+          setSource(value);
+          clearFieldError("source");
+        }}
         departmentId={departmentId}
-        onDepartmentIdChange={setDepartmentId}
+        onDepartmentIdChange={(value) => {
+          setDepartmentId(value);
+          clearFieldError("departmentId");
+        }}
         showDepartment={false}
         assignedUserId={assignedUserId}
-        onAssignedUserIdChange={setAssignedUserId}
+        onAssignedUserIdChange={(value) => {
+          setAssignedUserId(value);
+          clearFieldError("assignedUserId");
+        }}
         status={status}
-        onStatusChange={setStatus}
+        onStatusChange={(value) => {
+          setStatus(value);
+          clearFieldError("status");
+        }}
         notes={notes}
-        onNotesChange={setNotes}
+        onNotesChange={(value) => {
+          setNotes(value);
+          clearFieldError("notes");
+        }}
         nextFollowUpAtLocal={nextFollowUpAtLocal}
-        onNextFollowUpAtLocalChange={setNextFollowUpAtLocal}
+        onNextFollowUpAtLocalChange={(value) => {
+          setNextFollowUpAtLocal(value);
+          clearFieldError("nextFollowUpAtLocal");
+        }}
         followUpTimezone={followUpTimezone}
-        onFollowUpTimezoneChange={setFollowUpTimezone}
+        onFollowUpTimezoneChange={(value) => {
+          setFollowUpTimezone(value);
+          clearFieldError("followUpTimezone");
+        }}
         timezoneOptions={[
           ...FOLLOW_UP_TIMEZONE_OPTIONS,
           { value: OTHER_TIMEZONE_VALUE, label: "Other (IANA timezone)" }
         ]}
         showCustomTimezoneInput={followUpTimezone === OTHER_TIMEZONE_VALUE}
         customTimezone={customFollowUpTimezone}
-        onCustomTimezoneChange={setCustomFollowUpTimezone}
+        onCustomTimezoneChange={(value) => {
+          setCustomFollowUpTimezone(value);
+          clearFieldError("customTimezone");
+        }}
         onCancel={editingLeadId ? resetForm : undefined}
         cancelLabel="Cancel edit"
+        fieldErrors={formFieldErrors}
         onSubmit={handleCreate}
       />
 

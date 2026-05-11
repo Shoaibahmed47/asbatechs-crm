@@ -67,17 +67,58 @@ export default async function InternalWorkUpdateDetail({
       <Link href="/work-updates" className="text-sm text-slate-500 hover:text-sky-600">
         ← Back to work updates
       </Link>
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{row.title}</h1>
-        <p className="text-xs text-slate-500">
-          {row.clientName ?? "Client"} · {row.projectName ?? "General"} · {row.status}
-          {row.createdAt ? ` · ${new Date(row.createdAt).toLocaleString()}` : ""}
-        </p>
-        {row.notes ? <p className="text-sm text-slate-600 dark:text-slate-300">{row.notes}</p> : null}
-        {row.gitRepoUrl ? (
-          <a href={row.gitRepoUrl} target="_blank" rel="noreferrer" className="text-sm text-sky-600 hover:underline">
-            {row.gitRepoUrl}
-          </a>
+      <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-white px-5 py-5 dark:border-slate-800 dark:from-slate-950/40 dark:to-slate-900/50">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            Work update
+          </p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{row.title}</h1>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <span className="shrink-0 text-slate-500 dark:text-slate-400">Client</span>
+              <span className="min-w-0 truncate">{row.clientName ?? "—"}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <span className="text-slate-500 dark:text-slate-400">Project</span>
+              <span className="max-w-[12rem] truncate">{row.projectName ?? "General"}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <span className="text-slate-500 dark:text-slate-400">Status</span>
+              <span>{row.status}</span>
+            </span>
+            {row.createdAt ? (
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium tabular-nums text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                {new Date(row.createdAt).toLocaleString()}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        {row.notes || row.gitRepoUrl ? (
+          <div className="space-y-5 px-5 py-5">
+            {row.notes ? (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Notes
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-slate-300">{row.notes}</p>
+              </div>
+            ) : null}
+            {row.gitRepoUrl ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Repository
+                </h2>
+                <a
+                  href={row.gitRepoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block break-all text-sm font-medium text-sky-600 underline-offset-2 hover:underline dark:text-sky-400"
+                >
+                  {row.gitRepoUrl}
+                </a>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </header>
 

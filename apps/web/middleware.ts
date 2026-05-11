@@ -120,7 +120,9 @@ export async function middleware(req: NextRequest) {
       return res;
     }
 
-    if (isClientAppRoute) {
+    // Staff may also hold a client portal cookie after "View as client" (admin impersonation).
+    // Only block /client when there is no valid client session.
+    if (isClientAppRoute && !clientPayload) {
       const dashboardUrl = new URL("/dashboard", req.url);
       const res = NextResponse.redirect(dashboardUrl);
       res.headers.set("x-request-id", requestId);

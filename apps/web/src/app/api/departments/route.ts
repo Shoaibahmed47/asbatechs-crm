@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
@@ -29,6 +30,20 @@ export async function POST(req: NextRequest) {
 
   if (!payload || payload.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const [sessionUser] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.id, payload.userId));
+  if (!sessionUser) {
+    return NextResponse.json(
+      {
+        error:
+          "Your session user no longer exists in the database. Please sign out and log in again."
+      },
+      { status: 401 }
+    );
   }
 
   const body = await req.json().catch(() => null);

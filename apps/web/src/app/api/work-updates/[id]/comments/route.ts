@@ -13,17 +13,28 @@ const createSchema = z.object({
 
 type Ctx = { params: Promise<{ id: string }> };
 
-async function resolveViewer(req: NextRequest) {
+type ResolvedViewer =
+  | { kind: "internal"; userId: number; role: string }
+  | { kind: "client"; clientId: number };
+
+async function resolveViewer(req: NextRequest): Promise<ResolvedViewer | null> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const internal = token ? await verifyAuthToken(token) : null;
   if (internal && isRole(internal.role)) {
-    return { type: "user" as const, userId: internal.userId };
+    return { kind: "internal", userId: internal.userId, role: internal.role };
   }
   const client = await getClientSession();
   if (client) {
-    return { type: "client" as const, clientId: client.clientId };
+    return { kind: "client", clientId: client.clientId };
   }
   return null;
+}
+
+function actorTypeForInsert(viewer: ResolvedViewer): string {
+  if (viewer.kind === "client") return "client";
+  if (viewer.role === "admin") return "admin";
+  if (viewer.role === "manager") return "manager";
+  return "employee";
 }
 
 export async function GET(req: NextRequest, ctx: Ctx) {
@@ -47,7 +58,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (!work) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (viewer.type === "client" && work.clientId !== viewer.clientId) {
+  if (viewer.kind === "client" && work.clientId !== viewer.clientId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -58,7 +69,9 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       body: schema.clientWorkComments.body,
       createdAt: schema.clientWorkComments.createdAt,
       userName: schema.users.name,
-      clientName: schema.clients.name
+      userEmail: schema.users.email,
+      clientName: schema.clients.name,
+      clientEmail: schema.clients.email
     })
     .from(schema.clientWorkComments)
     .leftJoin(schema.users, eq(schema.clientWorkComments.actorUserId, schema.users.id))
@@ -90,7 +103,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!work) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (viewer.type === "client" && work.clientId !== viewer.clientId) {
+  if (viewer.kind === "client" && work.clientId !== viewer.clientId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -104,9 +117,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     .insert(schema.clientWorkComments)
     .values({
       workUpdateId: id,
-      actorType: viewer.type,
-      actorUserId: viewer.type === "user" ? viewer.userId : null,
-      actorClientId: viewer.type === "client" ? viewer.clientId : null,
+      actorType: actorTypeForInsert(viewer),
+      actorUserId: viewer.kind === "internal" ? viewer.userId : null,
+      actorClientId: viewer.kind === "client" ? viewer.clientId : null,
       body: parsed.data.body
     })
     .returning();

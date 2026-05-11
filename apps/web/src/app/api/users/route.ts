@@ -72,6 +72,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const [sessionUser] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.id, payload.userId));
+  if (!sessionUser) {
+    return NextResponse.json(
+      {
+        error:
+          "Your session user no longer exists in the database. Please sign out and log in again."
+      },
+      { status: 401 }
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = createUserSchema.safeParse(body);
   if (!parsed.success) {

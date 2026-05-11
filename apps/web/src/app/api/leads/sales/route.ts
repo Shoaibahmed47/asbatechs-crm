@@ -143,6 +143,15 @@ export async function POST(req: NextRequest) {
     })
     .from(schema.users)
     .where(eq(schema.users.id, payload.userId));
+  if (!currentUser) {
+    return NextResponse.json(
+      {
+        error:
+          "Your session user no longer exists in the database. Please sign out and log in again."
+      },
+      { status: 401 }
+    );
+  }
   const currentDepartmentId = currentUser?.departmentId ?? null;
 
   if (payload.role === "manager") {

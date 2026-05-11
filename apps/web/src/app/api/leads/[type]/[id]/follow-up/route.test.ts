@@ -21,7 +21,8 @@ jest.mock("@/lib/db", () => ({
       from: jest.fn(() => ({ where: selectWhere }))
     })),
     update: jest.fn(() => ({ set: updateSet })),
-    insert: jest.fn(() => ({ values: insertValues }))
+    insert: jest.fn(() => ({ values: insertValues })),
+    delete: jest.fn(() => ({ where: jest.fn().mockResolvedValue(undefined) }))
   }
 }));
 jest.mock("@asbatechs-crm/database", () => ({

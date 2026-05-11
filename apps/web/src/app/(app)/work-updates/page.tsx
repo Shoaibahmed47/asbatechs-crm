@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ClientOption = { id: number; name: string };
 type ProjectOption = { id: number; clientId: number; name: string };
@@ -24,7 +25,29 @@ type UpdateRow = {
   projectName: string | null;
   clientName: string | null;
   createdAt: string | null;
+  authorType?: "client" | "employee" | "admin" | string;
+  authorName?: string | null;
 };
+
+function authorBadgeClass(authorType?: string) {
+  if (authorType === "client") {
+    return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+  }
+  if (authorType === "employee") {
+    return "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300";
+  }
+  if (authorType === "admin") {
+    return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+  }
+  return "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+}
+
+function authorLabel(authorType?: string) {
+  if (authorType === "client") return "CLIENT";
+  if (authorType === "employee") return "EMPLOYEE";
+  if (authorType === "admin") return "ADMIN";
+  return "LEGACY";
+}
 
 function ExistingAttachmentPreview({
   att,
@@ -439,7 +462,21 @@ export default function InternalWorkUpdatesPage() {
                     <p className="font-medium text-slate-900 dark:text-white">{u.title}</p>
                     <p className="text-xs text-slate-500">
                       {u.clientName ?? "Client"} · {u.projectName ?? "General"} · {u.status}
+                      {u.createdAt ? ` · ${new Date(u.createdAt).toLocaleString()}` : ""}
                     </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 font-semibold tracking-wide",
+                          authorBadgeClass(u.authorType)
+                        )}
+                      >
+                        {authorLabel(u.authorType)}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        By {u.authorName ?? "Unknown"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <Link

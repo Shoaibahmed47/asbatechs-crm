@@ -5,6 +5,7 @@ import { ChevronDown, Lock, RefreshCw, Trash2, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ export function EmployeeDirectoryTable({
   footer?: ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
+  const [deleteTargetRow, setDeleteTargetRow] = useState<EmployeeDirectoryRow | null>(null);
   const [selectedByUser, setSelectedByUser] = useState<Record<number, number[]>>({});
   const [savingAssignByUser, setSavingAssignByUser] = useState<Record<number, boolean>>({});
   const [savingDeptByUser, setSavingDeptByUser] = useState<Record<number, boolean>>({});
@@ -97,16 +99,17 @@ export function EmployeeDirectoryTable({
 
   const runDeleteRow = useCallback(
     async (row: EmployeeDirectoryRow) => {
+      setDeleteTargetRow(row);
+    },
+    []
+  );
+
+  const confirmDeleteRow = useCallback(
+    async () => {
+      const row = deleteTargetRow;
+      if (!row) return;
       const email = row.email;
       const isInvite = row.kind === "invite";
-      const label = isInvite ? "pending invite" : "employee";
-      if (!window.confirm(`Remove ${label} ${email}? This action cannot be undone.`)) {
-        return;
-      }
-      if (row.kind === "user" && row.role.toLowerCase() === "admin") {
-        const typed = window.prompt(`Type DELETE to remove admin ${email}`);
-        if (typed !== "DELETE") return;
-      }
       setBusy(true);
       try {
         if (isInvite) {
@@ -127,9 +130,10 @@ export function EmployeeDirectoryTable({
         );
       } finally {
         setBusy(false);
+        setDeleteTargetRow(null);
       }
     },
-    [onDirectoryChanged]
+    [deleteTargetRow, onDirectoryChanged]
   );
 
   const getSelectedIds = (row: EmployeeUserRow): number[] =>
@@ -513,6 +517,24 @@ export function EmployeeDirectoryTable({
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={!!deleteTargetRow}
+        title="Remove employee?"
+        description={
+          deleteTargetRow
+            ? `Remove ${
+                deleteTargetRow.kind === "invite" ? "pending invite" : "employee"
+              } ${deleteTargetRow.email}? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel={busy ? "Removing..." : "Remove"}
+        confirmDisabled={busy}
+        onCancel={() => {
+          if (busy) return;
+          setDeleteTargetRow(null);
+        }}
+        onConfirm={() => void confirmDeleteRow()}
+      />
       {footer ? <div className="border-t border-slate-200/80 px-4 py-3 dark:border-slate-800/80">{footer}</div> : null}
     </div>
   );

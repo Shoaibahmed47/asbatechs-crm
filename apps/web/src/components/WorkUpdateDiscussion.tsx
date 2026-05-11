@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type WorkComment = {
   id: number;
@@ -10,7 +11,9 @@ type WorkComment = {
   body: string;
   createdAt: string | null;
   userName: string | null;
+  userEmail: string | null;
   clientName: string | null;
+  clientEmail: string | null;
 };
 
 type Props = {
@@ -19,9 +22,55 @@ type Props = {
   initialStatus: string;
 };
 
-function labelForActor(c: WorkComment): string {
-  if (c.actorType === "client") return c.clientName?.trim() || "Client";
-  return c.userName?.trim() || "Employee";
+function normalizedActorType(actorType: string): string {
+  if (actorType === "user") return "employee";
+  return actorType;
+}
+
+function authorBadgeClass(actorType: string) {
+  const t = normalizedActorType(actorType);
+  if (t === "client") {
+    return "bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200";
+  }
+  if (t === "employee") {
+    return "bg-violet-100 text-violet-800 dark:bg-violet-900/45 dark:text-violet-200";
+  }
+  if (t === "admin") {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100";
+  }
+  if (t === "manager") {
+    return "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100";
+  }
+  return "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200";
+}
+
+function authorBadgeLabel(actorType: string) {
+  const t = normalizedActorType(actorType);
+  if (t === "client") return "CLIENT";
+  if (t === "employee") return "EMPLOYEE";
+  if (t === "admin") return "ADMIN";
+  if (t === "manager") return "MANAGER";
+  return "COMMENT";
+}
+
+/** How many newest comments stay visible when history is collapsed. */
+const RECENT_COMMENTS_VISIBLE = 5;
+
+function displayAuthor(c: WorkComment): string {
+  if (c.actorType === "client") {
+    const email = c.clientEmail?.trim();
+    const name = c.clientName?.trim();
+    if (email && name && email.toLowerCase() !== name.toLowerCase()) {
+      return `${name} · ${email}`;
+    }
+    return email || name || "Client";
+  }
+  const email = c.userEmail?.trim();
+  const name = c.userName?.trim();
+  if (email && name && email.toLowerCase() !== name.toLowerCase()) {
+    return `${name} · ${email}`;
+  }
+  return email || name || "Team member";
 }
 
 export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }: Props) {
@@ -32,6 +81,11 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
   const [reviewComment, setReviewComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showFullHistory, setShowFullHistory] = useState(false);
+
+  useEffect(() => {
+    setShowFullHistory(false);
+  }, [workUpdateId]);
 
   const loadComments = useCallback(async () => {
     const res = await apiFetch.get<{ comments: WorkComment[] }>(`/api/work-updates/${workUpdateId}/comments`);
@@ -92,20 +146,30 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
     }
   }
 
+  const discussionCanCollapse = comments.length > RECENT_COMMENTS_VISIBLE;
+  const discussionVisibleComments =
+    !discussionCanCollapse || showFullHistory
+      ? comments
+      : comments.slice(-RECENT_COMMENTS_VISIBLE);
+  const discussionHiddenOlderCount = comments.length - discussionVisibleComments.length;
+
+  const fieldClass =
+    "form-input w-full border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500";
+
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-white">Discussion</h2>
-        <span className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-300">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white">Discussion</h2>
+        <span className="rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
           Status: {status}
         </span>
       </div>
 
       {canReview ? (
-        <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-xs text-slate-400">Client review action</p>
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Client review action</p>
           <textarea
-            className="form-input min-h-[72px] w-full border-slate-700 bg-slate-950 text-white"
+            className={`${fieldClass} min-h-[72px]`}
             placeholder="Add optional review comment"
             value={reviewComment}
             onChange={(e) => setReviewComment(e.target.value)}
@@ -124,29 +188,82 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
         </div>
       ) : null}
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading comments…</p>
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Loading comments…</p>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-slate-500">No comments yet.</p>
+        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+          No comments yet.
+        </p>
       ) : (
-        <ul className="space-y-2">
-          {comments.map((c) => (
-            <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="font-medium text-slate-300">{labelForActor(c)}</span>
-                {c.createdAt ? <span>{new Date(c.createdAt).toLocaleString()}</span> : null}
-              </div>
-              <p className="mt-1 text-sm text-slate-300">{c.body}</p>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-2">
+          {discussionCanCollapse && !showFullHistory && discussionHiddenOlderCount > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              onClick={() => setShowFullHistory(true)}
+            >
+              Show more
+              <span className="ml-1.5 font-normal text-slate-500 dark:text-slate-400">
+                ({discussionHiddenOlderCount} earlier{" "}
+                {discussionHiddenOlderCount === 1 ? "message" : "messages"})
+              </span>
+            </Button>
+          ) : null}
+          {discussionCanCollapse && showFullHistory ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full border-transparent bg-transparent text-slate-600 shadow-none hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
+              onClick={() => setShowFullHistory(false)}
+            >
+              Show less
+            </Button>
+          ) : null}
+          <ul className="space-y-2">
+            {discussionVisibleComments.map((c) => (
+              <li
+                key={c.id}
+                className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/40"
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide",
+                      authorBadgeClass(c.actorType)
+                    )}
+                  >
+                    {authorBadgeLabel(c.actorType)}
+                  </span>
+                  <span className="text-xs font-medium text-slate-800 dark:text-slate-100">{displayAuthor(c)}</span>
+                  {c.createdAt ? (
+                    <>
+                      <span className="hidden text-slate-400 sm:inline dark:text-slate-600" aria-hidden>
+                        ·
+                      </span>
+                      <time
+                        dateTime={c.createdAt}
+                        className="text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400 sm:ml-0"
+                      >
+                        {new Date(c.createdAt).toLocaleString()}
+                      </time>
+                    </>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{c.body}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <form onSubmit={postComment} className="space-y-2">
         <textarea
-          className="form-input min-h-[80px] w-full border-slate-700 bg-slate-950 text-white"
+          className={`${fieldClass} min-h-[80px]`}
           value={commentBody}
           onChange={(e) => setCommentBody(e.target.value)}
           placeholder="Write a comment"

@@ -171,160 +171,182 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isRole(payload.role)) {
-    return NextResponse.json(
-      { error: "Your account role cannot create leads. Ask an administrator." },
-      { status: 403 }
-    );
-  }
+  try {
+    if (!isRole(payload.role)) {
+      return NextResponse.json(
+        { error: "Your account role cannot create leads. Ask an administrator." },
+        { status: 403 }
+      );
+    }
 
-  const [currentUser] = await db
-    .select({
-      id: schema.users.id,
-      departmentId: schema.users.departmentId
-    })
-    .from(schema.users)
-    .where(eq(schema.users.id, payload.userId));
-  const currentDepartmentId = currentUser?.departmentId ?? null;
-
-  if (payload.role === "manager") {
-    if (!currentDepartmentId) {
+    const [currentUser] = await db
+      .select({
+        id: schema.users.id,
+        departmentId: schema.users.departmentId
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, payload.userId));
+    if (!currentUser) {
       return NextResponse.json(
         {
           error:
-            "Your profile has no department. An admin must assign you to a department before you can create leads."
+            "Your session user no longer exists in the database. Please sign out and log in again."
         },
-        { status: 403 }
+        { status: 401 }
       );
     }
-    if (data.departmentId != null && data.departmentId !== currentDepartmentId) {
-      return NextResponse.json(
-        { error: "You can only create leads for your own department." },
-        { status: 403 }
-      );
-    }
-  }
+    const currentDepartmentId = currentUser?.departmentId ?? null;
 
-  const assignmentDepartmentId =
-    payload.role === "manager" ? currentDepartmentId : null;
-  const shouldAutoAssign = data.assignedUserId == null;
-
-  let assignedUserId: number | null = null;
-  if (shouldAutoAssign) {
-    assignedUserId = await autoAssignLead({
-      leadType: "hot",
-      departmentId: assignmentDepartmentId,
-      eligibleRoles: assignableUserRoles
-    });
-
-    // Fallback: ensure non-admin creators always get a valid owner.
-    if (assignedUserId == null && payload.role !== "admin") {
-      assignedUserId = payload.userId;
-    }
-  } else {
-    // Manual assignment requires authorization.
-    const requestedAssigned = data.assignedUserId;
-    if (typeof requestedAssigned !== "number") {
-      return NextResponse.json({ error: "Invalid assignedUserId" }, { status: 400 });
-    }
-
-    if (payload.role === "employee") {
-      assignedUserId = requestedAssigned;
-    } else if (payload.role === "manager") {
+    if (payload.role === "manager") {
       if (!currentDepartmentId) {
         return NextResponse.json(
-          { error: "Your manager profile has no department. Contact an administrator." },
+          {
+            error:
+              "Your profile has no department. An admin must assign you to a department before you can create leads."
+          },
           { status: 403 }
         );
       }
-
-      const [targetUser] = await db
-        .select({ id: schema.users.id })
-        .from(schema.users)
-        .where(
-          and(
-            eq(schema.users.id, requestedAssigned),
-            eq(schema.users.departmentId, currentDepartmentId)
-          )
-        );
-
-      if (!targetUser) {
+      if (data.departmentId != null && data.departmentId !== currentDepartmentId) {
         return NextResponse.json(
-          { error: "You can only assign leads to people in your own department." },
+          { error: "You can only create leads for your own department." },
           { status: 403 }
         );
       }
-      assignedUserId = requestedAssigned;
+    }
+
+    const assignmentDepartmentId =
+      payload.role === "manager" ? currentDepartmentId : null;
+    const shouldAutoAssign = data.assignedUserId == null;
+
+    let assignedUserId: number | null = null;
+    if (shouldAutoAssign) {
+      assignedUserId = await autoAssignLead({
+        leadType: "hot",
+        departmentId: assignmentDepartmentId,
+        eligibleRoles: assignableUserRoles
+      });
+
+      // Fallback: ensure non-admin creators always get a valid owner.
+      if (assignedUserId == null && payload.role !== "admin") {
+        assignedUserId = payload.userId;
+      }
     } else {
-      // admin
-      assignedUserId = requestedAssigned;
+      // Manual assignment requires authorization.
+      const requestedAssigned = data.assignedUserId;
+      if (typeof requestedAssigned !== "number") {
+        return NextResponse.json({ error: "Invalid assignedUserId" }, { status: 400 });
+      }
+
+      if (payload.role === "employee") {
+        assignedUserId = requestedAssigned;
+      } else if (payload.role === "manager") {
+        if (!currentDepartmentId) {
+          return NextResponse.json(
+            { error: "Your manager profile has no department. Contact an administrator." },
+            { status: 403 }
+          );
+        }
+
+        const [targetUser] = await db
+          .select({ id: schema.users.id })
+          .from(schema.users)
+          .where(
+            and(
+              eq(schema.users.id, requestedAssigned),
+              eq(schema.users.departmentId, currentDepartmentId)
+            )
+          );
+
+        if (!targetUser) {
+          return NextResponse.json(
+            { error: "You can only assign leads to people in your own department." },
+            { status: 403 }
+          );
+        }
+        assignedUserId = requestedAssigned;
+      } else {
+        // admin
+        assignedUserId = requestedAssigned;
+      }
     }
-  }
 
-  let effectiveDepartmentId: number | null = currentDepartmentId;
-  if (assignedUserId != null) {
-    const [assignee] = await db
-      .select({ departmentId: schema.users.departmentId })
-      .from(schema.users)
-      .where(eq(schema.users.id, assignedUserId));
-    if (!assignee) {
-      return NextResponse.json({ error: "Assigned user not found." }, { status: 400 });
+    let effectiveDepartmentId: number | null = currentDepartmentId;
+    if (assignedUserId != null) {
+      const [assignee] = await db
+        .select({ departmentId: schema.users.departmentId })
+        .from(schema.users)
+        .where(eq(schema.users.id, assignedUserId));
+      if (!assignee) {
+        return NextResponse.json({ error: "Assigned user not found." }, { status: 400 });
+      }
+      effectiveDepartmentId = assignee.departmentId ?? null;
     }
-    effectiveDepartmentId = assignee.departmentId ?? null;
-  }
 
-  const [lead] = await db
-    .insert(schema.leads)
-    .values({
-      type: "hot",
-      clientName: data.clientName,
-      phone: data.phone ?? null,
-      email: data.email ?? null,
-      source: data.source ?? null,
-      departmentId: effectiveDepartmentId ?? null,
-      assignedUserId,
-      status: effectiveStatus,
-      notesSummary: data.notes ?? null,
-      nextFollowUpAt,
-      nextFollowUpDate: nextFollowUpDate ?? null,
-      followUpTimezone,
-      saleAmount: null,
-      servicePurchased: null,
-      saleDate: null
-    })
-    .returning();
+    const [lead] = await db
+      .insert(schema.leads)
+      .values({
+        type: "hot",
+        clientName: data.clientName,
+        phone: data.phone ?? null,
+        email: data.email ?? null,
+        source: data.source ?? null,
+        departmentId: effectiveDepartmentId ?? null,
+        assignedUserId,
+        status: effectiveStatus,
+        notesSummary: data.notes ?? null,
+        nextFollowUpAt,
+        nextFollowUpDate: nextFollowUpDate ?? null,
+        followUpTimezone,
+        saleAmount: null,
+        servicePurchased: null,
+        saleDate: null
+      })
+      .returning();
 
-  await logActivity({
-    userId: payload.userId,
-    action: "lead_created",
-    entityType: "lead",
-    entityId: lead.id
-  });
-  await logActivity({
-    userId: payload.userId,
-    action: "lead_assigned",
-    entityType: "lead",
-    entityId: lead.id
-  });
-
-  if (lead.assignedUserId) {
-    await db.insert(schema.notifications).values({
-      userId: lead.assignedUserId,
-      type: "lead_assigned",
-      leadId: lead.id,
-      message: `You have been assigned a new hot lead: ${lead.clientName}`
+    await logActivity({
+      userId: payload.userId,
+      action: "lead_created",
+      entityType: "lead",
+      entityId: lead.id
     });
-  }
-
-  if (lead.assignedUserId) {
-    await upsertLeadFollowUpReminder({
-      userId: lead.assignedUserId,
-      leadId: lead.id,
-      clientName: lead.clientName,
-      nextFollowUpAt: lead.nextFollowUpAt,
-      nextFollowUpDate: lead.nextFollowUpDate
+    await logActivity({
+      userId: payload.userId,
+      action: "lead_assigned",
+      entityType: "lead",
+      entityId: lead.id
     });
-  }
 
-  return NextResponse.json({ lead: serializeHotLead(lead) }, { status: 201 });
+    if (lead.assignedUserId) {
+      await db.insert(schema.notifications).values({
+        userId: lead.assignedUserId,
+        type: "lead_assigned",
+        leadId: lead.id,
+        message: `You have been assigned a new hot lead: ${lead.clientName}`
+      });
+    }
+
+    if (lead.assignedUserId) {
+      await upsertLeadFollowUpReminder({
+        userId: lead.assignedUserId,
+        leadId: lead.id,
+        clientName: lead.clientName,
+        nextFollowUpAt: lead.nextFollowUpAt,
+        nextFollowUpDate: lead.nextFollowUpDate
+      });
+    }
+
+    return NextResponse.json({ lead: serializeHotLead(lead) }, { status: 201 });
+  } catch (error) {
+    console.error("[api/leads/hot][POST] Failed to save hot lead:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error && error.message
+            ? `Hot lead save failed: ${error.message}`
+            : "Hot lead save failed due to an internal server error."
+      },
+      { status: 500 }
+    );
+  }
 }

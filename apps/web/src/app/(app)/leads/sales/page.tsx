@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { TablePagination } from "@/components/TablePagination";
 import { LeadEntryForm } from "@/components/leads/lead-entry-form";
+import { ServicePurchasedTagsDisplay } from "@/components/leads/service-purchased-tags-input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,10 @@ import { getLocalDateString } from "@/lib/attendance-date";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { leadPermissionUserMessage } from "@/lib/lead-api-errors";
 import { LEAD_STAGE_OPTIONS, type LeadStage } from "@/lib/lead-workflow";
+import {
+  parseServicePurchasedToTags,
+  serializeServicePurchasedTags
+} from "@/lib/service-purchased-tags";
 import { cn } from "@/lib/utils";
 
 type SaleLead = {
@@ -83,7 +88,7 @@ export default function SalesLeadsPage() {
   const [departmentId, setDepartmentId] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
-  const [servicePurchased, setServicePurchased] = useState("");
+  const [servicePurchasedTags, setServicePurchasedTags] = useState<string[]>([]);
   const [saleDate, setSaleDate] = useState(() => getLocalDateString());
   const [status, setStatus] = useState<LeadStage>("Won");
   const [notes, setNotes] = useState("");
@@ -289,7 +294,7 @@ export default function SalesLeadsPage() {
     setDepartmentId("");
     setAssignedUserId("");
     setSaleAmount("");
-    setServicePurchased("");
+    setServicePurchasedTags([]);
     setSaleDate(getLocalDateString());
     setStatus("Won");
     setNotes("");
@@ -306,7 +311,7 @@ export default function SalesLeadsPage() {
     setDepartmentId(lead.departmentId != null ? String(lead.departmentId) : "");
     setAssignedUserId(lead.assignedUserId != null ? String(lead.assignedUserId) : "");
     setSaleAmount(lead.saleAmount ?? "");
-    setServicePurchased(lead.servicePurchased ?? "");
+    setServicePurchasedTags(parseServicePurchasedToTags(lead.servicePurchased));
     setSaleDate(lead.dateOfSale ?? getLocalDateString());
     setStatus((lead.status as LeadStage) ?? "Won");
     setNotes(lead.notes ?? "");
@@ -337,7 +342,7 @@ export default function SalesLeadsPage() {
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
         source: source.trim() || undefined,
-        servicePurchased: servicePurchased.trim() || undefined,
+        servicePurchased: serializeServicePurchasedTags(servicePurchasedTags),
         notes: notes.trim() || undefined,
         saleDate: saleDate || undefined,
         status
@@ -468,8 +473,8 @@ export default function SalesLeadsPage() {
         onNotesChange={setNotes}
         saleAmount={saleAmount}
         onSaleAmountChange={setSaleAmount}
-        servicePurchased={servicePurchased}
-        onServicePurchasedChange={setServicePurchased}
+        servicePurchasedTags={servicePurchasedTags}
+        onServicePurchasedTagsChange={setServicePurchasedTags}
         saleDate={saleDate}
         onSaleDateChange={setSaleDate}
         onCancel={editingLeadId ? resetForm : undefined}
@@ -682,7 +687,7 @@ export default function SalesLeadsPage() {
                         {lead.clientName}
                       </td>
                       <td className="py-2 text-xs text-slate-600 dark:text-slate-300">
-                        {lead.servicePurchased || "—"}
+                        <ServicePurchasedTagsDisplay value={lead.servicePurchased} />
                       </td>
                       <td className="py-2 text-xs text-slate-700 dark:text-slate-300">
                         {lead.saleAmount

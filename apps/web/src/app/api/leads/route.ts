@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and } from "drizzle-orm";
+import { and, eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
@@ -10,12 +10,21 @@ import {
   resolveLeadOrderBy
 } from "@/lib/leads-query";
 
-function serializeLead(row: typeof schema.leads.$inferSelect) {
-  const { notesSummary, saleDate, ...rest } = row;
+function serializeLead(
+  row: typeof schema.leads.$inferSelect & {
+    departmentName: string | null;
+    assignedUserName: string | null;
+    assignedUserEmail: string | null;
+  }
+) {
+  const { notesSummary, saleDate, departmentName, assignedUserName, assignedUserEmail, ...rest } = row;
   return {
     ...rest,
     notes: notesSummary ?? null,
-    dateOfSale: saleDate ?? null
+    dateOfSale: saleDate ?? null,
+    departmentName: departmentName ?? null,
+    assignedUserName: assignedUserName ?? null,
+    assignedUserEmail: assignedUserEmail ?? null
   };
 }
 
@@ -39,9 +48,18 @@ export async function GET(req: NextRequest) {
   const { page, limit, offset } = parseListPagination(searchParams);
   const orderByParts = resolveLeadOrderBy("all", searchParams);
   const total = await countLeads(whereClause);
+  const leadCols = getTableColumns(schema.leads);
+  const assignee = schema.users;
   const rows = await db
-    .select()
+    .select({
+      ...leadCols,
+      departmentName: schema.departments.name,
+      assignedUserName: assignee.name,
+      assignedUserEmail: assignee.email
+    })
     .from(schema.leads)
+    .leftJoin(schema.departments, eq(schema.leads.departmentId, schema.departments.id))
+    .leftJoin(assignee, eq(schema.leads.assignedUserId, assignee.id))
     .where(whereClause)
     .orderBy(...orderByParts)
     .limit(limit)

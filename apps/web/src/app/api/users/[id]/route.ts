@@ -73,11 +73,33 @@ export async function PATCH(
     delete update.password;
   }
 
-  const [user] = await db
-    .update(schema.users)
-    .set(update)
-    .where(eq(schema.users.id, id))
-    .returning();
+  const shouldSyncLeadDepartments = "departmentId" in parsed.data;
+
+  const [user] = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(schema.users)
+      .set(update)
+      .where(eq(schema.users.id, id))
+      .returning();
+
+    if (!updated) {
+      return [];
+    }
+
+    if (shouldSyncLeadDepartments) {
+      const newDepartmentId = parsed.data.departmentId ?? null;
+      await tx
+        .update(schema.leads)
+        .set({ departmentId: newDepartmentId, updatedAt: new Date() })
+        .where(eq(schema.leads.assignedUserId, id));
+    }
+
+    return [updated];
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({
     user: {

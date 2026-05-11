@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ServicePurchasedTagsInput } from "@/components/leads/service-purchased-tags-input";
 import type { LeadStage } from "@/lib/lead-workflow";
 
 type Department = { id: number; name: string };
@@ -43,8 +44,9 @@ type LeadEntryFormProps = {
   onCustomTimezoneChange?: (value: string) => void;
   saleAmount?: string;
   onSaleAmountChange?: (value: string) => void;
-  servicePurchased?: string;
-  onServicePurchasedChange?: (value: string) => void;
+  /** Sale mode: services as removable tags (stored as JSON in `service_purchased`). */
+  servicePurchasedTags?: string[];
+  onServicePurchasedTagsChange?: (tags: string[]) => void;
   saleDate?: string;
   onSaleDateChange?: (value: string) => void;
   onSubmit: (e: React.FormEvent) => Promise<void> | void;
@@ -59,6 +61,8 @@ type LeadEntryFormProps = {
   /** Optional secondary action (e.g. cancel editing). */
   onCancel?: () => void;
   cancelLabel?: string;
+  /** Optional backend validation messages keyed by field name. */
+  fieldErrors?: Partial<Record<string, string>>;
 };
 
 export function LeadEntryForm({
@@ -97,8 +101,8 @@ export function LeadEntryForm({
   onCustomTimezoneChange,
   saleAmount,
   onSaleAmountChange,
-  servicePurchased,
-  onServicePurchasedChange,
+  servicePurchasedTags,
+  onServicePurchasedTagsChange,
   saleDate,
   onSaleDateChange,
   onSubmit,
@@ -107,11 +111,15 @@ export function LeadEntryForm({
   showDepartment = true,
   submitDisabledReason,
   onCancel,
-  cancelLabel
+  cancelLabel,
+  fieldErrors
 }: LeadEntryFormProps) {
   const isSales = mode === "sale";
 
   const isSubmitDisabled = saving || !!submitDisabledReason;
+  const errorFor = (field: string) => fieldErrors?.[field];
+  const inputClass = (field: string) =>
+    `form-input mt-1 ${errorFor(field) ? "border-red-300 ring-1 ring-red-200 dark:border-red-700 dark:ring-red-900/40" : ""}`;
 
   return (
     <div className="data-card p-5" id={formId}>
@@ -130,12 +138,15 @@ export function LeadEntryForm({
             Client name <span className="text-red-500">*</span>
           </label>
           <input
-            className="form-input mt-1"
+            className={inputClass("clientName")}
             value={clientName}
             onChange={(e) => onClientNameChange(e.target.value)}
             placeholder="Company or contact name"
             required
           />
+          {errorFor("clientName") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("clientName")}</p>
+          ) : null}
         </div>
         {!isSales ? (
           <div>
@@ -144,10 +155,13 @@ export function LeadEntryForm({
             </label>
             <input
               type="datetime-local"
-              className="form-input mt-1"
+              className={inputClass("nextFollowUpAtLocal")}
               value={nextFollowUpAtLocal ?? ""}
               onChange={(e) => onNextFollowUpAtLocalChange?.(e.target.value)}
             />
+            {errorFor("nextFollowUpAtLocal") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("nextFollowUpAtLocal")}</p>
+            ) : null}
           </div>
         ) : null}
         {!isSales ? (
@@ -156,7 +170,7 @@ export function LeadEntryForm({
               Follow-up timezone
             </label>
             <select
-              className="form-input mt-1"
+              className={inputClass("followUpTimezone")}
               value={followUpTimezone ?? ""}
               onChange={(e) => onFollowUpTimezoneChange?.(e.target.value)}
             >
@@ -167,6 +181,9 @@ export function LeadEntryForm({
                 </option>
               ))}
             </select>
+            {errorFor("followUpTimezone") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("followUpTimezone")}</p>
+            ) : null}
           </div>
         ) : null}
         {!isSales && showCustomTimezoneInput ? (
@@ -175,11 +192,14 @@ export function LeadEntryForm({
               Other timezone (IANA)
             </label>
             <input
-              className="form-input mt-1"
+              className={inputClass("customTimezone")}
               value={customTimezone ?? ""}
               onChange={(e) => onCustomTimezoneChange?.(e.target.value)}
               placeholder="e.g. Europe/London"
             />
+            {errorFor("customTimezone") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("customTimezone")}</p>
+            ) : null}
           </div>
         ) : null}
         <div>
@@ -187,11 +207,14 @@ export function LeadEntryForm({
             Phone
           </label>
           <input
-            className="form-input mt-1"
+            className={inputClass("phone")}
             value={phone}
             onChange={(e) => onPhoneChange(e.target.value)}
             placeholder="+1 …"
           />
+          {errorFor("phone") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("phone")}</p>
+          ) : null}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -199,22 +222,28 @@ export function LeadEntryForm({
           </label>
           <input
             type="email"
-            className="form-input mt-1"
+            className={inputClass("email")}
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="name@company.com"
           />
+          {errorFor("email") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("email")}</p>
+          ) : null}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
             Source
           </label>
           <input
-            className="form-input mt-1"
+            className={inputClass("source")}
             value={source}
             onChange={(e) => onSourceChange(e.target.value)}
             placeholder="Referral, website, event…"
           />
+          {errorFor("source") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("source")}</p>
+          ) : null}
         </div>
 
         {isSales ? (
@@ -226,11 +255,14 @@ export function LeadEntryForm({
               type="number"
               min={0}
               step="0.01"
-              className="form-input mt-1"
+              className={inputClass("saleAmount")}
               value={saleAmount ?? ""}
               onChange={(e) => onSaleAmountChange?.(e.target.value)}
               placeholder="0.00"
             />
+            {errorFor("saleAmount") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("saleAmount")}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -239,12 +271,17 @@ export function LeadEntryForm({
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
               Service purchased
             </label>
-            <input
-              className="form-input mt-1"
-              value={servicePurchased ?? ""}
-              onChange={(e) => onServicePurchasedChange?.(e.target.value)}
-              placeholder="Package or SKU"
+            <ServicePurchasedTagsInput
+              tags={servicePurchasedTags ?? []}
+              onChange={onServicePurchasedTagsChange ?? (() => {})}
+              hasError={!!errorFor("servicePurchased")}
             />
+            <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+              Type a service name, then press Enter to add a tag. Click × to remove.
+            </p>
+            {errorFor("servicePurchased") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("servicePurchased")}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -255,10 +292,13 @@ export function LeadEntryForm({
             </label>
             <input
               type="date"
-              className="form-input mt-1"
+              className={inputClass("saleDate")}
               value={saleDate ?? ""}
               onChange={(e) => onSaleDateChange?.(e.target.value)}
             />
+            {errorFor("saleDate") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("saleDate")}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -268,7 +308,7 @@ export function LeadEntryForm({
               Department (optional)
             </label>
             <select
-              className="form-input mt-1 disabled:cursor-not-allowed disabled:opacity-70"
+              className={`${inputClass("departmentId")} disabled:cursor-not-allowed disabled:opacity-70`}
               disabled={departmentLocked}
               value={departmentId}
               onChange={(e) => onDepartmentIdChange(e.target.value)}
@@ -280,6 +320,9 @@ export function LeadEntryForm({
                 </option>
               ))}
             </select>
+            {errorFor("departmentId") ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("departmentId")}</p>
+            ) : null}
           </div>
         ) : null}
         <div>
@@ -287,7 +330,7 @@ export function LeadEntryForm({
             Assigned user
           </label>
           <select
-            className="form-input mt-1"
+            className={inputClass("assignedUserId")}
             value={assignedUserId}
             onChange={(e) => onAssignedUserIdChange(e.target.value)}
           >
@@ -298,13 +341,16 @@ export function LeadEntryForm({
               </option>
             ))}
           </select>
+          {errorFor("assignedUserId") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("assignedUserId")}</p>
+          ) : null}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
             Stage
           </label>
           <select
-            className="form-input mt-1"
+            className={inputClass("status")}
             value={status}
             onChange={(e) => onStatusChange(e.target.value as LeadStage)}
           >
@@ -314,17 +360,23 @@ export function LeadEntryForm({
               </option>
             ))}
           </select>
+          {errorFor("status") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("status")}</p>
+          ) : null}
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
             Notes
           </label>
           <textarea
-            className="form-input mt-1 min-h-[88px]"
+            className={`${inputClass("notes")} min-h-[88px]`}
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="Context, next step, objections…"
           />
+          {errorFor("notes") ? (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("notes")}</p>
+          ) : null}
         </div>
         <div className="md:col-span-2 space-y-2">
           {submitDisabledReason ? (

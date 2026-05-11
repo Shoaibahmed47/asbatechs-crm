@@ -41,6 +41,13 @@ describe("admin employee invites", () => {
   function req(body: unknown) {
     return {
       cookies: { get: () => ({ value: "cookie-token" }) },
+      headers: {
+        get: (name: string) => {
+          if (name === "host") return "localhost:3000";
+          if (name === "x-forwarded-host" || name === "x-forwarded-proto") return null;
+          return null;
+        }
+      },
       json: async () => body
     } as any;
   }
