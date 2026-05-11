@@ -1,42 +1,41 @@
 {
-  "name": "asbatechs-crm",
-  "version": "0.1.0",
-  "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "engines": {
-    "node": ">=22 <23"
-  },
-  "scripts": {
-    "db:build": "npm --workspace packages/database run build",
-    "predev": "npm run db:build",
-    "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
-    "prebuild": "npm run db:build",
-    "build": "npm --workspace apps/web run build",
-    "prestart": "npx kill-port 3000 && npm run build",
-    "start": "npx kill-port 3000 && npm --workspace apps/web run start",
-    "lint": "npm --workspace apps/web run lint",
-    "db:create": "createdb asbatechs-crm-db -U postgres",
-    "db:drop": "dropdb asbatechs-crm-db -U postgres",
-    "db:generate": "npm --workspace packages/database run drizzle:generate",
-    "db:migrate": "npm --workspace packages/database run drizzle:migrate",
-    "db:push": "npm --workspace packages/database run drizzle:push",
-    "db:seed": "npm --workspace packages/database run db:seed",
-    "db:clear": "npm --workspace packages/database run db:reset",
-    "db:supabase:seed-push": "npm run db:push && npm run db:seed",
-    "db:cleanup-invalid-departments": "npm --workspace packages/database run db:cleanup-invalid-departments"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/pg": "^8.18.0",
-    "concurrently": "^9.0.0",
-    "dotenv": "^17.3.1",
-    "kill-port": "^2.0.1",
-    "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "nodemailer": "^8.0.5"
-  }
+    "name": "asbatechs-crm",
+    "version": "0.1.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "engines": {
+        "node": ">=22 <23"
+    },
+    "scripts": {
+        "db:build": "npm --workspace packages/database run build",
+        "predev": "npm run db:build",
+        "dev": "npx kill-port 3000 3001 && npm --workspace apps/web run dev",
+        "prebuild": "npm run db:build",
+        "build": "npm --workspace apps/web run build",
+        "prestart": "npx kill-port 3000 && npm run build",
+        "start": "npx kill-port 3000 && npm --workspace apps/web run start",
+        "lint": "npm --workspace apps/web run lint",
+        "db:create": "createdb asbatechs-crm-db -U postgres",
+        "db:drop": "dropdb asbatechs-crm-db -U postgres",
+        "db:generate": "npm --workspace packages/database run drizzle:generate",
+        "db:migrate": "npm --workspace packages/database run drizzle:migrate",
+        "db:push": "npm --workspace packages/database run drizzle:push",
+        "db:seed": "npm --workspace packages/database run db:seed",
+        "db:clear": "npm --workspace packages/database run db:reset",
+        "db:supabase:seed-push": "npm run db:push && npm run db:seed"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/pg": "^8.18.0",
+        "concurrently": "^9.0.0",
+        "dotenv": "^17.3.1",
+        "kill-port": "^2.0.1",
+        "typescript": "^5.6.3"
+    },
+    "dependencies": {
+        "nodemailer": "^8.0.5"
+    }
 }
