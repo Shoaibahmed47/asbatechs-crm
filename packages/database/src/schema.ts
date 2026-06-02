@@ -59,6 +59,18 @@ export const attendanceLogs = pgTable("attendance_logs", {
   clockOut: timestamp("clock_out", { withTimezone: true }),
   totalWorkMinutes: integer("total_work_minutes").default(0),
   totalBreakMinutes: integer("total_break_minutes").default(0),
+  /** Accumulated minutes from auto-classified unscheduled idle sessions. */
+  unscheduledIdleMinutes: integer("unscheduled_idle_minutes").default(0),
+  /** Count of auto-classified unscheduled idle sessions. */
+  idleEventsCount: integer("idle_events_count").default(0),
+  /** Accumulated minutes where laptop was locked/sleep-like during shift. */
+  sleepMinutes: integer("sleep_minutes").default(0),
+  /** Count of sleep/lock auto-away events during shift. */
+  sleepEventsCount: integer("sleep_events_count").default(0),
+  /** Last known client/agent activity timestamp while shift is open. */
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+  /** Source that reported the last activity (browser | agent). */
+  lastActivitySource: text("last_activity_source"),
   /** Persisted snapshot: active | break | offline (kept in sync on each action). */
   status: text("status").notNull().default("offline"),
   /** Total worked hours when shift is complete (set on clock-out). */
@@ -76,7 +88,13 @@ export const breakSessions = pgTable("break_sessions", {
     .notNull()
     .references(() => attendanceLogs.id),
   breakStart: timestamp("break_start", { withTimezone: true }).notNull(),
-  breakEnd: timestamp("break_end", { withTimezone: true })
+  breakEnd: timestamp("break_end", { withTimezone: true }),
+  /** manual = employee-started, unscheduled = system-classified idle. */
+  breakType: text("break_type").notNull().default("manual"),
+  /** For unscheduled breaks: idle | sleep. */
+  unscheduledCause: text("unscheduled_cause"),
+  /** Optional explanation captured when user returns from unscheduled idle. */
+  returnReason: text("return_reason")
 });
 
 /**

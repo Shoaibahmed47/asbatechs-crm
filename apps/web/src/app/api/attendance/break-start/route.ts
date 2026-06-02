@@ -63,18 +63,51 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const manualSessionsToday = await db
+    .select({ id: schema.breakSessions.id })
+    .from(schema.breakSessions)
+    .where(
+      and(
+        eq(schema.breakSessions.attendanceLogId, log.id),
+        eq(schema.breakSessions.breakType, "manual")
+      )
+    );
+  const hasUsedOfficialBreak = manualSessionsToday.length >= 1;
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
+  const rawReason = typeof body.reason === "string" ? body.reason.trim() : "";
+  const normalizedReason = hasUsedOfficialBreak ? rawReason : "";
+
+  if (hasUsedOfficialBreak) {
+    if (!normalizedReason) {
+      return NextResponse.json(
+        { error: "Extra break reason is required." },
+        { status: 400 }
+      );
+    }
+  }
+
   const now = new Date();
   const [session] = await db
     .insert(schema.breakSessions)
     .values({
       attendanceLogId: log.id,
-      breakStart: now
+      breakStart: now,
+      breakType: hasUsedOfficialBreak ? "extra" : "manual",
+      returnReason: hasUsedOfficialBreak
+        ? `Extra break: ${normalizedReason.slice(0, 200)}`
+        : null
     })
     .returning();
 
   await db
     .update(schema.attendanceLogs)
-    .set({ status: "break" })
+    .set({ status: "break", lastActivityAt: now, lastActivitySource: "browser" })
     .where(eq(schema.attendanceLogs.id, log.id));
 
   return NextResponse.json({ session });

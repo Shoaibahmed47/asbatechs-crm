@@ -20,11 +20,13 @@ export async function GET(req: NextRequest) {
   const { people } = await getAttendanceStatusForDate(date);
   const active = people.filter((p) => p.status === "active").map((p) => p.userId);
   const onBreak = people.filter((p) => p.status === "break").map((p) => p.userId);
+  const idle = people.filter((p) => p.status === "idle").map((p) => p.userId);
   const offline = people.filter((p) => p.status === "offline").map((p) => p.userId);
 
   return NextResponse.json({
     active,
     onBreak,
+    idle,
     offline,
     counts: countAttendanceByStatus(people),
     people,

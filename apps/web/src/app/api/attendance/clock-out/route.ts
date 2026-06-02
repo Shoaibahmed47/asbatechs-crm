@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -60,6 +61,8 @@ export async function POST(req: NextRequest) {
     );
 
   let totalBreakMinutes = log.totalBreakMinutes ?? 0;
+  let unscheduledIdleMinutes = log.unscheduledIdleMinutes ?? 0;
+  let sleepMinutes = log.sleepMinutes ?? 0;
   if (openBreak) {
     const added = Math.max(
       0,
@@ -69,6 +72,12 @@ export async function POST(req: NextRequest) {
       )
     );
     totalBreakMinutes += added;
+    if (openBreak.breakType === "unscheduled") {
+      unscheduledIdleMinutes += added;
+      if (openBreak.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP) {
+        sleepMinutes += added;
+      }
+    }
   }
 
   const diffMs = now.getTime() - new Date(log.clockIn as Date).getTime();
@@ -91,8 +100,12 @@ export async function POST(req: NextRequest) {
         clockOut: now,
         totalWorkMinutes,
         totalBreakMinutes,
+        unscheduledIdleMinutes,
+        sleepMinutes,
         status: "offline",
-        totalHours
+        totalHours,
+        lastActivityAt: now,
+        lastActivitySource: "browser"
       })
       .where(eq(schema.attendanceLogs.id, log.id))
       .returning();

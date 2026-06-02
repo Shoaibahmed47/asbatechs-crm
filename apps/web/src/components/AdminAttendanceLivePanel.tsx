@@ -5,11 +5,20 @@ function StatusPill({ status }: { status: PersonAttendanceStatus["status"] }) {
   const styles =
     status === "active"
       ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+      : status === "idle"
+        ? "bg-rose-500/15 text-rose-900 dark:text-rose-300"
       : status === "break"
         ? "bg-amber-500/15 text-amber-900 dark:text-amber-300"
         : "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
 
-  const label = status === "active" ? "Active" : status === "break" ? "On break" : "Offline";
+  const label =
+    status === "active"
+      ? "Active"
+      : status === "idle"
+        ? "Idle"
+        : status === "break"
+          ? "On break"
+          : "Offline";
 
   return (
     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${styles}`}>
@@ -44,7 +53,7 @@ export function AdminAttendanceLivePanel({
             Live attendance - {date}
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-            Who is working, on break, or offline right now. Break start and end show the
+            Who is working, on break, idle, or offline right now. Break start and end show the
             <span className="font-medium text-slate-700 dark:text-slate-300"> current break </span>
             if one is open, otherwise the
             <span className="font-medium text-slate-700 dark:text-slate-300"> most recent completed break </span>
@@ -62,6 +71,12 @@ export function AdminAttendanceLivePanel({
             </div>
             <div className="text-lg font-semibold text-amber-800 dark:text-amber-300">{c.onBreak}</div>
           </div>
+          <div className="rounded-2xl border border-rose-200/80 bg-rose-50/40 px-4 py-2 dark:border-rose-900/40 dark:bg-rose-950/30">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-rose-900 dark:text-rose-400">
+              Idle
+            </div>
+            <div className="text-lg font-semibold text-rose-800 dark:text-rose-300">{c.idle}</div>
+          </div>
           <div className="rounded-2xl border border-slate-200/90 bg-slate-50/50 px-4 py-2 dark:border-slate-700 dark:bg-slate-900/50">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Offline</div>
             <div className="text-lg font-semibold text-slate-800 dark:text-slate-200">{c.offline}</div>
@@ -76,6 +91,7 @@ export function AdminAttendanceLivePanel({
               <th className="px-4 py-3">Name</th>
               <th className="hidden px-4 py-3 sm:table-cell">Email</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Reason</th>
               <th className="px-4 py-3">Clock in</th>
               <th className="px-4 py-3">Clock out</th>
               <th className="px-4 py-3">Break start</th>
@@ -89,6 +105,9 @@ export function AdminAttendanceLivePanel({
                 <td className="hidden px-4 py-2.5 text-slate-600 dark:text-slate-400 sm:table-cell">{p.email}</td>
                 <td className="px-4 py-2.5">
                   <StatusPill status={p.status} />
+                </td>
+                <td className="max-w-[22rem] px-4 py-2.5 text-slate-700 dark:text-slate-300">
+                  {p.statusReason}
                 </td>
                 <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{formatTime(p.clockIn)}</td>
                 <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{formatTime(p.clockOut)}</td>

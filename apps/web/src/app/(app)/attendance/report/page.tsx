@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 import { asc } from "drizzle-orm";
 
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
@@ -9,10 +10,15 @@ import {
   getAttendanceDailyReport,
   getAttendanceRangeReport
 } from "@/lib/attendance-daily-report";
+import {
+  getAttendanceAgentHealth,
+  type AgentHealthState
+} from "@/lib/attendance-agent-health";
 import { isAdminRole, isManagerRole } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { AttendanceReportFilters } from "./AttendanceReportFilters";
+import { AttendanceReportTables } from "@/components/attendance/AttendanceReportTables";
 
 export const dynamic = "force-dynamic";
 
@@ -24,23 +30,6 @@ function shiftDate(iso: string, deltaDays: number): string {
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const dd = String(dt.getDate()).padStart(2, "0");
   return `${yy}-${mm}-${dd}`;
-}
-
-function formatMinutes(m: number | null | undefined): string {
-  if (m == null || Number.isNaN(m)) return "—";
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${h}h ${mm}m`;
-}
-
-function formatClock(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
 }
 
 function pickDateParam(value: string | string[] | undefined): string | undefined {
@@ -111,6 +100,15 @@ export default async function AttendanceReportPage({
     statusRaw === "present" || statusRaw === "working" || statusRaw === "absent"
       ? statusRaw
       : "all";
+  const agentStateRaw = (pickDateParam(sp.agentState) ?? "").toLowerCase();
+  const alertsOnly = pickDateParam(sp.alerts) === "1";
+  const agentStateFilter: AgentHealthState | "all" =
+    agentStateRaw === "running" ||
+    agentStateRaw === "installed" ||
+    agentStateRaw === "stale" ||
+    agentStateRaw === "not_installed"
+      ? (agentStateRaw as AgentHealthState)
+      : "all";
   const departmentFilter =
     departmentRaw && /^\d+$/.test(departmentRaw) ? Number(departmentRaw) : null;
   const date =
@@ -148,36 +146,69 @@ export default async function AttendanceReportPage({
 
   let rows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
   let rangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
-  let loadError: string | null = null;
-  try {
+  const loadErrors: string[] = [];
+  const scope = {
+    role: isAdminRole(session.role) ? ("admin" as const) : ("manager" as const),
+    departmentId: session.departmentId
+  };
+  const isAdmin = isAdminRole(session.role);
+
+  const [reportResult, departmentsResult, agentHealthResult] = await Promise.allSettled([
+    mode === "range"
+      ? getAttendanceRangeReport(normalizedFrom, normalizedTo, scope)
+      : getAttendanceDailyReport(date, scope),
+    isAdmin
+      ? db
+          .select({ id: schema.departments.id, name: schema.departments.name })
+          .from(schema.departments)
+          .orderBy(asc(schema.departments.name))
+      : Promise.resolve([] as { id: number; name: string }[]),
+    isAdmin
+      ? getAttendanceAgentHealth({
+          date,
+          scope: { role: "admin", departmentId: null },
+          search,
+          departmentFilter,
+          stateFilter: agentStateFilter,
+          alertsOnly
+        })
+      : Promise.resolve(null)
+  ]);
+
+  if (reportResult.status === "fulfilled") {
     if (mode === "range") {
-      rangeRows = await getAttendanceRangeReport(normalizedFrom, normalizedTo, {
-        role: isAdminRole(session.role) ? "admin" : "manager",
-        departmentId: session.departmentId
-      });
+      rangeRows = reportResult.value as Awaited<ReturnType<typeof getAttendanceRangeReport>>;
     } else {
-      rows = await getAttendanceDailyReport(date, {
-        role: isAdminRole(session.role) ? "admin" : "manager",
-        departmentId: session.departmentId
-      });
+      rows = reportResult.value as Awaited<ReturnType<typeof getAttendanceDailyReport>>;
     }
-  } catch (err) {
-    console.error("[attendance/report]", err);
-    loadError =
-      err instanceof Error
-        ? err.message
-        : "Could not load attendance data. Check the database connection and migrations.";
+  } else {
+    console.error("[attendance/report] report", reportResult.reason);
+    loadErrors.push(
+      "Attendance data could not be loaded. Check DATABASE_URL and that Postgres/Supabase is reachable."
+    );
   }
+
+  let departments: { id: number; name: string }[] = [];
+  if (departmentsResult.status === "fulfilled") {
+    departments = departmentsResult.value;
+  } else if (isAdmin) {
+    console.error("[attendance/report] departments", departmentsResult.reason);
+    loadErrors.push("Department filter could not be loaded.");
+  }
+
+  let agentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
+  if (agentHealthResult.status === "fulfilled") {
+    agentHealth = agentHealthResult.value;
+  } else if (isAdmin) {
+    console.error("[attendance/report] agent health", agentHealthResult.reason);
+    loadErrors.push("Agent health table could not be loaded.");
+  }
+
+  const loadError = loadErrors.length > 0 ? loadErrors.join(" ") : null;
 
   const prev = shiftDate(date, -1);
   const next = shiftDate(date, 1);
-  const scopeLabel = isAdminRole(session.role) ? "All users" : "Your department";
-  const departments = isAdminRole(session.role)
-    ? await db
-        .select({ id: schema.departments.id, name: schema.departments.name })
-        .from(schema.departments)
-        .orderBy(asc(schema.departments.name))
-    : [];
+  const scopeLabel = isAdmin ? "All users" : "Your department";
   const filteredRows = rows.filter((row) => {
     const matchesSearch =
       search.length === 0 ||
@@ -196,6 +227,20 @@ export default async function AttendanceReportPage({
     const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
     return matchesSearch && matchesDepartment;
   });
+
+  const baseQueryParams = new URLSearchParams();
+  baseQueryParams.set("date", date);
+  baseQueryParams.set("mode", mode);
+  baseQueryParams.set("from", normalizedFrom);
+  baseQueryParams.set("to", normalizedTo);
+  if (presetRaw) baseQueryParams.set("preset", presetRaw);
+  if (search) baseQueryParams.set("search", search);
+  if (departmentFilter != null) baseQueryParams.set("departmentId", String(departmentFilter));
+  if (statusFilter !== "all" && mode === "daily") baseQueryParams.set("status", statusFilter);
+  if (alertsOnly) baseQueryParams.set("alerts", "1");
+
+  const detailDate = mode === "daily" ? date : normalizedTo;
+
   return (
     <div className="space-y-6">
       <section className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
@@ -252,18 +297,26 @@ export default async function AttendanceReportPage({
               })}
             </span>
           </div>
-          <AttendanceReportFilters
-            mode={mode}
-            date={date}
-            from={normalizedFrom}
-            to={normalizedTo}
-            preset={presetRaw}
-            search={search}
-            status={statusFilter}
-            departmentId={departmentFilter == null ? "" : String(departmentFilter)}
-            departments={departments}
-            isAdmin={isAdminRole(session.role)}
-          />
+          <Suspense
+            fallback={
+              <div className="h-24 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-900/50" />
+            }
+          >
+            <AttendanceReportFilters
+              mode={mode}
+              date={date}
+              from={normalizedFrom}
+              to={normalizedTo}
+              preset={presetRaw}
+              search={search}
+              status={statusFilter}
+              agentState={agentStateFilter}
+              alertsOnly={alertsOnly}
+              departmentId={departmentFilter == null ? "" : String(departmentFilter)}
+              departments={departments}
+              isAdmin={isAdmin}
+            />
+          </Suspense>
         </div>
       </section>
 
@@ -271,130 +324,33 @@ export default async function AttendanceReportPage({
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
           <strong className="font-semibold">Report failed to load.</strong>{" "}
           <span className="opacity-90">{loadError}</span>
+          <p className="mt-2 text-xs opacity-80">
+            If using Supabase: open the project dashboard, confirm the database is not paused,
+            and verify <code className="rounded bg-red-100/80 px-1 dark:bg-red-900/50">DATABASE_URL</code>{" "}
+            in <code className="rounded bg-red-100/80 px-1 dark:bg-red-900/50">apps/web/.env</code> matches
+            the connection string (pooler or direct).
+          </p>
         </div>
       ) : null}
 
-      <section className="data-card overflow-hidden p-0">
-        <div className="max-h-[min(70vh,40rem)] overflow-auto">
-          {mode === "range" ? (
-            <table className="w-full min-w-[48rem] text-left text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3 text-right">Present days</th>
-                  <th className="px-4 py-3 text-right">Absent days</th>
-                  <th className="px-4 py-3 text-right">Work</th>
-                  <th className="px-4 py-3 text-right">Break</th>
-                  <th className="px-4 py-3 text-right">Total hours</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {loadError ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      Fix the error above and refresh the page.
-                    </td>
-                  </tr>
-                ) : filteredRangeRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      No matching employees for current filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRangeRows.map((r) => (
-                    <tr
-                      key={r.userId}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
-                    >
-                      <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">
-                        {r.userName}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                        {r.userEmail}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {r.presentDays}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {r.absentDays}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {formatMinutes(r.totalWorkMinutes)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {formatMinutes(r.totalBreakMinutes)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {r.totalHours} h
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full min-w-[48rem] text-left text-sm">
-            <thead className="sticky top-0 z-[1] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Clock in</th>
-                <th className="px-4 py-3">Clock out</th>
-                <th className="px-4 py-3 text-right">Work</th>
-                <th className="px-4 py-3 text-right">Break</th>
-                <th className="px-4 py-3 text-right">Total hours</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loadError ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                    Fix the error above and refresh the page.
-                  </td>
-                </tr>
-              ) : filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                    No matching employees for current filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((r) => (
-                  <tr
-                    key={r.userId}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
-                  >
-                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">
-                      {r.userName}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                      {r.userEmail}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                      {formatClock(r.clockIn)}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                      {formatClock(r.clockOut)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                      {r.hasLog ? formatMinutes(r.totalWorkMinutes ?? 0) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                      {r.hasLog ? formatMinutes(r.totalBreakMinutes ?? 0) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                      {r.totalHours != null ? `${r.totalHours} h` : "—"}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+      <Suspense
+        fallback={
+          <div className="data-card px-4 py-8 text-center text-sm text-slate-500">
+            Loading report tables…
+          </div>
+        }
+      >
+        <AttendanceReportTables
+          detailDate={detailDate}
+          showAgentHealth={Boolean(isAdmin && agentHealth)}
+          agentHealth={agentHealth}
+          agentStateFilter={agentStateFilter}
+          agentFilterQueryBase={baseQueryParams.toString()}
+          dailyRows={filteredRows}
+          rangeRows={filteredRangeRows}
+        />
+      </Suspense>
     </div>
   );
 }
+

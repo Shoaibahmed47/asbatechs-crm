@@ -52,6 +52,7 @@ describe("attendance break-start route", () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
     selectWhere
       .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     insertReturning.mockResolvedValueOnce([{ id: 77 }]);
 

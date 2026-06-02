@@ -56,6 +56,7 @@ export async function middleware(req: NextRequest) {
         !isForgotPasswordRoute &&
         !isClientPublic &&
         !isPublicSignup &&
+        !pathname.startsWith("/desktop-agent") &&
         !pathname.startsWith("/_next") &&
         !pathname.startsWith("/api") &&
         pathname !== "/favicon.ico")

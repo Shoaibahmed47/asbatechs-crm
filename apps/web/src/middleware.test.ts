@@ -80,4 +80,10 @@ describe("middleware protected routes", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/dashboard");
   });
+
+  it("allows unauthenticated desktop-agent static scripts", async () => {
+    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce(null);
+    const res = await middleware(makeReq("/desktop-agent/one-click-setup.ps1"));
+    expect(res.status).toBe(200);
+  });
 });

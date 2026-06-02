@@ -58,8 +58,14 @@ export async function POST(req: NextRequest) {
             clockOut: null,
             totalWorkMinutes: 0,
             totalBreakMinutes: 0,
+            unscheduledIdleMinutes: 0,
+            idleEventsCount: 0,
+            sleepMinutes: 0,
+            sleepEventsCount: 0,
             totalHours: null,
-            status: "active"
+            status: "active",
+            lastActivityAt: now,
+            lastActivitySource: "browser"
           })
           .where(eq(schema.attendanceLogs.id, existing.id))
           .returning();
@@ -70,7 +76,9 @@ export async function POST(req: NextRequest) {
         .update(schema.attendanceLogs)
         .set({
           clockIn: now,
-          status: "active"
+          status: "active",
+          lastActivityAt: now,
+          lastActivitySource: "browser"
         })
         .where(eq(schema.attendanceLogs.id, existing.id))
         .returning();
@@ -85,7 +93,13 @@ export async function POST(req: NextRequest) {
         clockIn: now,
         totalWorkMinutes: 0,
         totalBreakMinutes: 0,
-        status: "active"
+        unscheduledIdleMinutes: 0,
+        idleEventsCount: 0,
+        sleepMinutes: 0,
+        sleepEventsCount: 0,
+        status: "active",
+        lastActivityAt: now,
+        lastActivitySource: "browser"
       })
       .returning();
 

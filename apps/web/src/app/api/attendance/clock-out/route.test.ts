@@ -74,4 +74,36 @@ describe("attendance clock-out route", () => {
     expect(res.status).toBe(200);
     expect(data.attendance.totalWorkMinutes).toBeGreaterThan(0);
   });
+
+  it("adds open unscheduled sleep time to break, idle, and sleep totals", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2 });
+    selectWhere
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          clockIn: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          clockOut: null,
+          totalBreakMinutes: 5,
+          unscheduledIdleMinutes: 3,
+          sleepMinutes: 2
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 9,
+          breakStart: new Date(Date.now() - 10 * 60 * 1000),
+          breakType: "unscheduled",
+          unscheduledCause: "sleep"
+        }
+      ]);
+
+    const res = await POST(req());
+    const updatePayload = txUpdateSet.mock.calls.at(-1)?.[0];
+
+    expect(res.status).toBe(200);
+    expect(updatePayload.totalBreakMinutes).toBeGreaterThanOrEqual(14);
+    expect(updatePayload.unscheduledIdleMinutes).toBeGreaterThanOrEqual(12);
+    expect(updatePayload.sleepMinutes).toBeGreaterThanOrEqual(11);
+    expect(updatePayload.lastActivitySource).toBe("browser");
+  });
 });

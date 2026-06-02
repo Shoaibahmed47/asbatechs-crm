@@ -41,9 +41,16 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function signAuthToken(payload: AuthTokenPayload): Promise<string> {
+  return signAuthTokenWithExpiry(payload, JWT_EXPIRES_IN);
+}
+
+export async function signAuthTokenWithExpiry(
+  payload: AuthTokenPayload,
+  expiresIn: string
+): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(JWT_EXPIRES_IN)
+    .setExpirationTime(expiresIn)
     .sign(JWT_SECRET);
 }
 
@@ -62,4 +69,3 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
 }
 
 export { COOKIE_NAME };
-

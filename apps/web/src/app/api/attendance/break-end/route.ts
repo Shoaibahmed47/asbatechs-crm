@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
     .update(schema.attendanceLogs)
     .set({
       totalBreakMinutes: newTotalBreak,
-      status: "active"
+      status: "active",
+      lastActivityAt: now,
+      lastActivitySource: "browser"
     })
     .where(eq(schema.attendanceLogs.id, log.id))
     .returning();

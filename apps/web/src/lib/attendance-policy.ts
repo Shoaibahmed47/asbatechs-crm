@@ -1,0 +1,17 @@
+/**
+ * Balanced attendance policy defaults.
+ * Keep values centralized so browser and APIs stay aligned.
+ */
+export const ATTENDANCE_IDLE_WARNING_MINUTES = 7;
+export const ATTENDANCE_IDLE_AUTO_BREAK_MINUTES = 10;
+export const ATTENDANCE_ACTIVITY_PING_SECONDS = 60;
+
+export const ATTENDANCE_IDLE_WARNING_MS = ATTENDANCE_IDLE_WARNING_MINUTES * 60 * 1000;
+export const ATTENDANCE_IDLE_AUTO_BREAK_MS =
+  ATTENDANCE_IDLE_AUTO_BREAK_MINUTES * 60 * 1000;
+export const ATTENDANCE_ACTIVITY_PING_MS = ATTENDANCE_ACTIVITY_PING_SECONDS * 1000;
+
+// Agent health thresholds
+export const ATTENDANCE_AGENT_RUNNING_SECONDS = 180;
+export const ATTENDANCE_AGENT_INSTALLED_SECONDS = 1800;
+export const ATTENDANCE_AGENT_ALERT_STALE_MINUTES = 10;

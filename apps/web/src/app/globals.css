@@ -67,6 +67,56 @@
 }
 
 @layer components {
+  /* Keep dual-month attendance range picker side-by-side (May | June). */
+  .attendance-range-picker .rdp-months {
+    flex-wrap: nowrap;
+  }
+
+  /* Detail drawer: months stacked (only when stackMonths prop is set). */
+  .attendance-range-picker--stacked .rdp-months {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: 100%;
+  }
+
+  .attendance-range-picker--stacked .rdp-month {
+    width: 100%;
+    max-width: 20rem;
+  }
+
+  /* Detail drawer inline: May | June side-by-side, centered in wide panel. */
+  .attendance-range-picker--inline .rdp-months {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    width: 100%;
+    gap: 2rem;
+  }
+
+  .attendance-range-picker--inline .rdp-root {
+    width: 100%;
+  }
+
+  .attendance-range-popover--floating .rdp-months {
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+
+  .attendance-range-popover .rdp-root {
+    --rdp-accent-color: hsl(199 89% 48%);
+    --rdp-accent-background-color: hsl(199 89% 48% / 0.15);
+  }
+
+  .attendance-range-popover .rdp-month_caption {
+    padding-inline: 0.25rem;
+  }
+
+  .attendance-range-popover .rdp-day {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
   .app-shell {
     @apply relative min-h-screen;
   }
@@ -263,6 +313,25 @@
 
 .drawer-enter-left {
   animation: drawer-enter-left 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .details-summary-none summary {
+    list-style: none;
+  }
+
+  .details-summary-none summary::-webkit-details-marker {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

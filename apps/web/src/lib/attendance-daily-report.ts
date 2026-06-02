@@ -12,6 +12,7 @@ export type AttendanceDailyRow = {
   clockOut: string | null;
   totalWorkMinutes: number | null;
   totalBreakMinutes: number | null;
+  sleepMinutes: number | null;
   totalHours: string | null;
   hasLog: boolean;
 };
@@ -51,6 +52,7 @@ export async function getAttendanceDailyReport(
         clockOut: schema.attendanceLogs.clockOut,
         totalWorkMinutes: schema.attendanceLogs.totalWorkMinutes,
         totalBreakMinutes: schema.attendanceLogs.totalBreakMinutes,
+        sleepMinutes: schema.attendanceLogs.sleepMinutes,
         totalHours: schema.attendanceLogs.totalHours
       })
       .from(schema.users)
@@ -72,6 +74,7 @@ export async function getAttendanceDailyReport(
       clockOut: schema.attendanceLogs.clockOut,
       totalWorkMinutes: schema.attendanceLogs.totalWorkMinutes,
       totalBreakMinutes: schema.attendanceLogs.totalBreakMinutes,
+      sleepMinutes: schema.attendanceLogs.sleepMinutes,
       totalHours: schema.attendanceLogs.totalHours
     })
     .from(schema.users)
@@ -174,6 +177,7 @@ function mapRow(r: {
   clockOut: Date | null;
   totalWorkMinutes: number | null;
   totalBreakMinutes: number | null;
+  sleepMinutes: number | null;
   totalHours: string | null;
 }): AttendanceDailyRow {
   return {
@@ -185,6 +189,7 @@ function mapRow(r: {
     clockOut: r.clockOut ? new Date(r.clockOut as Date).toISOString() : null,
     totalWorkMinutes: r.totalWorkMinutes,
     totalBreakMinutes: r.totalBreakMinutes,
+    sleepMinutes: r.sleepMinutes,
     totalHours: r.totalHours != null ? String(r.totalHours) : null,
     hasLog: r.logId != null
   };

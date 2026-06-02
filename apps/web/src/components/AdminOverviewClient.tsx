@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Filter, RefreshCw } from "lucide-react";
 import { AdminExportControls } from "@/components/AdminExportControls";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,27 @@ import type { AdminSnapshot } from "@/lib/admin-snapshot-types";
 type Role = "admin" | "manager";
 type SortDirection = "asc" | "desc";
 type PanelKey = "departments" | "users" | "leads" | "invites" | "activity";
+type AgentHealthState = "all" | "running" | "installed" | "stale" | "not_installed";
+
+type AgentHealthRow = {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  departmentId: number | null;
+  departmentName: string | null;
+  openShift: boolean;
+  attendanceStatus: "active" | "break" | "idle" | "offline";
+  attendanceReason: string;
+  sleepMinutes: number;
+  lastAgentActivityAt: string | null;
+  lastAgentActivitySource: string | null;
+  lastAgentAgeSeconds: number | null;
+  lastSeenAt: string | null;
+  lastSeenSource: string | null;
+  lastSeenAgeSeconds: number | null;
+  state: Exclude<AgentHealthState, "all">;
+  needsAttention: boolean;
+};
 
 type SortState = {
   key: string;
@@ -85,6 +106,31 @@ function trend(current: number, previous: number): { label: string; tone: string
   return { label: "0%", tone: "text-slate-500 dark:text-slate-400" };
 }
 
+function formatAge(seconds: number | null): string {
+  if (seconds == null) return "Never";
+  if (seconds < 60) return `${seconds}s ago`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function agentLabel(state: Exclude<AgentHealthState, "all">): string {
+  if (state === "running") return "Running";
+  if (state === "installed") return "Installed";
+  if (state === "stale") return "No recent activity";
+  return "Not installed";
+}
+
+function agentPillTone(state: Exclude<AgentHealthState, "all">): string {
+  if (state === "running") return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300";
+  if (state === "installed") return "bg-sky-500/15 text-sky-800 dark:text-sky-300";
+  if (state === "stale") return "bg-amber-500/15 text-amber-900 dark:text-amber-300";
+  return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+}
+
 function SortableHead({
   label,
   active,
@@ -154,11 +200,65 @@ export function AdminOverviewClient({
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [agentRows, setAgentRows] = useState<AgentHealthRow[]>([]);
+  const [agentCounts, setAgentCounts] = useState<
+    Record<Exclude<AgentHealthState, "all">, number>
+  >({
+    running: 0,
+    installed: 0,
+    stale: 0,
+    not_installed: 0
+  });
+  const [agentStateFilter, setAgentStateFilter] = useState<AgentHealthState>("all");
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   const usersForFilter = useMemo(
     () => [...snapshot.users].sort((a, b) => a.name.localeCompare(b.name)),
     [snapshot.users]
   );
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let cancelled = false;
+    const load = async () => {
+      setAgentLoading(true);
+      setAgentError(null);
+      try {
+        const query = new URLSearchParams();
+        if (search.trim()) query.set("search", search.trim());
+        if (departmentFilter) query.set("departmentId", departmentFilter);
+        if (agentStateFilter !== "all") query.set("state", agentStateFilter);
+        const data = await apiFetch<{
+          rows: AgentHealthRow[];
+          counts: Partial<Record<Exclude<AgentHealthState, "all">, number>>;
+        }>(`/api/admin/agent-health?${query.toString()}`);
+        if (cancelled) return;
+        setAgentRows(data.rows ?? []);
+        setAgentCounts({
+          running: data.counts?.running ?? 0,
+          installed: data.counts?.installed ?? 0,
+          stale: data.counts?.stale ?? 0,
+          not_installed: data.counts?.not_installed ?? 0
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setAgentError(
+          error instanceof ApiFetchError
+            ? error.message
+            : "Could not load desktop agent health."
+        );
+      } finally {
+        if (!cancelled) setAgentLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, search, departmentFilter, agentStateFilter]);
 
   const statusOptions = useMemo(() => {
     const leadStatuses = snapshot.leads.map((l) => l.status);
@@ -302,6 +402,28 @@ export function AdminOverviewClient({
     setStatusFilter("");
   };
 
+  const panelLabels: Record<PanelKey, string> = {
+    departments: "Departments",
+    users: "Users",
+    leads: "Leads",
+    invites: "Pending invitations",
+    activity: "Audit logs"
+  };
+
+  const showAllSections = () => {
+    setActivePanel(null);
+    requestAnimationFrame(() => {
+      document.getElementById("admin-overview-tables")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    });
+  };
+
+  const focusPanel = (panel: PanelKey) => {
+    setActivePanel((current) => (current === panel ? null : panel));
+  };
+
   const handleResendInvite = async () => {
     if (!resendEmail.trim()) return;
     setActionBusy(true);
@@ -386,10 +508,28 @@ export function AdminOverviewClient({
           <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
             Reset filters
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => setActivePanel(null)}>
+          <Button
+            type="button"
+            variant={activePanel ? "default" : "outline"}
+            size="sm"
+            onClick={showAllSections}
+            disabled={!activePanel}
+            title={
+              activePanel
+                ? "Show every table section again"
+                : "All sections are already visible"
+            }
+          >
             Show all sections
           </Button>
         </div>
+        {activePanel ? (
+          <p className="mt-2 text-xs text-sky-800 dark:text-sky-300">
+            Focused on <span className="font-semibold">{panelLabels[activePanel]}</span> only.
+            Other tables are hidden until you click <span className="font-semibold">Show all sections</span>{" "}
+            or the same summary card again.
+          </p>
+        ) : null}
       </section>
 
       {isAdmin ? (
@@ -422,6 +562,127 @@ export function AdminOverviewClient({
         </section>
       ) : null}
 
+      {isAdmin ? (
+        <section className="data-card overflow-hidden p-0">
+          <div className="border-b border-slate-200/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              Desktop agent
+            </div>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
+              Agent health monitor
+            </h2>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              Running vs no recent activity employee devices with latest heartbeat.
+            </p>
+            <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+              Alert: shift open + no employee signal for 10+ minutes.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {(["all", "running", "installed", "stale", "not_installed"] as const).map(
+                (state) => {
+                  const isActive = agentStateFilter === state;
+                  const count =
+                    state === "all" ? agentRows.length : agentCounts[state] ?? 0;
+                  return (
+                    <button
+                      key={state}
+                      type="button"
+                      onClick={() => setAgentStateFilter(state)}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        isActive
+                          ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                      }`}
+                    >
+                      {state === "all" ? "All" : agentLabel(state)} ({count})
+                    </button>
+                  );
+                }
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setAgentStateFilter("all")}
+              >
+                Reset
+              </Button>
+            </div>
+            {agentError ? (
+              <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{agentError}</p>
+            ) : null}
+          </div>
+          <div className="max-h-[min(20rem,42vh)] overflow-auto">
+            <table className="w-full min-w-[56rem] text-sm">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Department</th>
+                  <th className="px-3 py-2">Agent</th>
+                  <th className="px-3 py-2">Heartbeat</th>
+                  <th className="px-3 py-2">Last seen source</th>
+                  <th className="px-3 py-2">Last seen</th>
+                  <th className="px-3 py-2">Shift</th>
+                  <th className="px-3 py-2">Attendance</th>
+                  <th className="px-3 py-2">Sleep</th>
+                  <th className="px-3 py-2">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+                {agentLoading ? (
+                  <EmptyRow colSpan={11} message="Loading agent health..." />
+                ) : agentRows.length === 0 ? (
+                  <EmptyRow colSpan={11} message="No matching agent records." />
+                ) : (
+                  agentRows.map((row) => (
+                    <tr key={row.userId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="px-3 py-2 font-medium">{row.userName}</td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                        {row.userEmail}
+                      </td>
+                      <td className="px-3 py-2">{row.departmentName ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${agentPillTone(
+                            row.state
+                          )}`}
+                        >
+                          {agentLabel(row.state)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.lastAgentActivityAt
+                          ? new Date(row.lastAgentActivityAt).toLocaleString()
+                          : "-"}
+                      </td>
+                      <td className="px-3 py-2">{row.lastSeenSource ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        {formatAge(row.lastSeenAgeSeconds)}
+                        {row.needsAttention ? (
+                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-700 dark:text-rose-300">
+                            Alert
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2">{row.openShift ? "Open" : "Closed"}</td>
+                      <td className="px-3 py-2 capitalize">{row.attendanceStatus}</td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {Math.max(0, row.sleepMinutes ?? 0)}m
+                      </td>
+                      <td className="max-w-[20rem] px-3 py-2 text-slate-700 dark:text-slate-300">
+                        {row.attendanceReason}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      <div id="admin-overview-tables" className="scroll-mt-6 space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           { label: "Departments", value: filtered.departments.length, panel: "departments" as PanelKey, trend: trendStats.departments },
@@ -429,18 +690,23 @@ export function AdminOverviewClient({
           { label: "Hot leads", value: filtered.leads.filter((l) => l.type === "hot").length, panel: "leads" as PanelKey, trend: trendStats.hotLeads },
           { label: "Sale leads", value: filtered.leads.filter((l) => l.type === "sale").length, panel: "leads" as PanelKey, trend: trendStats.saleLeads },
           { label: "Pending invites", value: filtered.invites.length, panel: "invites" as PanelKey, trend: trendStats.pendingInvites }
-        ].map((item) => (
+        ].map((item) => {
+          const isFocused = activePanel === item.panel;
+          return (
           <button
             key={item.label}
             type="button"
-            className={cardClass}
-            onClick={() => setActivePanel(item.panel)}
+            className={`${cardClass} ${isFocused ? "border-sky-400 bg-sky-50/60 ring-2 ring-sky-300/80 dark:border-sky-600 dark:bg-sky-950/30 dark:ring-sky-700/80" : ""}`}
+            onClick={() => focusPanel(item.panel)}
+            aria-pressed={isFocused}
+            title={isFocused ? "Click again to show all sections" : `Show only ${panelLabels[item.panel]}`}
           >
             <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{item.label}</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{item.value}</div>
             <div className={`mt-1 text-xs font-semibold ${item.trend.tone}`}>{item.trend.label} vs previous period</div>
           </button>
-        ))}
+        );
+        })}
       </div>
 
       {sectionVisible("departments") ? (
@@ -674,7 +940,7 @@ export function AdminOverviewClient({
           </div>
         </section>
       ) : null}
+      </div>
     </div>
   );
 }
-

@@ -1,0 +1,10 @@
+{
+  "name": "asbatechs-crm-desktop-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows attendance desktop agent scaffold",
+  "scripts": {
+    "build:win": "dotnet publish ./src/windows/AttendanceAgent.csproj -c Release -r win-x64 -p:PublishSingleFile=true --self-contained false",
+    "run:win": "dotnet run --project ./src/windows/AttendanceAgent.csproj"
+  }
+}

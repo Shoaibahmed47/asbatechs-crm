@@ -24,7 +24,7 @@ export function createDb(url: string) {
     connectionString: url,
     ssl,
     max: Number(process.env.PG_POOL_MAX ?? 12),
-    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS ?? 10000),
+    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS ?? 20000),
     idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? 30000),
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000

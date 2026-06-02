@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 
 function toDateParam(date?: string | null): string {
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
@@ -54,8 +55,10 @@ export async function GET(req: NextRequest) {
 
   const status = (() => {
     if (!log.clockIn) return "offline";
+    if (openBreak?.breakType === "unscheduled") return "idle";
     if (openBreak) return "break";
     if (log.clockOut) return "offline";
+    if (log.status === "idle") return "idle";
     return "active";
   })();
 
@@ -63,12 +66,19 @@ export async function GET(req: NextRequest) {
   const completedBreakMins = log.totalBreakMinutes ?? 0;
   let liveWorkMinutes: number | null = null;
   let ongoingBreakMinutes = 0;
+  let ongoingSleepMinutes = 0;
 
   if (openBreak) {
     ongoingBreakMinutes = Math.max(
       0,
       Math.floor((now - new Date(openBreak.breakStart as Date).getTime()) / 60000)
     );
+    if (
+      openBreak.breakType === "unscheduled" &&
+      openBreak.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP
+    ) {
+      ongoingSleepMinutes = ongoingBreakMinutes;
+    }
   }
 
   if (log.clockIn && !log.clockOut) {
@@ -85,15 +95,16 @@ export async function GET(req: NextRequest) {
       : liveWorkMinutes != null
         ? (liveWorkMinutes / 60).toFixed(2)
         : null;
+  const totalSleepMinutesLive = (log.sleepMinutes ?? 0) + ongoingSleepMinutes;
 
   return NextResponse.json({
     attendance: {
       ...log,
       status,
       liveWorkMinutes,
+      totalSleepMinutesLive,
       totalHoursLive,
       breakSessions
     }
   });
 }
-

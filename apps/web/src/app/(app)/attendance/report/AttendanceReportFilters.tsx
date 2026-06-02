@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
-
-import { CopyReportLinkButton } from "./CopyReportLinkButton";
 
 type DepartmentOption = { id: number; name: string };
 
@@ -18,6 +16,8 @@ type AttendanceReportFiltersProps = {
   preset: string;
   search: string;
   status: "all" | "present" | "working" | "absent";
+  agentState: "all" | "running" | "installed" | "stale" | "not_installed";
+  alertsOnly: boolean;
   departmentId: string;
   departments: DepartmentOption[];
   isAdmin: boolean;
@@ -30,6 +30,8 @@ const RANGE_OPTIONS = [
   { value: "last_14_days", label: "Last 2 week" },
   { value: "last_month", label: "Last month" }
 ] as const;
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 function toDate(iso: string): Date | undefined {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return undefined;
@@ -62,6 +64,8 @@ function rangeFromPreset(preset: string, today: string): { from: string; to: str
 
 export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const today = props.date;
   const initialPeriod =
     props.mode === "daily"
@@ -71,9 +75,13 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
           props.preset === "last_month"
         ? props.preset
         : "custom";
+
   const [mode, setMode] = useState<"daily" | "range">(props.mode);
   const [search, setSearch] = useState(props.search);
+  const [debouncedSearch, setDebouncedSearch] = useState(props.search);
   const [status, setStatus] = useState(props.status);
+  const [agentState, setAgentState] = useState(props.agentState);
+  const [alertsOnly, setAlertsOnly] = useState(props.alertsOnly);
   const [departmentId, setDepartmentId] = useState(props.departmentId);
   const [preset, setPreset] = useState(
     props.preset === "last_7_days" ||
@@ -91,32 +99,89 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
   const fromIso = toIso(range?.from) || props.from;
   const toIsoValue = toIso(range?.to) || fromIso || props.to;
 
-  const exportHref = useMemo(() => {
-    const q = new URLSearchParams();
-    q.set("date", props.date);
-    q.set("mode", mode);
-    q.set("from", fromIso);
-    q.set("to", toIsoValue);
-    if (preset) q.set("preset", preset);
-    if (search.trim()) q.set("search", search.trim());
-    if (status !== "all") q.set("status", status);
-    if (departmentId) q.set("departmentId", departmentId);
-    q.set("format", "csv");
-    return `/api/reports/attendance-daily?${q.toString()}`;
-  }, [props.date, mode, fromIso, toIsoValue, preset, search, status, departmentId]);
+  useEffect(() => {
+    setMode(props.mode);
+    setSearch(props.search);
+    setDebouncedSearch(props.search);
+    setStatus(props.status);
+    setAgentState(props.agentState);
+    setAlertsOnly(props.alertsOnly);
+    setDepartmentId(props.departmentId);
+    setPreset(
+      props.preset === "last_7_days" ||
+        props.preset === "last_14_days" ||
+        props.preset === "last_month"
+        ? props.preset
+        : ""
+    );
+    setPeriod(
+      props.mode === "daily"
+        ? "daily"
+        : props.preset === "last_7_days" ||
+            props.preset === "last_14_days" ||
+            props.preset === "last_month"
+          ? props.preset
+          : "custom"
+    );
+    setRange({ from: toDate(props.from), to: toDate(props.to) });
+  }, [
+    props.mode,
+    props.search,
+    props.status,
+    props.agentState,
+    props.alertsOnly,
+    props.departmentId,
+    props.preset,
+    props.from,
+    props.to
+  ]);
 
-  function applyFilters() {
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  const queryString = useMemo(() => {
     const q = new URLSearchParams();
     q.set("date", props.date);
     q.set("mode", mode);
     q.set("from", fromIso);
     q.set("to", toIsoValue);
     if (preset) q.set("preset", preset);
-    if (search.trim()) q.set("search", search.trim());
+    if (debouncedSearch) q.set("search", debouncedSearch);
     if (status !== "all" && mode === "daily") q.set("status", status);
+    if (agentState !== "all") q.set("agentState", agentState);
+    if (alertsOnly) q.set("alerts", "1");
     if (departmentId) q.set("departmentId", departmentId);
-    router.push(`/attendance/report?${q.toString()}`);
-  }
+    const selectedEmployee = searchParams.get("employee");
+    if (selectedEmployee && /^\d+$/.test(selectedEmployee)) {
+      q.set("employee", selectedEmployee);
+    }
+    return q.toString();
+  }, [
+    props.date,
+    mode,
+    fromIso,
+    toIsoValue,
+    preset,
+    debouncedSearch,
+    status,
+    agentState,
+    alertsOnly,
+    departmentId,
+    searchParams
+  ]);
+
+  const pushFilters = useCallback(() => {
+    const next = `${pathname}?${queryString}`;
+    const current = `${pathname}?${searchParams.toString()}`;
+    if (next === current) return;
+    router.replace(next);
+  }, [pathname, queryString, router, searchParams]);
+
+  useEffect(() => {
+    pushFilters();
+  }, [pushFilters]);
 
   function applyPreset(value: string) {
     setPreset(value);
@@ -142,11 +207,9 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
 
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/50">
-      {/* Prevent clipped text in selects/inputs across browsers */}
-      {/* by overriding fixed-height + inherited padding combination. */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             Date range
           </label>
           <select
@@ -170,6 +233,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="e.g. hadi or @gmail.com"
             className="form-input mt-1 min-h-[2.75rem] py-2 leading-5"
+            aria-label="Search employees by name or email"
           />
         </div>
         <div>
@@ -188,6 +252,39 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
             <option value="absent">Absent</option>
           </select>
         </div>
+        {props.isAdmin ? (
+          <div>
+            <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+              Agent
+            </label>
+            <select
+              value={agentState}
+              onChange={(e) =>
+                setAgentState(e.target.value as AttendanceReportFiltersProps["agentState"])
+              }
+              className="form-input mt-1 min-h-[2.75rem] min-w-[11rem] py-2 leading-5"
+            >
+              <option value="all">All agent states</option>
+              <option value="running">Running</option>
+              <option value="installed">Installed</option>
+              <option value="stale">No recent activity</option>
+              <option value="not_installed">Not installed</option>
+            </select>
+          </div>
+        ) : null}
+        {props.isAdmin ? (
+          <div className="flex min-h-[2.75rem] items-center">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={alertsOnly}
+                onChange={(e) => setAlertsOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              />
+              Alerts only
+            </label>
+          </div>
+        ) : null}
         {props.isAdmin ? (
           <div>
             <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
@@ -228,34 +325,6 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
           </div>
         </div>
       ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={applyFilters}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
-        >
-          Apply
-        </button>
-        <a
-          href={exportHref}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
-        >
-          Export CSV
-        </a>
-        <CopyReportLinkButton
-          queryParams={{
-            mode,
-            date: props.date,
-            from: fromIso,
-            to: toIsoValue,
-            preset,
-            search,
-            status: mode === "daily" ? status : "all",
-            departmentId
-          }}
-        />
-      </div>
     </div>
   );
 }
