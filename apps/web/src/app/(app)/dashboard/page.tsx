@@ -15,6 +15,7 @@ function monthKeysLast(n: number): string[] {
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    //get month key
   }
   return out;
 }
