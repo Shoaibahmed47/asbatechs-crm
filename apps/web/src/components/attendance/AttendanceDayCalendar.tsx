@@ -7,7 +7,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import "react-day-picker/dist/style.css";
 
 import { Button } from "@/components/ui/button";
-import { getLocalDateString } from "@/lib/attendance-date";
+import { ATTENDANCE_TIME_ZONE, getLocalDateString } from "@/lib/attendance-date";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -57,6 +57,7 @@ export function AttendanceDayCalendar({ selectedDate, onSelectDate }: Props) {
 
   const selectedLabel = selected
     ? selected.toLocaleDateString(undefined, {
+        timeZone: ATTENDANCE_TIME_ZONE,
         weekday: "short",
         year: "numeric",
         month: "short",

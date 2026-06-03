@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Filter, RefreshCw } from "lucide-react";
 import { AdminExportControls } from "@/components/AdminExportControls";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
 import type { AdminSnapshot } from "@/lib/admin-snapshot-types";
 
 type Role = "admin" | "manager";
@@ -653,7 +654,9 @@ export function AdminOverviewClient({
                       </td>
                       <td className="px-3 py-2">
                         {row.lastAgentActivityAt
-                          ? new Date(row.lastAgentActivityAt).toLocaleString()
+                          ? new Date(row.lastAgentActivityAt).toLocaleString(undefined, {
+                              timeZone: ATTENDANCE_TIME_ZONE
+                            })
                           : "-"}
                       </td>
                       <td className="px-3 py-2">{row.lastSeenSource ?? "-"}</td>

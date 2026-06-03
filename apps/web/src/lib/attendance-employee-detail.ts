@@ -144,40 +144,42 @@ export async function getAttendanceEmployeeDetail(params: {
     return null;
   }
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(eq(schema.attendanceLogs.userId, userId), eq(schema.attendanceLogs.date, date as any))
-    )
-    .limit(1);
-
-  const agentRows = await db
-    .select({ lastActivityAt: schema.attendanceLogs.lastActivityAt })
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.lastActivitySource, "agent"),
-        isNotNull(schema.attendanceLogs.lastActivityAt)
+  const [log, agentRows, heartbeatRows, breakSessions] = await Promise.all([
+    db
+      .select()
+      .from(schema.attendanceLogs)
+      .where(
+        and(eq(schema.attendanceLogs.userId, userId), eq(schema.attendanceLogs.date, date as any))
       )
-    )
-    .orderBy(desc(schema.attendanceLogs.lastActivityAt))
-    .limit(1);
-
-  const heartbeatRows = await db
-    .select({ createdAt: schema.activityLogs.createdAt })
-    .from(schema.activityLogs)
-    .where(
-      and(
-        eq(schema.activityLogs.userId, userId),
-        eq(schema.activityLogs.entityType, "attendance_agent"),
-        eq(schema.activityLogs.action, "agent_heartbeat"),
-        eq(schema.activityLogs.entityId, 0)
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({ lastActivityAt: schema.attendanceLogs.lastActivityAt })
+      .from(schema.attendanceLogs)
+      .where(
+        and(
+          eq(schema.attendanceLogs.userId, userId),
+          eq(schema.attendanceLogs.lastActivitySource, "agent"),
+          isNotNull(schema.attendanceLogs.lastActivityAt)
+        )
       )
-    )
-    .orderBy(desc(schema.activityLogs.createdAt))
-    .limit(1);
+      .orderBy(desc(schema.attendanceLogs.lastActivityAt))
+      .limit(1),
+    db
+      .select({ createdAt: schema.activityLogs.createdAt })
+      .from(schema.activityLogs)
+      .where(
+        and(
+          eq(schema.activityLogs.userId, userId),
+          eq(schema.activityLogs.entityType, "attendance_agent"),
+          eq(schema.activityLogs.action, "agent_heartbeat"),
+          eq(schema.activityLogs.entityId, 0)
+        )
+      )
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(1),
+    loadBreakSessionsInRange(userId, range.from, range.to)
+  ]);
 
   const latestAgentLogAt = agentRows[0]?.lastActivityAt
     ? new Date(agentRows[0].lastActivityAt as Date)
@@ -193,8 +195,6 @@ export async function getAttendanceEmployeeDetail(params: {
       : latestAgentLogAt ?? latestHeartbeatAt ?? null;
   const { state: agentState, ageSeconds: lastAgentAgeSeconds } =
     classifyAgentState(latestAgentAt);
-
-  const breakSessions = await loadBreakSessionsInRange(userId, range.from, range.to);
 
   if (!log) {
     return {

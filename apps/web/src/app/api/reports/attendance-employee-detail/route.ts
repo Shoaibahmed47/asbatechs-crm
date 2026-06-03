@@ -5,18 +5,28 @@ import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceEmployeeDetail } from "@/lib/attendance-employee-detail";
 import { normalizeRole } from "@/lib/rbac";
 
+function parseDateParam(value: string | null, fallback = getLocalDateString()): string {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
+}
+
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verifyAuthToken(token) : null;
 
-  const role = payload ? normalizeRole(payload.role) : null;
+  if (!payload) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  if (!payload || (role !== "admin" && role !== "manager")) {
+  const role = normalizeRole(payload.role);
+  if (role !== "admin" && role !== "manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (role === "manager" && payload.departmentId == null) {
-    return NextResponse.json({ error: "No department assigned" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Manager account has no department assigned." },
+      { status: 403 }
+    );
   }
 
   const userIdRaw = req.nextUrl.searchParams.get("userId");
@@ -25,15 +35,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
-  const dateRaw = req.nextUrl.searchParams.get("date");
-  const date =
-    dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : getLocalDateString();
-
-  const fromRaw = req.nextUrl.searchParams.get("from");
-  const toRaw = req.nextUrl.searchParams.get("to");
-  const breakFrom =
-    fromRaw && /^\d{4}-\d{2}-\d{2}$/.test(fromRaw) ? fromRaw : date;
-  const breakTo = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? toRaw : date;
+  const date = parseDateParam(req.nextUrl.searchParams.get("date"));
+  const breakFrom = parseDateParam(req.nextUrl.searchParams.get("from"), date);
+  const breakTo = parseDateParam(req.nextUrl.searchParams.get("to"), date);
 
   const detail = await getAttendanceEmployeeDetail({
     userId,

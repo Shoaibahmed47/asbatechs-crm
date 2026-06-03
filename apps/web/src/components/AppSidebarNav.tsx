@@ -59,8 +59,9 @@ export function filterNavItems(
     if (item.href === "/users") return canViewEmployeeDirectory(role);
     if (item.href === "/admin/overview")
       return isAdminRole(role) || isManagerRole(role);
-    if (item.href === "/attendance/report")
-      return isAdminRole(role) || isManagerRole(role);
+    if (item.href === "/attendance")
+      return !isAdminRole(role) && !isManagerRole(role);
+    if (item.href === "/attendance/report") return false;
     return true;
   });
 }

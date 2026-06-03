@@ -185,9 +185,9 @@ export function EmployeeDirectoryTable({
   };
 
   return (
-    <div className="data-card overflow-hidden p-0">
+    <div className="data-card overflow-hidden p-0 shadow-sm">
       {sortToolbar ? (
-        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-slate-800/80">
+        <div className="border-b border-slate-200/80 px-4 py-2.5 dark:border-slate-800/80">
           <div className="overflow-x-auto">{sortToolbar}</div>
         </div>
       ) : null}
@@ -295,15 +295,15 @@ export function EmployeeDirectoryTable({
       </div>
 
       <div className={`overflow-x-auto ${mobileView === "table" ? "block" : "hidden md:block"}`}>
-        <table className="min-w-[62rem] text-left text-sm lg:min-w-full">
+        <table className="min-w-[64rem] table-fixed text-left text-sm lg:min-w-full">
           <thead className="bg-slate-50/90 dark:bg-slate-900/70">
             <tr className="border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
-              <th className="px-5 py-4">Name</th>
-              <th className="hidden px-5 py-4 md:table-cell">Email</th>
-              <th className="hidden px-5 py-4 md:table-cell">Role</th>
-              <th className="hidden px-5 py-4 md:table-cell">Department</th>
-              <th className="hidden px-5 py-4 lg:table-cell">Client project</th>
-              <th className="px-5 py-4 text-right">Actions</th>
+              <th className="w-[17rem] px-4 py-2.5">Name</th>
+              <th className="hidden w-[17rem] px-4 py-2.5 md:table-cell">Email</th>
+              <th className="hidden w-[7rem] px-4 py-2.5 md:table-cell">Role</th>
+              <th className="hidden w-[11rem] px-4 py-2.5 md:table-cell">Department</th>
+              <th className="hidden w-[15rem] px-4 py-2.5 lg:table-cell">Client project</th>
+              <th className="w-[12rem] px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -342,7 +342,7 @@ export function EmployeeDirectoryTable({
                     key={row.kind === "user" ? `u-${row.id}` : `i-${row.id}`}
                     className="border-b border-slate-100/80 transition hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-900/40"
                   >
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3 align-middle">
                       <div className="font-medium text-slate-950 dark:text-white">{name}</div>
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         {row.kind === "user" ? "Active employee record" : "Awaiting acceptance"}
@@ -353,19 +353,21 @@ export function EmployeeDirectoryTable({
                         <div>{row.department || "Unassigned"}</div>
                       </div>
                     </td>
-                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 md:table-cell">
-                      {email}
+                    <td className="hidden px-4 py-3 align-middle text-slate-600 dark:text-slate-300 md:table-cell">
+                      <span className="block truncate" title={email}>
+                        {email}
+                      </span>
                     </td>
-                    <td className="hidden px-5 py-4 md:table-cell">
-                      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    <td className="hidden px-4 py-3 align-middle md:table-cell">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {role}
                       </span>
                     </td>
-                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 md:table-cell">
+                    <td className="hidden px-4 py-3 align-middle text-slate-600 dark:text-slate-300 md:table-cell">
                       {allowAdminActions && row.kind === "user" && onUpdateDepartment ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           <select
-                            className="form-input h-8 min-w-[9rem] py-1 text-xs"
+                            className="form-input h-8 w-full rounded-lg px-2.5 py-1 text-xs shadow-none"
                             value={
                               row.departmentId == null ? "" : String(row.departmentId)
                             }
@@ -384,10 +386,10 @@ export function EmployeeDirectoryTable({
                           ) : null}
                         </div>
                       ) : (
-                        row.department
+                        <span className="block truncate">{row.department || "Unassigned"}</span>
                       )}
                     </td>
-                    <td className="hidden px-5 py-4 text-slate-600 dark:text-slate-300 lg:table-cell">
+                    <td className="hidden px-4 py-3 align-middle text-slate-600 dark:text-slate-300 lg:table-cell">
                       {allowAdminActions &&
                       row.kind === "user" &&
                       row.role.toLowerCase() === "employee" &&
@@ -398,7 +400,7 @@ export function EmployeeDirectoryTable({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="min-w-[12rem] justify-between gap-2 border-slate-600 lg:min-w-[15rem]"
+                              className="h-8 w-full justify-between gap-2 rounded-lg px-2.5 text-xs shadow-none"
                             >
                               <span className="truncate text-left">
                                 {(() => {
@@ -413,11 +415,11 @@ export function EmployeeDirectoryTable({
                               <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-[24rem] p-2">
-                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <DropdownMenuContent align="start" className="w-[20rem] p-2">
+                            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                               Assigned projects {savingAssignByUser[row.id] ? "• Saving..." : ""}
                             </div>
-                            <div className="max-h-64 space-y-1 overflow-y-auto">
+                            <div className="max-h-56 space-y-1 overflow-y-auto">
                               {clientProjectOptions.map((opt) => {
                                 const checked = getSelectedIds(row).includes(opt.projectId);
                                 return (
@@ -441,20 +443,20 @@ export function EmployeeDirectoryTable({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (
-                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                        <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
                           {row.kind === "user"
                             ? row.assignedClientProjects?.map((p) => p.label).join(", ") || "Unassigned"
                             : "—"}
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex flex-col items-stretch justify-end gap-1.5">
                         {showResend ? (
                           <Button
                             type="button"
                             size="sm"
-                            className="w-full justify-center gap-2 sm:min-w-[9.5rem]"
+                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-xs"
                             disabled={busy}
                             onClick={() =>
                               runAction(
@@ -465,7 +467,7 @@ export function EmployeeDirectoryTable({
                               )
                             }
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <RefreshCw className="h-3.5 w-3.5" />
                             Resend invite
                           </Button>
                         ) : null}
@@ -475,7 +477,7 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="w-full justify-center gap-2 sm:min-w-[9.5rem]"
+                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-xs"
                             disabled={busy}
                             onClick={() =>
                               runAction(
@@ -486,7 +488,7 @@ export function EmployeeDirectoryTable({
                               )
                             }
                           >
-                            <Lock className="h-4 w-4" />
+                            <Lock className="h-3.5 w-3.5" />
                             Reset password
                           </Button>
                         ) : null}
@@ -496,11 +498,11 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="w-full justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 sm:min-w-[6.5rem] dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                            className="h-8 justify-center gap-1.5 rounded-lg border-red-900/60 px-2.5 text-xs text-red-500 hover:bg-red-950/20 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
                             disabled={busy}
                             onClick={() => void runDeleteRow(row)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                             Remove
                           </Button>
                         ) : null}

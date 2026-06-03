@@ -196,12 +196,13 @@ export function EmployeeDirectoryPanel({
         onClick={() => handleSort(key)}
       >
         {label}
-        {active ? (order === "asc" ? " ↑" : " ↓") : null}
+        {active ? (order === "asc" ? " â†‘" : " â†“") : null}
       </button>
     );
   };
 
-  const filterClass = "form-input h-9 w-full py-2 text-sm md:h-9 md:py-2";
+  const filterClass =
+    "form-input h-9 w-full rounded-lg px-3 py-1.5 text-xs shadow-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20";
 
   return (
     <div className="space-y-4">
@@ -214,8 +215,30 @@ export function EmployeeDirectoryPanel({
         </div>
       ) : null}
 
-      <div className="data-card p-4">
-        <div className="mb-4 flex flex-col gap-3">
+      <div className="data-card overflow-hidden p-0">
+        <div className="border-b border-slate-200/70 bg-slate-50/70 px-4 py-2.5 dark:border-slate-800/80 dark:bg-slate-950/25">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+                Directory filters
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Search, filter, and sort employee records quickly.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-lg px-3 text-xs"
+              disabled={loading}
+              onClick={() => void loadDirectory()}
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 p-3">
           <div className="flex items-center justify-between gap-3 md:hidden">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               Mobile view
@@ -248,9 +271,9 @@ export function EmployeeDirectoryPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+          <div className="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-2 xl:grid-cols-12">
+            <div className="xl:col-span-3">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Search
               </label>
               <input
@@ -260,8 +283,8 @@ export function EmployeeDirectoryPanel({
                 className={`${filterClass} mt-1`}
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Kind
               </label>
               <select
@@ -274,8 +297,8 @@ export function EmployeeDirectoryPanel({
                 <option value="invite">Invites only</option>
               </select>
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-3">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Department
               </label>
               <select
@@ -291,8 +314,8 @@ export function EmployeeDirectoryPanel({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Role
               </label>
               <select
@@ -306,8 +329,8 @@ export function EmployeeDirectoryPanel({
                 <option value="employee">Employee</option>
               </select>
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Invite status
               </label>
               <select
@@ -320,8 +343,8 @@ export function EmployeeDirectoryPanel({
                 <option value="accepted">Accepted</option>
               </select>
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 User id
               </label>
               <input
@@ -331,8 +354,8 @@ export function EmployeeDirectoryPanel({
                 className={`${filterClass} mt-1`}
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Created from
               </label>
               <input
@@ -342,8 +365,8 @@ export function EmployeeDirectoryPanel({
                 className={`${filterClass} mt-1`}
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+            <div className="xl:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Created to
               </label>
               <input
@@ -353,16 +376,6 @@ export function EmployeeDirectoryPanel({
                 className={`${filterClass} mt-1`}
               />
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-9 w-full lg:w-auto"
-              disabled={loading}
-              onClick={() => void loadDirectory()}
-            >
-              {loading ? "Refreshing…" : "Refresh"}
-            </Button>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,13 @@ import {
 import { TablePagination } from "@/components/TablePagination";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { breakSessionReasonLabel } from "@/lib/attendance-break-label";
-import { enumerateLocalDates, getLocalDateString } from "@/lib/attendance-date";
+import {
+  enumerateLocalDates,
+  formatAttendanceClock,
+  formatAttendanceDateLabel,
+  formatWorkDuration,
+  getLocalDateString
+} from "@/lib/attendance-date";
 import {
   ATTENDANCE_ACTIVITY_PING_MS,
   ATTENDANCE_IDLE_AUTO_BREAK_MS,
@@ -112,6 +119,7 @@ function agentStateHint(state: AgentHealthState): string {
 }
 
 export default function AttendancePage() {
+  const router = useRouter();
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -236,8 +244,15 @@ export default function AttendancePage() {
   }, [agentHealth?.appUrl]);
 
   const isEmployeeViewer = viewerRole === "employee";
+  const shouldRedirectToReport = viewerRole === "admin" || viewerRole === "manager";
   const isViewingToday = selectedDate === getLocalDateString();
   const isMultiDayRange = dateFrom !== dateTo;
+
+  useEffect(() => {
+    if (shouldRedirectToReport) {
+      router.replace("/dashboard");
+    }
+  }, [router, shouldRedirectToReport]);
 
   useEffect(() => {
     if (!isEmployeeViewer || !isMultiDayRange) {
@@ -465,13 +480,10 @@ export default function AttendancePage() {
         ? "bg-amber-500"
         : "bg-slate-300 dark:bg-slate-600";
 
-  const hoursDisplay =
-    attendance?.totalHoursLive ??
-    (attendance?.liveWorkMinutes != null
-      ? (attendance.liveWorkMinutes / 60).toFixed(2)
-      : attendance?.totalWorkMinutes != null
-        ? (attendance.totalWorkMinutes / 60).toFixed(2)
-        : "—");
+  const workMinutesDisplay =
+    attendance?.liveWorkMinutes != null
+      ? formatWorkDuration(attendance.liveWorkMinutes)
+      : formatWorkDuration(attendance?.totalWorkMinutes);
 
   const breaks = isMultiDayRange ? rangeBreakSessions : (attendance?.breakSessions ?? []);
   const breaksSorted = useMemo(
@@ -495,12 +507,8 @@ export default function AttendancePage() {
     }
   }, [breakPage, breakTotalPages]);
 
-  const clockInLabel = attendance?.clockIn
-    ? new Date(attendance.clockIn).toLocaleTimeString()
-    : "—";
-  const clockOutLabel = attendance?.clockOut
-    ? new Date(attendance.clockOut).toLocaleTimeString()
-    : "—";
+  const clockInLabel = formatAttendanceClock(attendance?.clockIn);
+  const clockOutLabel = formatAttendanceClock(attendance?.clockOut);
   const shiftOpen = Boolean(
     attendance?.clockIn && !attendance?.clockOut
   );
@@ -675,7 +683,7 @@ export default function AttendancePage() {
         </h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {isEmployeeViewer
-            ? "Clock in, track breaks, and view today’s summary. Refreshes every 20 seconds."
+            ? "Clock in, track breaks, and view todayâ€™s summary. Refreshes every 20 seconds."
             : "Tracks working hours, tracks breaks, and shows live status (refreshes every 20 seconds while this page is open)."}
         </p>
         {!isEmployeeViewer ? (
@@ -832,7 +840,7 @@ export default function AttendancePage() {
       <>
       {!isViewingToday ? (
         <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-300">
-          Viewing {selectedDate}. Clock in, breaks, and live timers apply only to today — use
+          Viewing {selectedDate}. Clock in, breaks, and live timers apply only to today â€” use
           Today or pick today in the calendar for active actions.
         </p>
       ) : null}
@@ -840,7 +848,7 @@ export default function AttendancePage() {
         <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-300">
           Summary below is for <strong>{selectedDate}</strong>. Breaks list shows all sessions
           from {dateFrom} to {dateTo}
-          {rangeBreaksLoading ? " (loading…)" : ""}.
+          {rangeBreaksLoading ? " (loadingâ€¦)" : ""}.
         </p>
       ) : null}
       <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
@@ -862,13 +870,13 @@ export default function AttendancePage() {
                 {isMultiDayRange ? (
                   <span className="text-slate-500 dark:text-slate-400">
                     {" "}
-                    · viewing <strong>{selectedDate}</strong>
+                    Â· viewing <strong>{selectedDate}</strong>
                   </span>
                 ) : null}
               </p>
               {lastUpdated && (
                 <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                  Updated {lastUpdated.toLocaleTimeString()}
+                  Updated {formatAttendanceClock(lastUpdated)}
                 </p>
               )}
               {attendance?.clockOut && (
@@ -948,7 +956,7 @@ export default function AttendancePage() {
               <AttendanceStatTile label="Clock out" value={clockOutLabel} />
               <AttendanceStatTile
                 label="Work hours"
-                value={hoursDisplay === "—" ? "—" : `${hoursDisplay} h`}
+                value={workMinutesDisplay}
                 valueClassName="text-emerald-700 dark:text-emerald-300"
               />
               <AttendanceStatTile
@@ -989,7 +997,7 @@ export default function AttendancePage() {
           </div>
           {rangeBreaksLoading && isMultiDayRange ? (
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Loading break sessions for the selected range…
+              Loading break sessions for the selected rangeâ€¦
             </p>
           ) : breaks.length === 0 ? (
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1014,13 +1022,9 @@ export default function AttendancePage() {
                   </thead>
                   <tbody>
                     {paginatedBreaks.map((b) => {
-                    const start = b.breakStart
-                      ? new Date(b.breakStart).toLocaleTimeString()
-                      : "—";
-                    const end = b.breakEnd
-                      ? new Date(b.breakEnd).toLocaleTimeString()
-                      : "Open";
-                    let duration = "—";
+                    const start = formatAttendanceClock(b.breakStart);
+                    const end = b.breakEnd ? formatAttendanceClock(b.breakEnd) : "Open";
+                    let duration = "â€”";
                     if (b.breakStart && b.breakEnd) {
                       const mins = Math.round(
                         (new Date(b.breakEnd).getTime() -
@@ -1032,15 +1036,10 @@ export default function AttendancePage() {
                       const mins = Math.round(
                         (Date.now() - new Date(b.breakStart).getTime()) / 60000
                       );
-                      duration = `~${mins}m · open`;
+                      duration = `~${mins}m Â· open`;
                     }
                     const reason = breakSessionReasonLabel(b);
-                    const dateLabel = b.logDate
-                      ? new Date(`${b.logDate}T12:00:00`).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric"
-                        })
-                      : "—";
+                    const dateLabel = b.logDate ? formatAttendanceDateLabel(b.logDate) : "-";
                     return (
                       <tr
                         key={`${b.logDate ?? "day"}-${b.id}`}
@@ -1096,7 +1095,7 @@ export default function AttendancePage() {
             Monitoring only
           </h2>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Admin and manager accounts do not mark attendance. Use Attendance report to monitor employee status, idle events, and timelines.
+            Admin and manager accounts do not mark attendance. Use Executive Dashboard to monitor employee status, idle events, and timelines.
           </p>
         </section>
       )}

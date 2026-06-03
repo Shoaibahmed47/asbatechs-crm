@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ import {
 import { TablePagination } from "@/components/TablePagination";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
 import type { AttendanceEmployeeDetail } from "@/lib/attendance-employee-detail";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,7 @@ type Props = {
 function formatClock(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -71,6 +74,7 @@ function agentStateHint(state: string): string {
 
 function formatDayHeading(iso: string): string {
   return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -114,6 +118,11 @@ export function AttendanceReportEmployeeDetailPanel({
   const [activeDate, setActiveDate] = useState(date);
   const [breakPage, setBreakPage] = useState(1);
   const [breakLimit, setBreakLimit] = useState(10);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isMultiDayRange = dateFrom !== dateTo;
 
@@ -310,7 +319,8 @@ export function AttendanceReportEmployeeDetailPanel({
         to: dateTo
       });
       const data = await apiFetch<{ detail: AttendanceEmployeeDetail }>(
-        `/api/admin/attendance/employee-detail?${q.toString()}`
+        `/api/reports/attendance-employee-detail?${q.toString()}`,
+        { timeoutMs: 60_000 }
       );
       setDetail(data.detail);
     } catch (err) {
@@ -330,28 +340,36 @@ export function AttendanceReportEmployeeDetailPanel({
   }, [load]);
 
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
-        aria-label="Close employee detail"
-        onClick={onClose}
-      />
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/65 px-4 py-6 backdrop-blur-md sm:px-6 sm:py-8 dark:bg-slate-950/75"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="attendance-detail-title"
-        className="app-panel relative z-10 flex h-full w-[min(96vw,56rem)] shrink-0 flex-col rounded-none border-l border-slate-200/90 shadow-2xl dark:border-slate-700 xl:w-[min(92vw,62rem)]"
+        onClick={(event) => event.stopPropagation()}
+        className="app-panel my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-slate-200/90 shadow-[0_30px_80px_rgba(15,23,42,0.25)] dark:border-slate-700 sm:max-w-[52rem] max-h-[min(92dvh,880px)]"
       >
-        <header className="shrink-0 border-b border-slate-200/90 px-6 py-5 dark:border-slate-800">
+        <header className="shrink-0 border-b border-slate-200/90 px-4 py-4 dark:border-slate-800 sm:px-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
@@ -390,9 +408,9 @@ export function AttendanceReportEmployeeDetailPanel({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
           {loading ? (
-            <div className="flex min-h-[28rem] items-center justify-center">
+            <div className="flex min-h-[18rem] items-center justify-center">
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/80 px-8 py-7 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
                 <Loader2 className="h-14 w-14 animate-spin text-slate-500/80 dark:text-slate-300/70" />
                 <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Loading...</p>
@@ -404,8 +422,8 @@ export function AttendanceReportEmployeeDetailPanel({
               {error}
             </div>
           ) : detail ? (
-            <div className="space-y-5">
-              <section className="data-card p-4 sm:p-5">
+            <div className="space-y-4">
+              <section className="data-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Current status
                 </h3>
@@ -475,14 +493,14 @@ export function AttendanceReportEmployeeDetailPanel({
                 </dl>
               </section>
 
-              <section className="data-card p-4 sm:p-5">
+              <section className="data-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Day totals
                 </h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Metrics for <strong className="text-slate-900 dark:text-slate-100">{activeDate}</strong>
                 </p>
-                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-2 gap-2.5 md:grid-cols-3">
                   <DetailStatTile label="Clock in" value={formatClock(detail.clockIn)} />
                   <DetailStatTile label="Clock out" value={formatClock(detail.clockOut)} />
                   <DetailStatTile label="Work" value={formatMinutes(detail.totalWorkMinutes)} />
@@ -498,7 +516,7 @@ export function AttendanceReportEmployeeDetailPanel({
                 </div>
               </section>
 
-              <section className="data-card p-4 sm:p-5">
+              <section className="data-card p-4">
                 <AttendanceDateRangeCalendar
                   variant="compact"
                   display="inline"
@@ -618,11 +636,11 @@ export function AttendanceReportEmployeeDetailPanel({
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200/90 px-6 py-4 dark:border-slate-800">
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/90 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Scroll this panel to see all sections.
+            Detail actions
           </p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <Button type="button" size="sm" variant="outline" onClick={() => void copyReport()} disabled={loading || !detail}>
               Copy report
             </Button>
@@ -638,7 +656,8 @@ export function AttendanceReportEmployeeDetailPanel({
           </div>
         </footer>
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }
 

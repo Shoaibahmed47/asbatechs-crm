@@ -1,13 +1,24 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
+import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
-import { AdminAttendanceLivePanel } from "@/components/AdminAttendanceLivePanel";
 import { DashboardCharts } from "@/components/DashboardCharts";
-import { and, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
+import {
+  getAttendanceDailyReport,
+  getAttendanceRangeReport
+} from "@/lib/attendance-daily-report";
+import {
+  getAttendanceAgentHealth,
+  type AgentHealthState
+} from "@/lib/attendance-agent-health";
+import { AttendanceReportFilters } from "@/app/(app)/attendance/report/AttendanceReportFilters";
+import { AttendanceReportTables } from "@/components/attendance/AttendanceReportTables";
 
 function monthKeysLast(n: number): string[] {
   const out: string[] = [];
@@ -37,7 +48,55 @@ function startOfRollingMonthsAgo(monthsBackFromStart: number): Date {
   return d;
 }
 
-export default async function DashboardPage() {
+function pickDateParam(value: string | string[] | undefined): string | undefined {
+  if (value == null) return undefined;
+  const s = Array.isArray(value) ? value[0] : value;
+  return typeof s === "string" ? s : undefined;
+}
+
+function shiftDate(iso: string, deltaDays: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  dt.setDate(dt.getDate() + deltaDays);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function getAttendanceStatus(row: {
+  hasLog: boolean;
+  clockIn: string | null;
+  clockOut: string | null;
+}): "present" | "working" | "absent" {
+  if (!row.hasLog) return "absent";
+  if (row.clockIn && !row.clockOut) return "working";
+  return "present";
+}
+
+function getRangeFromPreset(preset: string, today: string): { from: string; to: string } {
+  const now = new Date(`${today}T00:00:00`);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  if (preset === "last_7_days") return { from: shiftDate(today, -6), to: today };
+  if (preset === "last_14_days") return { from: shiftDate(today, -13), to: today };
+  if (preset === "last_month") {
+    const d = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0).getDate();
+    const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    const to = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      lastDay
+    ).padStart(2, "0")}`;
+    return { from, to };
+  }
+  return { from: today, to: today };
+}
+
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   const session = token ? await verifyAuthToken(token) : null;
@@ -70,6 +129,48 @@ export default async function DashboardPage() {
   const totalUsers = Number(userCount?.value ?? 0);
 
   const today = getLocalDateString();
+  const sp = (await Promise.resolve(searchParams)) ?? {};
+  const dateRaw = pickDateParam(sp.date);
+  const reportModeRaw = (pickDateParam(sp.mode) ?? "daily").toLowerCase();
+  const reportMode = reportModeRaw === "range" ? "range" : "daily";
+  const presetRaw = (pickDateParam(sp.preset) ?? "").toLowerCase();
+  const reportSearch = (pickDateParam(sp.search) ?? "").trim();
+  const statusRaw = (pickDateParam(sp.status) ?? "").toLowerCase();
+  const departmentRaw = pickDateParam(sp.departmentId);
+  const statusFilter =
+    statusRaw === "present" || statusRaw === "working" || statusRaw === "absent"
+      ? statusRaw
+      : "all";
+  const agentStateRaw = (pickDateParam(sp.agentState) ?? "").toLowerCase();
+  const alertsOnly = pickDateParam(sp.alerts) === "1";
+  const agentStateFilter: AgentHealthState | "all" =
+    agentStateRaw === "running" ||
+    agentStateRaw === "installed" ||
+    agentStateRaw === "stale" ||
+    agentStateRaw === "not_installed"
+      ? (agentStateRaw as AgentHealthState)
+      : "all";
+  const departmentFilter =
+    departmentRaw && /^\d+$/.test(departmentRaw) ? Number(departmentRaw) : null;
+  const reportDate =
+    dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : today;
+  const fromRaw = pickDateParam(sp.from);
+  const toRaw = pickDateParam(sp.to);
+  const presetRange =
+    presetRaw === "last_7_days" ||
+    presetRaw === "last_14_days" ||
+    presetRaw === "last_month"
+      ? getRangeFromPreset(presetRaw, today)
+      : null;
+  const fromDate =
+    presetRange?.from ??
+    (fromRaw && /^\d{4}-\d{2}-\d{2}$/.test(fromRaw) ? fromRaw : reportDate);
+  const toDate =
+    presetRange?.to ??
+    (toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? toRaw : reportDate);
+  const normalizedFrom = fromDate <= toDate ? fromDate : toDate;
+  const normalizedTo = fromDate <= toDate ? toDate : fromDate;
+
   const todaysLogs = await db
     .select()
     .from(schema.attendanceLogs)
@@ -79,6 +180,62 @@ export default async function DashboardPage() {
   const liveAttendanceToday = isAdminViewer
     ? await getAttendanceStatusForDate(today)
     : null;
+
+  let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
+  let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
+  let attendanceDepartments: { id: number; name: string }[] = [];
+  let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
+  const attendanceLoadErrors: string[] = [];
+
+  if (isAdminViewer) {
+    const scope = { role: "admin" as const, departmentId: null };
+    const [reportResult, departmentsResult, agentHealthResult] = await Promise.allSettled([
+      reportMode === "range"
+        ? getAttendanceRangeReport(normalizedFrom, normalizedTo, scope)
+        : getAttendanceDailyReport(reportDate, scope),
+      db
+        .select({ id: schema.departments.id, name: schema.departments.name })
+        .from(schema.departments)
+        .orderBy(asc(schema.departments.name)),
+      getAttendanceAgentHealth({
+        date: reportDate,
+        scope,
+        search: reportSearch,
+        departmentFilter,
+        stateFilter: agentStateFilter,
+        alertsOnly
+      })
+    ]);
+
+    if (reportResult.status === "fulfilled") {
+      if (reportMode === "range") {
+        attendanceRangeRows = reportResult.value as Awaited<
+          ReturnType<typeof getAttendanceRangeReport>
+        >;
+      } else {
+        attendanceRows = reportResult.value as Awaited<
+          ReturnType<typeof getAttendanceDailyReport>
+        >;
+      }
+    } else {
+      console.error("[dashboard/attendance-report] report", reportResult.reason);
+      attendanceLoadErrors.push("Attendance data could not be loaded.");
+    }
+
+    if (departmentsResult.status === "fulfilled") {
+      attendanceDepartments = departmentsResult.value;
+    } else {
+      console.error("[dashboard/attendance-report] departments", departmentsResult.reason);
+      attendanceLoadErrors.push("Department filter could not be loaded.");
+    }
+
+    if (agentHealthResult.status === "fulfilled") {
+      attendanceAgentHealth = agentHealthResult.value;
+    } else {
+      console.error("[dashboard/attendance-report] agent health", agentHealthResult.reason);
+      attendanceLoadErrors.push("Agent health table could not be loaded.");
+    }
+  }
 
   const assignedClientProjects =
     session?.role === "employee"
@@ -147,6 +304,45 @@ export default async function DashboardPage() {
     label: formatMonthLabel(m),
     count: newByMonth.get(m) ?? 0
   }));
+
+  const filteredAttendanceRows = attendanceRows.filter((row) => {
+    const matchesSearch =
+      reportSearch.length === 0 ||
+      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
+      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
+    const rowStatus = getAttendanceStatus(row);
+    const matchesStatus = statusFilter === "all" || rowStatus === statusFilter;
+    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+  const filteredAttendanceRangeRows = attendanceRangeRows.filter((row) => {
+    const matchesSearch =
+      reportSearch.length === 0 ||
+      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
+      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
+    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
+    return matchesSearch && matchesDepartment;
+  });
+  const attendanceBaseQueryParams = new URLSearchParams();
+  attendanceBaseQueryParams.set("date", reportDate);
+  attendanceBaseQueryParams.set("mode", reportMode);
+  attendanceBaseQueryParams.set("from", normalizedFrom);
+  attendanceBaseQueryParams.set("to", normalizedTo);
+  if (presetRaw) attendanceBaseQueryParams.set("preset", presetRaw);
+  if (reportSearch) attendanceBaseQueryParams.set("search", reportSearch);
+  if (departmentFilter != null) {
+    attendanceBaseQueryParams.set("departmentId", String(departmentFilter));
+  }
+  if (statusFilter !== "all" && reportMode === "daily") {
+    attendanceBaseQueryParams.set("status", statusFilter);
+  }
+  if (alertsOnly) attendanceBaseQueryParams.set("alerts", "1");
+
+  const reportPrev = shiftDate(reportDate, -1);
+  const reportNext = shiftDate(reportDate, 1);
+  const attendanceDetailDate = reportMode === "daily" ? reportDate : normalizedTo;
+  const attendanceLoadError =
+    attendanceLoadErrors.length > 0 ? attendanceLoadErrors.join(" ") : null;
 
   return (
     <div className="space-y-8">
@@ -228,8 +424,149 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {isAdminViewer && liveAttendanceToday ? (
-        <AdminAttendanceLivePanel people={liveAttendanceToday.people} date={liveAttendanceToday.date} />
+      {isAdminViewer ? (
+        <section className="space-y-5">
+          <div className="app-panel overflow-hidden rounded-[28px]">
+            <div className="relative border-b border-slate-200/70 px-6 py-6 dark:border-slate-800/80 sm:px-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.75),transparent)] dark:bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_34%)]" />
+              <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+                    Attendance command center
+                  </div>
+                  <h2 className="mt-3 font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                    Team attendance monitor
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    Monitor clock-in, clock-out, breaks, live activity, agent health,
+                    sleep/idle signals, and employee reasons from the Executive Dashboard.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[30rem]">
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+                      Active
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
+                      {liveAttendanceToday?.people.filter((p) => p.status === "active").length ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-300">
+                      Break
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-amber-800 dark:text-amber-300">
+                      {liveAttendanceToday?.people.filter((p) => p.status === "break").length ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-300/70 bg-slate-100/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      Open shifts
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                      {activeToday}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-5 px-4 py-5 sm:px-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                {reportMode === "daily" ? (
+                  <>
+                    <Link
+                      href={`/dashboard?date=${reportPrev}`}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                    >
+                      Previous day
+                    </Link>
+                    <Link
+                      href={`/dashboard?date=${reportNext}`}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                    >
+                      Next day
+                    </Link>
+                    {reportDate !== today ? (
+                      <Link
+                        href="/dashboard"
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                      >
+                        Today
+                      </Link>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+                    Range:{" "}
+                    <span className="text-slate-900 dark:text-white">
+                      {new Date(normalizedFrom + "T12:00:00").toLocaleDateString()} -{" "}
+                      {new Date(normalizedTo + "T12:00:00").toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 sm:ml-auto">
+                  Date:{" "}
+                  <span className="text-slate-900 dark:text-white">
+                    {new Date(reportDate + "T12:00:00").toLocaleDateString(undefined, {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric"
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              <Suspense
+                fallback={
+                  <div className="h-24 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-900/50" />
+                }
+              >
+                <AttendanceReportFilters
+                  mode={reportMode}
+                  date={reportDate}
+                  from={normalizedFrom}
+                  to={normalizedTo}
+                  preset={presetRaw}
+                  search={reportSearch}
+                  status={statusFilter}
+                  agentState={agentStateFilter}
+                  alertsOnly={alertsOnly}
+                  departmentId={departmentFilter == null ? "" : String(departmentFilter)}
+                  departments={attendanceDepartments}
+                  isAdmin={isAdminViewer}
+                />
+              </Suspense>
+            </div>
+          </div>
+
+          {attendanceLoadError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+              <strong className="font-semibold">Attendance data failed to load.</strong>{" "}
+              <span className="opacity-90">{attendanceLoadError}</span>
+            </div>
+          ) : null}
+
+          <Suspense
+            fallback={
+              <div className="data-card px-4 py-8 text-center text-sm text-slate-500">
+                Loading attendance monitor...
+              </div>
+            }
+          >
+            <AttendanceReportTables
+              detailDate={attendanceDetailDate}
+              showAgentHealth={Boolean(attendanceAgentHealth)}
+              agentHealth={attendanceAgentHealth}
+              agentStateFilter={agentStateFilter}
+              agentFilterQueryBase={attendanceBaseQueryParams.toString()}
+              dailyRows={filteredAttendanceRows}
+              rangeRows={filteredAttendanceRangeRows}
+              basePath="/dashboard"
+            />
+          </Suspense>
+        </section>
       ) : null}
 
       {session?.role === "employee" ? (

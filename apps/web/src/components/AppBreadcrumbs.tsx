@@ -22,7 +22,7 @@ const ROUTE_CRUMBS: Record<string, Crumb[]> = {
   ],
   "/attendance": [{ label: "Attendance" }],
   "/attendance/report": [
-    { label: "Attendance", href: "/attendance" },
+    { label: "Attendance" },
     { label: "Daily report" }
   ],
   "/users": [{ label: "Employees" }],

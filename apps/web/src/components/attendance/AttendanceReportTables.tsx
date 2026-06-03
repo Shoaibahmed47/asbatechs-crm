@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
 import type { AttendanceDailyRow, AttendanceRangeRow } from "@/lib/attendance-daily-report";
+import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
 import { AttendanceReportEmployeeDetailPanel } from "./AttendanceReportEmployeeDetailPanel";
 import { toast } from "sonner";
 
@@ -20,11 +21,13 @@ type Props = {
   agentFilterQueryBase: string;
   dailyRows: AttendanceDailyRow[];
   rangeRows: AttendanceRangeRow[];
+  basePath?: string;
 };
 
 function formatClock(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -63,11 +66,15 @@ function toneForAgentState(state: AgentHealthState): string {
   return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
 }
 
-function queryWithAgentState(baseQuery: string, state: AgentHealthState | "all"): string {
+function queryWithAgentState(
+  baseQuery: string,
+  state: AgentHealthState | "all",
+  basePath: string
+): string {
   const next = new URLSearchParams(baseQuery);
   if (state === "all") next.delete("agentState");
   else next.set("agentState", state);
-  return `/attendance/report?${next.toString()}`;
+  return `${basePath}?${next.toString()}`;
 }
 
 function EmployeeNameCell({
@@ -87,12 +94,14 @@ export function AttendanceReportTables({
   agentStateFilter,
   agentFilterQueryBase,
   dailyRows,
-  rangeRows
+  rangeRows,
+  basePath
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [issuingForUserId, setIssuingForUserId] = useState<number | null>(null);
+  const filterBasePath = basePath ?? pathname;
 
   const selectedUserId = useMemo(() => {
     const raw = searchParams.get("employee");
@@ -186,7 +195,7 @@ export function AttendanceReportTables({
                   return (
                     <Link
                       key={state}
-                      href={queryWithAgentState(agentFilterQueryBase, state)}
+                      href={queryWithAgentState(agentFilterQueryBase, state, filterBasePath)}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                         isActive
                           ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"

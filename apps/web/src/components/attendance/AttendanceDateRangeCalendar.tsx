@@ -8,7 +8,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import "react-day-picker/dist/style.css";
 
 import { Button } from "@/components/ui/button";
-import { getLocalDateString } from "@/lib/attendance-date";
+import { ATTENDANCE_TIME_ZONE, getLocalDateString } from "@/lib/attendance-date";
 import { cn } from "@/lib/utils";
 
 type PopoverPosition = {
@@ -57,6 +57,7 @@ function formatDayLabel(iso: string): string {
   const d = toDate(iso);
   if (!d) return "—";
   return d.toLocaleDateString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -74,9 +75,19 @@ export function formatAttendanceRangeLabel(from: string, to: string): string {
     year: "numeric"
   };
   if (from === to) {
-    return f.toLocaleDateString(undefined, { weekday: "short", ...opts });
+    return f.toLocaleDateString(undefined, {
+      timeZone: ATTENDANCE_TIME_ZONE,
+      weekday: "short",
+      ...opts
+    });
   }
-  return `${f.toLocaleDateString(undefined, opts)} – ${t.toLocaleDateString(undefined, opts)}`;
+  return `${f.toLocaleDateString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    ...opts
+  })} – ${t.toLocaleDateString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    ...opts
+  })}`;
 }
 
 function computePopoverPosition(

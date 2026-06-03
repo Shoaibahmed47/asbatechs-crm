@@ -1,4 +1,5 @@
 import type { PersonAttendanceStatus } from "@/lib/attendance-status-today";
+import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
 import { countAttendanceByStatus } from "@/lib/attendance-status-today";
 
 function StatusPill({ status }: { status: PersonAttendanceStatus["status"] }) {
@@ -30,6 +31,7 @@ function StatusPill({ status }: { status: PersonAttendanceStatus["status"] }) {
 function formatTime(iso: string | null) {
   if (!iso) return "-";
   return new Date(iso).toLocaleTimeString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit"
   });

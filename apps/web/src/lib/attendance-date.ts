@@ -1,12 +1,64 @@
+export const ATTENDANCE_TIME_ZONE =
+  process.env.NEXT_PUBLIC_ATTENDANCE_TIME_ZONE || "Asia/Karachi";
+
 /**
- * Calendar date in the user's local timezone (YYYY-MM-DD).
- * Attendance is keyed by local day, not UTC (avoids wrong-day bugs near midnight).
+ * Calendar date in the configured attendance timezone (YYYY-MM-DD).
+ * Attendance is keyed by business day, not UTC (avoids wrong-day bugs near midnight).
  */
 export function getLocalDateString(d = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(d);
+  const y = parts.find((part) => part.type === "year")?.value ?? String(d.getFullYear());
+  const m =
+    parts.find((part) => part.type === "month")?.value ??
+    String(d.getMonth() + 1).padStart(2, "0");
+  const day =
+    parts.find((part) => part.type === "day")?.value ??
+    String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+export function formatAttendanceClock(iso: string | Date | null | undefined): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleTimeString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+export function formatAttendanceDateTime(iso: string | Date | null | undefined): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+export function formatAttendanceDateLabel(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+}
+
+export function formatWorkDuration(minutes: number | null | undefined): string {
+  if (minutes == null || Number.isNaN(minutes)) return "-";
+  const safeMinutes = Math.max(0, Math.floor(minutes));
+  const h = Math.floor(safeMinutes / 60);
+  const m = safeMinutes % 60;
+  if (h <= 0) return `${m} min`;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
 /** Inclusive list of YYYY-MM-DD strings from `from` through `to` (local calendar days). */
