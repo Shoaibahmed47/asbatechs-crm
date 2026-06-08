@@ -12,7 +12,7 @@ export type PersonAttendanceStatus = {
   email: string;
   status: LiveAttendanceStatus;
   /** Human-readable reason for current live status. */
-  //uupdate
+  //update
   statusReason: string;
   clockIn: string | null;
   clockOut: string | null;
