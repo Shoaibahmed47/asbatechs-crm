@@ -44,9 +44,11 @@ New-Item -ItemType Directory -Path $setupDir -Force | Out-Null
 $installScriptPath = Join-Path $setupDir "install-agent-task.ps1"
 $verifyScriptPath = Join-Path $setupDir "verify-agent.ps1"
 $uninstallScriptPath = Join-Path $setupDir "uninstall-agent-task.ps1"
+$launcherScriptPath = Join-Path $setupDir "start-agent.ps1"
 
 Write-Host "Downloading setup scripts..."
 Invoke-WebRequest -UseBasicParsing -Uri "$normalizedBaseUrl/desktop-agent/install-agent-task.ps1" -OutFile $installScriptPath
+Invoke-WebRequest -UseBasicParsing -Uri "$normalizedBaseUrl/desktop-agent/start-agent.ps1" -OutFile $launcherScriptPath
 Invoke-WebRequest -UseBasicParsing -Uri "$normalizedBaseUrl/desktop-agent/verify-agent.ps1" -OutFile $verifyScriptPath
 Invoke-WebRequest -UseBasicParsing -Uri "$normalizedBaseUrl/desktop-agent/uninstall-agent-task.ps1" -OutFile $uninstallScriptPath
 
@@ -95,8 +97,14 @@ if ($Token) {
 
 Write-Host "Installing scheduled task..."
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installScriptPath @args
+if ($LASTEXITCODE -ne 0) {
+  throw "Scheduled task install failed (exit code $LASTEXITCODE). See errors above."
+}
 
 Write-Host "Verifying..."
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifyScriptPath -TaskName $TaskName
+if ($LASTEXITCODE -ne 0) {
+  Write-Warning "Verify script reported an issue. Re-download verify-agent.ps1 or click Verify Agent on the Attendance page."
+}
 
 Write-Host "One-click setup complete."

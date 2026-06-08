@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
@@ -57,6 +57,13 @@ function labelForAgentState(state: AgentHealthState): string {
   if (state === "installed") return "Installed";
   if (state === "stale") return "No recent activity";
   return "Not installed";
+}
+
+function labelForAttendanceStatus(status: string): string {
+  if (status === "active") return "Active";
+  if (status === "break") return "Break";
+  if (status === "idle") return "Inactive";
+  return "Offline";
 }
 
 function toneForAgentState(state: AgentHealthState): string {
@@ -128,16 +135,25 @@ export function AttendanceReportTables({
   );
 
   const closeDetail = useCallback(() => {
+    document.body.style.removeProperty("pointer-events");
+    document.documentElement.style.removeProperty("pointer-events");
+    document.body.style.removeProperty("overflow");
     const next = new URLSearchParams(searchParams.toString());
     next.delete("employee");
     const q = next.toString();
-    router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (selectedUserId == null) return;
+    document.body.style.removeProperty("pointer-events");
+    document.documentElement.style.removeProperty("pointer-events");
+  }, [selectedUserId]);
 
   const issueInstallCommand = useCallback(async (userId: number) => {
     try {
       setIssuingForUserId(userId);
-      const setupRes = await fetch("/api/admin/attendance/agent/setup-token", {
+      const setupRes = await fetch("/api/admin/attendance/desktop-agent/setup-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -290,8 +306,8 @@ export function AttendanceReportTables({
                       <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
                         {row.openShift ? "Open" : "Closed"}
                       </td>
-                      <td className="px-4 py-2.5 capitalize text-slate-700 dark:text-slate-300">
-                        {row.attendanceStatus}
+                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
+                        {labelForAttendanceStatus(row.attendanceStatus)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {formatMinutes(row.sleepMinutes)}
@@ -332,4 +348,3 @@ export function AttendanceReportTables({
     </>
   );
 }
-

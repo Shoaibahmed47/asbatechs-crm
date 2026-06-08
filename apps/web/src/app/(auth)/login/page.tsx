@@ -131,19 +131,6 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Login"}
             </Button>
           </form>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">or</span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          <button
-            type="button"
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            Continue with Google
-          </button>
         </section>
       </div>
     </div>

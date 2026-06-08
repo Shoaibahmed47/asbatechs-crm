@@ -4,9 +4,11 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { breakSessionReasonLabel } from "@/lib/attendance-break-label";
 import {
-  classifyAgentState,
+  pickLatestAgentSignalOnDate,
+  resolveAgentHealthState,
   type AgentHealthState
 } from "@/lib/attendance-agent-health-state";
+import { computeDayTotalsFromSessions } from "@/lib/attendance-shift-minutes";
 import {
   buildAttendanceReason,
   UNSCHEDULED_CAUSE,
@@ -144,7 +146,7 @@ export async function getAttendanceEmployeeDetail(params: {
     return null;
   }
 
-  const [log, agentRows, heartbeatRows, breakSessions] = await Promise.all([
+  const [log, heartbeatRows, setupRows, breakSessions] = await Promise.all([
     db
       .select()
       .from(schema.attendanceLogs)
@@ -153,18 +155,6 @@ export async function getAttendanceEmployeeDetail(params: {
       )
       .limit(1)
       .then((rows) => rows[0]),
-    db
-      .select({ lastActivityAt: schema.attendanceLogs.lastActivityAt })
-      .from(schema.attendanceLogs)
-      .where(
-        and(
-          eq(schema.attendanceLogs.userId, userId),
-          eq(schema.attendanceLogs.lastActivitySource, "agent"),
-          isNotNull(schema.attendanceLogs.lastActivityAt)
-        )
-      )
-      .orderBy(desc(schema.attendanceLogs.lastActivityAt))
-      .limit(1),
     db
       .select({ createdAt: schema.activityLogs.createdAt })
       .from(schema.activityLogs)
@@ -177,24 +167,43 @@ export async function getAttendanceEmployeeDetail(params: {
         )
       )
       .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(100),
+    db
+      .select({ createdAt: schema.activityLogs.createdAt })
+      .from(schema.activityLogs)
+      .where(
+        and(
+          eq(schema.activityLogs.userId, userId),
+          eq(schema.activityLogs.entityType, "attendance_agent"),
+          eq(schema.activityLogs.action, "agent_setup_prepared"),
+          eq(schema.activityLogs.entityId, 0)
+        )
+      )
+      .orderBy(desc(schema.activityLogs.createdAt))
       .limit(1),
     loadBreakSessionsInRange(userId, range.from, range.to)
   ]);
 
-  const latestAgentLogAt = agentRows[0]?.lastActivityAt
-    ? new Date(agentRows[0].lastActivityAt as Date)
+  const latestAgentLogAt =
+    log?.lastActivitySource === "agent" && log.lastActivityAt
+      ? new Date(log.lastActivityAt as Date)
+      : null;
+  const heartbeatDates = heartbeatRows
+    .map((row) => (row.createdAt ? new Date(row.createdAt as Date) : null))
+    .filter((value): value is Date => value != null);
+  const latestAgentAt = pickLatestAgentSignalOnDate(date, [
+    latestAgentLogAt,
+    ...heartbeatDates
+  ]);
+  const latestSetupAt = setupRows[0]?.createdAt
+    ? new Date(setupRows[0].createdAt as Date)
     : null;
-  const latestHeartbeatAt = heartbeatRows[0]?.createdAt
-    ? new Date(heartbeatRows[0].createdAt as Date)
-    : null;
-  const latestAgentAt =
-    latestAgentLogAt && latestHeartbeatAt
-      ? latestAgentLogAt.getTime() >= latestHeartbeatAt.getTime()
-        ? latestAgentLogAt
-        : latestHeartbeatAt
-      : latestAgentLogAt ?? latestHeartbeatAt ?? null;
-  const { state: agentState, ageSeconds: lastAgentAgeSeconds } =
-    classifyAgentState(latestAgentAt);
+  const openShiftEarly = Boolean(log?.clockIn && !log?.clockOut);
+  const { state: agentState, ageSeconds: lastAgentAgeSeconds } = resolveAgentHealthState({
+    lastAgentAtOnDate: latestAgentAt,
+    lastSetupAt: latestSetupAt,
+    openShift: openShiftEarly
+  });
 
   if (!log) {
     return {
@@ -243,12 +252,17 @@ export async function getAttendanceEmployeeDetail(params: {
     )
     .limit(1);
 
+  const openCause = openUnscheduled?.unscheduledCause;
   const openUnscheduledCause: UnscheduledCause | undefined =
-    openUnscheduled?.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP
+    openCause === UNSCHEDULED_CAUSE.SLEEP
       ? UNSCHEDULED_CAUSE.SLEEP
-      : openUnscheduled
-        ? UNSCHEDULED_CAUSE.IDLE
-        : undefined;
+      : openCause === UNSCHEDULED_CAUSE.TAB_CLOSE
+        ? UNSCHEDULED_CAUSE.TAB_CLOSE
+        : openCause === UNSCHEDULED_CAUSE.CURSOR_IDLE
+          ? UNSCHEDULED_CAUSE.CURSOR_IDLE
+          : openCause === UNSCHEDULED_CAUSE.IDLE
+            ? UNSCHEDULED_CAUSE.IDLE
+            : undefined;
 
   const statusRaw = (log.status ?? "offline").toLowerCase();
   const attendanceStatus: AttendanceStatusKind =
@@ -264,6 +278,49 @@ export async function getAttendanceEmployeeDetail(params: {
     lastActivitySource: log.lastActivitySource,
     lastActivityAt: log.lastActivityAt
   });
+
+  const daySessions = breakSessions.filter((row) => row.logDate === date);
+  const sessionInputs = daySessions.map((row) => ({
+    breakStart: row.breakStart,
+    breakEnd: row.breakEnd,
+    breakType: row.breakType,
+    unscheduledCause: row.unscheduledCause
+  }));
+
+  const totals =
+    log.clockIn != null
+      ? computeDayTotalsFromSessions({
+          clockIn: log.clockIn as Date,
+          clockOut: log.clockOut as Date | null,
+          now: new Date(),
+          breakSessions: sessionInputs
+        })
+      : null;
+
+  const totalWorkMinutes = totals?.workMinutes ?? log.totalWorkMinutes ?? 0;
+  const totalBreakMinutes = totals?.breakMinutes ?? log.totalBreakMinutes ?? 0;
+  const unscheduledIdleMinutes =
+    totals != null
+      ? totals.inactiveMinutes + totals.sleepMinutes
+      : log.unscheduledIdleMinutes ?? 0;
+  const sleepMinutes = totals?.sleepMinutes ?? log.sleepMinutes ?? 0;
+  const inactiveOnlyMinutes = totals?.inactiveMinutes ?? Math.max(0, unscheduledIdleMinutes - sleepMinutes);
+
+  const inactiveEventsCount = Math.max(
+    totals?.inactiveEventsCount ?? 0,
+    (log.tabCloseEventsCount ?? 0) + (log.cursorAwayEventsCount ?? 0) + (log.idleEventsCount ?? 0)
+  );
+  const sleepEventsCount = Math.max(
+    totals?.sleepEventsCount ?? 0,
+    log.sleepEventsCount ?? 0
+  );
+
+  const totalHours =
+    log.clockOut && log.totalHours != null
+      ? String(log.totalHours)
+      : totals && totals.workMinutes > 0
+        ? (totals.workMinutes / 60).toFixed(2)
+        : null;
 
   return {
     userId: user.id,
@@ -285,13 +342,13 @@ export async function getAttendanceEmployeeDetail(params: {
       ? new Date(log.lastActivityAt as Date).toISOString()
       : null,
     lastActivitySource: log.lastActivitySource,
-    totalWorkMinutes: log.totalWorkMinutes ?? 0,
-    totalBreakMinutes: log.totalBreakMinutes ?? 0,
-    unscheduledIdleMinutes: log.unscheduledIdleMinutes ?? 0,
-    idleEventsCount: log.idleEventsCount ?? 0,
-    sleepMinutes: log.sleepMinutes ?? 0,
-    sleepEventsCount: log.sleepEventsCount ?? 0,
-    totalHours: log.totalHours != null ? String(log.totalHours) : null,
+    totalWorkMinutes,
+    totalBreakMinutes,
+    unscheduledIdleMinutes: inactiveOnlyMinutes,
+    idleEventsCount: inactiveEventsCount,
+    sleepMinutes,
+    sleepEventsCount,
+    totalHours,
     breakSessions,
     breakRangeFrom: range.from,
     breakRangeTo: range.to

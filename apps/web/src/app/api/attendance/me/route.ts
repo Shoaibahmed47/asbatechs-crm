@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { computeLiveShiftMinutes } from "@/lib/attendance-shift-minutes";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 
 function toDateParam(date?: string | null): string {
@@ -62,16 +63,17 @@ export async function GET(req: NextRequest) {
     return "active";
   })();
 
-  const now = Date.now();
-  const completedBreakMins = log.totalBreakMinutes ?? 0;
+  const now = new Date();
   let liveWorkMinutes: number | null = null;
-  let ongoingBreakMinutes = 0;
+  let liveBreakMinutes: number | null = null;
   let ongoingSleepMinutes = 0;
 
   if (openBreak) {
-    ongoingBreakMinutes = Math.max(
+    const ongoingBreakMinutes = Math.max(
       0,
-      Math.floor((now - new Date(openBreak.breakStart as Date).getTime()) / 60000)
+      Math.floor(
+        (now.getTime() - new Date(openBreak.breakStart as Date).getTime()) / 60000
+      )
     );
     if (
       openBreak.breakType === "unscheduled" &&
@@ -82,11 +84,22 @@ export async function GET(req: NextRequest) {
   }
 
   if (log.clockIn && !log.clockOut) {
-    const startMs = new Date(log.clockIn as Date).getTime();
-    const elapsedMins = Math.max(0, Math.floor((now - startMs) / 60000));
-    liveWorkMinutes = Math.max(0, elapsedMins - completedBreakMins - ongoingBreakMinutes);
+    const live = computeLiveShiftMinutes({
+      clockIn: log.clockIn as Date,
+      clockOut: null,
+      now,
+      breakSessions: breakSessions.map((session) => ({
+        breakStart: session.breakStart as Date,
+        breakEnd: session.breakEnd as Date | null,
+        breakType: session.breakType,
+        unscheduledCause: session.unscheduledCause
+      }))
+    });
+    liveWorkMinutes = live.workMinutes;
+    liveBreakMinutes = live.breakMinutes;
   } else if (log.clockOut) {
     liveWorkMinutes = log.totalWorkMinutes ?? 0;
+    liveBreakMinutes = log.totalBreakMinutes ?? 0;
   }
 
   const totalHoursLive =
@@ -102,6 +115,7 @@ export async function GET(req: NextRequest) {
       ...log,
       status,
       liveWorkMinutes,
+      liveBreakMinutes,
       totalSleepMinutesLive,
       totalHoursLive,
       breakSessions

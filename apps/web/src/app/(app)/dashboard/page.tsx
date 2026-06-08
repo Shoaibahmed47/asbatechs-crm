@@ -439,7 +439,7 @@ export default async function DashboardPage({
                   </h2>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
                     Monitor clock-in, clock-out, breaks, live activity, agent health,
-                    sleep/idle signals, and employee reasons from the Executive Dashboard.
+                    sleep/inactive signals, and employee reasons from the Executive Dashboard.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[30rem]">

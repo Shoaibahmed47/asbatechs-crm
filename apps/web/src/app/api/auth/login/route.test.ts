@@ -69,6 +69,7 @@ describe("auth login route", () => {
 
     expect(res.status).toBe(200);
     expect(data.user.email).toBe("admin@crm.com");
+    expect(data.token).toBe("jwt-token");
     expect(res.headers.get("set-cookie")).toContain("crm_token=");
   });
 });

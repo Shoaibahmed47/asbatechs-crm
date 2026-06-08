@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertCircle, HelpCircle, Laptop, MousePointer2, PanelTop } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +19,10 @@ import {
   formatWorkDuration,
   getLocalDateString
 } from "@/lib/attendance-date";
-import {
-  ATTENDANCE_ACTIVITY_PING_MS,
-  ATTENDANCE_IDLE_AUTO_BREAK_MS,
-  ATTENDANCE_IDLE_WARNING_MS
-} from "@/lib/attendance-policy";
+import type { ComplianceAwayCause } from "@/lib/attendance-away-compliance";
+import { ATTENDANCE_ACTIVITY_PING_MS, ATTENDANCE_AWAY_POLICY } from "@/lib/attendance-policy";
+import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
+
 type AttendanceStatus = "active" | "break" | "idle" | "offline";
 
 type BreakSessionRow = {
@@ -49,6 +49,7 @@ type Attendance = {
   lastActivityAt?: string | null;
   totalHours?: string | null;
   liveWorkMinutes?: number | null;
+  liveBreakMinutes?: number | null;
   totalSleepMinutesLive?: number | null;
   totalHoursLive?: string | null;
   breakSessions?: BreakSessionRow[];
@@ -70,20 +71,177 @@ type AgentHealth = {
 
 type ViewerRole = "admin" | "manager" | "employee" | string;
 
+type AwayCause = ComplianceAwayCause;
+
+type AwayPolicy = {
+  tabCloseAwaySeconds: number;
+  cursorIdleAwaySeconds: number;
+  laptopSleepAwaySeconds: number;
+};
+
+type AwayNoticeState =
+  | { type: "away"; cause: AwayCause }
+  | { type: "tab_returned"; closedAt: string; awaySeconds: number };
+
+/** On-page away prompts (cursor idle / sleep). Tab close uses TAB_CLOSE_RETURNED_NOTICE. */
+const AWAY_EMPLOYEE_NOTICE: Record<
+  typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP,
+  string
+> = {
+  [UNSCHEDULED_CAUSE.CURSOR_IDLE]:
+    "No mouse or keyboard activity was detected. Move your cursor or click anywhere to continue.",
+  [UNSCHEDULED_CAUSE.SLEEP]:
+    "Your laptop was locked or went to sleep. Wake your laptop, then move your mouse or click anywhere to continue."
+};
+
+const AWAY_NOTICE_META: Record<
+  typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP,
+  { label: string; icon: typeof MousePointer2 | typeof Laptop }
+> = {
+  [UNSCHEDULED_CAUSE.CURSOR_IDLE]: { label: "Inactivity", icon: MousePointer2 },
+  [UNSCHEDULED_CAUSE.SLEEP]: { label: "Sleep / lock", icon: Laptop }
+};
+
+function formatAwaySecondsLabel(seconds: number): string {
+  if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"}`;
+  const mins = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  if (rem === 0) return `${mins} minute${mins === 1 ? "" : "s"}`;
+  return `${mins}m ${rem}s`;
+}
+
+function AttendanceTabCloseReturnedNotice({
+  closedAt,
+  awaySeconds
+}: {
+  closedAt: string;
+  awaySeconds: number;
+}) {
+  const closedLabel = formatAttendanceClock(closedAt);
+  const durationLabel = formatAwaySecondsLabel(awaySeconds);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="data-card overflow-hidden p-0"
+    >
+      <div className="flex items-stretch gap-0 border-l-4 border-amber-500 dark:border-amber-400">
+        <div className="flex flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/90 bg-gradient-to-br from-white to-amber-50/90 text-amber-600 shadow-sm dark:border-amber-800/80 dark:from-slate-900 dark:to-amber-950/50 dark:text-amber-300">
+            <PanelTop className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="glass-chip inline-flex text-amber-800 dark:text-amber-200">
+                Attendance tab reopened
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-400">
+                <AlertCircle className="h-3 w-3" aria-hidden />
+                Shared with admin
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+              You closed the Attendance browser tab at {closedLabel}. Your manager was
+              notified. You were away for {durationLabel}. Switching to other websites or
+              tabs is fine — please keep this Attendance tab open while you are clocked in.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttendanceAwayNotice({
+  cause
+}: {
+  cause: typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP;
+}) {
+  const meta = AWAY_NOTICE_META[cause];
+  const Icon = meta.icon;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="data-card overflow-hidden p-0"
+    >
+      <div className="flex items-stretch gap-0 border-l-4 border-sky-500 dark:border-sky-400">
+        <div className="flex flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/90 bg-gradient-to-br from-white to-sky-50/90 text-sky-600 shadow-sm dark:border-sky-800/80 dark:from-slate-900 dark:to-sky-950/50 dark:text-sky-300">
+            <Icon className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="glass-chip inline-flex text-sky-700 dark:text-sky-200">
+                {meta.label}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-400">
+                <AlertCircle className="h-3 w-3" aria-hidden />
+                Admin notified
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+              {AWAY_EMPLOYEE_NOTICE[cause]}
+            </p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              Move your mouse or click anywhere to continue. No typing required.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const BREAK_MINUTES_HINT = `Total time today when you were not counted as working while clocked in. Includes official breaks, extra breaks, and auto-detected away time (no mouse/keyboard, closing this Attendance tab, or laptop sleep) once each lasts about ${ATTENDANCE_AWAY_POLICY.cursorIdleAwaySeconds} seconds or longer. Switching to other browser tabs or sites does not count. Work hours = time since clock in minus break minutes.`;
+
 function AttendanceStatTile({
   label,
   value,
-  valueClassName
+  valueClassName,
+  hint
 }: {
   label: string;
   value: string;
   valueClassName?: string;
+  hint?: string;
 }) {
+  const [hintOpen, setHintOpen] = useState(false);
+  const hintId = useId();
+
   return (
-    <div className="rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm dark:border-slate-700/90 dark:from-slate-900/80 dark:to-slate-950/50">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {label}
+    <div className="relative rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm dark:border-slate-700/90 dark:from-slate-900/80 dark:to-slate-950/50">
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <span>{label}</span>
+        {hint ? (
+          <button
+            type="button"
+            className="inline-flex shrink-0 rounded-full text-slate-400 transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 dark:text-slate-500 dark:hover:text-sky-400"
+            aria-label={`About ${label}`}
+            aria-expanded={hintOpen}
+            aria-controls={hintId}
+            onClick={() => setHintOpen((open) => !open)}
+            onBlur={(event) => {
+              if (!event.currentTarget.parentElement?.contains(event.relatedTarget as Node | null)) {
+                setHintOpen(false);
+              }
+            }}
+          >
+            <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : null}
       </div>
+      {hint && hintOpen ? (
+        <div
+          id={hintId}
+          role="tooltip"
+          className="absolute left-0 top-full z-30 mt-1.5 w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] normal-case leading-relaxed tracking-normal text-slate-600 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+        >
+          {hint}
+        </div>
+      ) : null}
       <div
         className={`mt-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 ${valueClassName ?? ""}`}
       >
@@ -124,7 +282,6 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [idleWarning, setIdleWarning] = useState(false);
   const [agentHealth, setAgentHealth] = useState<AgentHealth | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
@@ -133,6 +290,7 @@ export default function AttendancePage() {
   const [installCommand, setInstallCommand] = useState("");
   const [verifyRetryInSeconds, setVerifyRetryInSeconds] = useState(0);
   const [viewerRole, setViewerRole] = useState<ViewerRole>("");
+  const [employeeEmail, setEmployeeEmail] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
   const [dateFrom, setDateFrom] = useState(() => getLocalDateString());
   const [dateTo, setDateTo] = useState(() => getLocalDateString());
@@ -142,18 +300,25 @@ export default function AttendancePage() {
   const [breakLimit, setBreakLimit] = useState(10);
   const [showExtraBreakModal, setShowExtraBreakModal] = useState(false);
   const [extraBreakReason, setExtraBreakReason] = useState("");
+  const [awayNotice, setAwayNotice] = useState<AwayNoticeState | null>(null);
 
-  const lastInputAtRef = useRef<number>(Date.now());
   const lastPingAtRef = useRef<number>(0);
-  const warnedRef = useRef(false);
-  const idleMarkedRef = useRef(false);
-  const resumeReasonPromptedRef = useRef(false);
+  const sleepAwayPendingRef = useRef(false);
+  const awayPolicyRef = useRef({
+    tabCloseMs: 10_000,
+    cursorIdleMs: 10_000,
+    laptopSleepMs: 10_000
+  });
+  const cursorAwayActiveRef = useRef(false);
+  const tabCloseReturnHandledRef = useRef<number | null>(null);
+  const lastCursorAtRef = useRef(Date.now());
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
       const data = await apiFetch<{ attendance?: Attendance | null }>(
-        `/api/attendance/me?date=${encodeURIComponent(selectedDate)}`
+        `/api/attendance/me?date=${encodeURIComponent(selectedDate)}`,
+        { timeoutMs: 45_000 }
       );
       setAttendance(data.attendance ?? null);
       setLastUpdated(new Date());
@@ -168,28 +333,52 @@ export default function AttendancePage() {
 
   const postActivityEvent = useCallback(
     async (
-      event: "activity" | "idle_warning" | "idle_start" | "idle_end" | "lock" | "unlock",
-      extras?: { reason?: string }
+      event:
+        | "activity"
+        | "lock"
+        | "unlock"
+        | "away_start"
+        | "away_end",
+      extras?: { reason?: string; awayCause?: AwayCause }
     ) => {
       try {
-        await apiFetch.post("/api/attendance/activity", {
+        return await apiFetch.post<{
+          awaySeconds?: number;
+          autoReason?: string;
+        }>("/api/attendance/activity", {
           event,
           source: "browser",
           observedAt: new Date().toISOString(),
-          reason: extras?.reason
+          awayCause: extras?.awayCause
         });
       } catch {
-        // Quietly ignore transient activity sync failures.
+        return null;
       }
     },
     []
   );
 
+  useEffect(() => {
+    void apiFetch<{ away: AwayPolicy }>("/api/attendance/policy")
+      .then((policy) => {
+        awayPolicyRef.current = {
+          tabCloseMs: policy.away.tabCloseAwaySeconds * 1000,
+          cursorIdleMs: policy.away.cursorIdleAwaySeconds * 1000,
+          laptopSleepMs: policy.away.laptopSleepAwaySeconds * 1000
+        };
+      })
+      .catch(() => {
+        // Defaults from awayPolicyRef already match server policy file.
+      });
+  }, []);
+
   const refreshAgentHealth = useCallback(async (): Promise<AgentHealth | null> => {
     setAgentError(null);
     setAgentLoading(true);
     try {
-      const status = await apiFetch<AgentHealth>("/api/attendance/agent/status");
+      const status = await apiFetch<AgentHealth>("/api/attendance/desktop-agent/status", {
+        timeoutMs: 30_000
+      });
       setAgentHealth(status);
       return status;
     } catch (error) {
@@ -208,10 +397,11 @@ export default function AttendancePage() {
     const status = await refreshAgentHealth();
     if (!status) {
       setVerifyRetryInSeconds(10);
-      toast.error("Verify failed. Auto-retry in 10 seconds.");
+      toast.error("Verify is slow or timed out. Will retry — you can also Clock in if status is Installed.");
       return;
     }
     setVerifyRetryInSeconds(0);
+    setAgentError(null);
     toast.success(`Agent status: ${status.statusLabel}`);
   }, [refreshAgentHealth]);
 
@@ -223,6 +413,7 @@ export default function AttendancePage() {
         "/api/auth/me"
       );
       setViewerRole(me.user?.role?.trim() || "");
+      setEmployeeEmail(me.user?.email?.trim() || "");
     } catch {
       // Non-blocking.
     }
@@ -247,6 +438,70 @@ export default function AttendancePage() {
   const shouldRedirectToReport = viewerRole === "admin" || viewerRole === "manager";
   const isViewingToday = selectedDate === getLocalDateString();
   const isMultiDayRange = dateFrom !== dateTo;
+
+  useEffect(() => {
+    if (!isEmployeeViewer || !attendance?.breakSessions) return;
+    const openAway = attendance.breakSessions.find(
+      (session) =>
+        !session.breakEnd &&
+        (session.unscheduledCause === "cursor_idle" ||
+          session.unscheduledCause === "sleep")
+    );
+    if (!openAway?.unscheduledCause) {
+      sleepAwayPendingRef.current = false;
+      return;
+    }
+    const cause = openAway.unscheduledCause as AwayCause;
+    if (cause === UNSCHEDULED_CAUSE.SLEEP) {
+      sleepAwayPendingRef.current = true;
+    }
+    if (
+      cause === UNSCHEDULED_CAUSE.CURSOR_IDLE ||
+      cause === UNSCHEDULED_CAUSE.SLEEP
+    ) {
+      setAwayNotice({ type: "away", cause });
+    }
+  }, [attendance?.breakSessions, isEmployeeViewer]);
+
+  useEffect(() => {
+    if (!isEmployeeViewer || !isViewingToday) return;
+    const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+    if (!shiftOpen) {
+      tabCloseReturnHandledRef.current = null;
+      return;
+    }
+
+    const openTabClose = attendance?.breakSessions?.find(
+      (session) =>
+        !session.breakEnd &&
+        session.unscheduledCause === UNSCHEDULED_CAUSE.TAB_CLOSE
+    );
+    if (!openTabClose) return;
+    if (tabCloseReturnHandledRef.current === openTabClose.id) return;
+    tabCloseReturnHandledRef.current = openTabClose.id;
+
+    void (async () => {
+      const result = await postActivityEvent("away_end", {
+        awayCause: UNSCHEDULED_CAUSE.TAB_CLOSE
+      });
+      const awaySeconds =
+        typeof result?.awaySeconds === "number" ? result.awaySeconds : 0;
+      setAwayNotice({
+        type: "tab_returned",
+        closedAt: openTabClose.breakStart ?? new Date().toISOString(),
+        awaySeconds
+      });
+      await refresh();
+    })();
+  }, [
+    attendance?.breakSessions,
+    attendance?.clockIn,
+    attendance?.clockOut,
+    isEmployeeViewer,
+    isViewingToday,
+    postActivityEvent,
+    refresh
+  ]);
 
   useEffect(() => {
     if (shouldRedirectToReport) {
@@ -334,108 +589,128 @@ export default function AttendancePage() {
   }, [isViewingToday, refresh, refreshAgentHealth]);
 
   useEffect(() => {
-    if (!isEmployeeViewer || !isViewingToday) {
+    if (!isEmployeeViewer || !isViewingToday) return;
+    const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+    if (!shiftOpen) {
+      cursorAwayActiveRef.current = false;
+      sleepAwayPendingRef.current = false;
       return;
     }
 
-    const markInput = () => {
-      const now = Date.now();
-      const hadWarningOrIdle = warnedRef.current || idleMarkedRef.current;
-
-      lastInputAtRef.current = now;
-      setIdleWarning(false);
-
-      if (idleMarkedRef.current && !resumeReasonPromptedRef.current) {
-        resumeReasonPromptedRef.current = true;
-        const reason = window.prompt(
-          "You were marked idle. Please enter return reason (optional):"
-        );
-        void postActivityEvent("idle_end", { reason: reason ?? "" });
-      } else if (hadWarningOrIdle) {
-        void postActivityEvent("activity");
+    const endAway = async (cause: AwayCause) => {
+      if (cause === "cursor_idle" && !cursorAwayActiveRef.current) return;
+      if (cause === UNSCHEDULED_CAUSE.SLEEP && !sleepAwayPendingRef.current) return;
+      if (cause !== UNSCHEDULED_CAUSE.TAB_CLOSE) {
+        setAwayNotice(null);
       }
+      await postActivityEvent("away_end", { awayCause: cause });
+      if (cause === "cursor_idle") cursorAwayActiveRef.current = false;
+      if (cause === UNSCHEDULED_CAUSE.SLEEP) sleepAwayPendingRef.current = false;
+      void refresh();
+    };
 
-      warnedRef.current = false;
-      idleMarkedRef.current = false;
-      resumeReasonPromptedRef.current = false;
+    const startAway = async (cause: AwayCause) => {
+      if (cause === UNSCHEDULED_CAUSE.TAB_CLOSE) return;
+      await postActivityEvent("away_start", { awayCause: cause });
+      if (cause === "cursor_idle") cursorAwayActiveRef.current = true;
+    };
+
+    const resumeFromAway = () => {
+      if (cursorAwayActiveRef.current) {
+        void endAway("cursor_idle");
+      } else if (sleepAwayPendingRef.current) {
+        void endAway(UNSCHEDULED_CAUSE.SLEEP);
+      }
     };
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        // Allow employees to switch tabs/apps without auto-away from browser signal.
-        setIdleWarning(false);
-        return;
+      if (document.visibilityState !== "visible") return;
+      lastCursorAtRef.current = Date.now();
+      if (cursorAwayActiveRef.current || sleepAwayPendingRef.current) {
+        resumeFromAway();
       }
-      markInput();
-      void postActivityEvent("activity");
     };
 
-    const events: Array<keyof WindowEventMap> = [
+    const onPageHide = () => {
+      const payload = JSON.stringify({
+        event: "away_start",
+        source: "browser",
+        awayCause: UNSCHEDULED_CAUSE.TAB_CLOSE,
+        observedAt: new Date().toISOString()
+      });
+      void fetch("/api/attendance/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: payload,
+        keepalive: true
+      });
+    };
+
+    const markCursor = () => {
+      lastCursorAtRef.current = Date.now();
+      if (cursorAwayActiveRef.current || sleepAwayPendingRef.current) {
+        resumeFromAway();
+      }
+    };
+
+    const cursorEvents: Array<keyof WindowEventMap> = [
       "mousemove",
       "mousedown",
       "keydown",
       "touchstart",
-      "scroll",
-      "focus"
+      "click"
     ];
-    for (const eventName of events) {
-      window.addEventListener(eventName, markInput, { passive: true });
+    for (const eventName of cursorEvents) {
+      window.addEventListener(eventName, markCursor, { passive: true });
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
 
-    const monitor = window.setInterval(() => {
+    const complianceTick = window.setInterval(() => {
       const now = Date.now();
-      const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
-
-      if (!shiftOpen) {
-        warnedRef.current = false;
-        idleMarkedRef.current = false;
-        resumeReasonPromptedRef.current = false;
-        setIdleWarning(false);
-        return;
-      }
-
-      // Ignore hidden-tab periods so tab switching does not trigger auto-away.
-      if (document.visibilityState === "hidden") {
-        return;
-      }
-
-      const idleMs = now - lastInputAtRef.current;
-      if (!warnedRef.current && idleMs >= ATTENDANCE_IDLE_WARNING_MS) {
-        warnedRef.current = true;
-        setIdleWarning(true);
-        void postActivityEvent("idle_warning");
-      }
-
-      if (!idleMarkedRef.current && idleMs >= ATTENDANCE_IDLE_AUTO_BREAK_MS) {
-        idleMarkedRef.current = true;
-        setIdleWarning(false);
-        void postActivityEvent("idle_start");
-      }
-
-      const shouldPing =
-        idleMs < ATTENDANCE_IDLE_WARNING_MS &&
-        now - lastPingAtRef.current >= ATTENDANCE_ACTIVITY_PING_MS;
-      if (shouldPing) {
+      const cursorIdleElapsed = now - lastCursorAtRef.current;
+      const cursorThreshold = awayPolicyRef.current.cursorIdleMs;
+      if (cursorIdleElapsed >= cursorThreshold && !cursorAwayActiveRef.current) {
+        void startAway("cursor_idle");
+      } else if (cursorAwayActiveRef.current && cursorIdleElapsed >= cursorThreshold) {
+        setAwayNotice({ type: "away", cause: "cursor_idle" });
+        void postActivityEvent("activity");
+      } else if (
+        !cursorAwayActiveRef.current &&
+        now - lastPingAtRef.current >= ATTENDANCE_ACTIVITY_PING_MS
+      ) {
         lastPingAtRef.current = now;
         void postActivityEvent("activity");
       }
-    }, 10000);
+    }, 1000);
 
     return () => {
-      for (const eventName of events) {
-        window.removeEventListener(eventName, markInput);
+      for (const eventName of cursorEvents) {
+        window.removeEventListener(eventName, markCursor);
       }
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.clearInterval(monitor);
+      window.removeEventListener("pagehide", onPageHide);
+      window.clearInterval(complianceTick);
     };
-  }, [attendance?.clockIn, attendance?.clockOut, isEmployeeViewer, postActivityEvent]);
+  }, [
+    attendance?.clockIn,
+    attendance?.clockOut,
+    isEmployeeViewer,
+    isViewingToday,
+    postActivityEvent,
+    refresh
+  ]);
 
   async function action(path: string, body?: Record<string, unknown>) {
     setLoading(true);
     setError(null);
     try {
-      const result = await apiFetch.post<{ attendance?: Attendance | null }>(path, body ?? {});
+      const result = await apiFetch.post<{ attendance?: Attendance | null }>(
+        path,
+        body ?? {},
+        { timeoutMs: 45_000 }
+      );
       if (result?.attendance) {
         setAttendance(result.attendance);
       }
@@ -466,7 +741,7 @@ export default function AttendancePage() {
     status === "active"
       ? "Active (working)"
       : status === "idle"
-        ? "Idle (unscheduled)"
+        ? "Inactive (unscheduled)"
       : status === "break"
         ? "On break"
         : "Offline";
@@ -512,6 +787,12 @@ export default function AttendancePage() {
   const shiftOpen = Boolean(
     attendance?.clockIn && !attendance?.clockOut
   );
+
+  const breakMinutesDisplay =
+    shiftOpen && attendance?.liveBreakMinutes != null
+      ? formatWorkDuration(attendance.liveBreakMinutes)
+      : formatWorkDuration(attendance?.totalBreakMinutes);
+
   const canEditShift = isViewingToday;
   const canClockIn =
     canEditShift &&
@@ -524,17 +805,32 @@ export default function AttendancePage() {
   async function prepareInstallCommand() {
     try {
       const health = await refreshAgentHealth();
-      if (health && health.state !== "not_installed") {
+      if (health?.state === "running") {
         setInstallCommand("");
         setError(null);
-        toast.success("Agent setup already done.");
+        toast.success("Agent is already running — no reinstall needed.");
         return;
       }
 
-      const setup = await apiFetch.post<{ token: string; expiresAt: string }>(
-        "/api/attendance/agent/setup-token",
-        {}
-      );
+      try {
+        await apiFetch("/api/attendance/desktop-agent/setup-token", { method: "POST" });
+      } catch {
+        // Non-blocking; verify still relies on heartbeat when agent is healthy.
+      }
+
+      let email = employeeEmail;
+      if (!email) {
+        const me = await apiFetch<{
+          user: { email?: string | null } | null;
+        }>("/api/auth/me");
+        email = me.user?.email?.trim() || "";
+        setEmployeeEmail(email);
+      }
+      if (!email) {
+        toast.error("Could not read your account email. Please log in again.");
+        return;
+      }
+
       const browserOrigin =
         typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
       const baseUrl = agentHealth?.appUrl || browserOrigin;
@@ -551,7 +847,7 @@ export default function AttendancePage() {
       }
       setInstallerReady(true);
       const escapedBaseUrl = baseUrl.replaceAll("'", "''");
-      const escapedToken = setup.token.replaceAll("'", "''");
+      const escapedEmail = email.replaceAll("'", "''");
       const escapedExeUrl = `${baseUrl}/desktop-agent/AttendanceAgent.exe`.replaceAll(
         "'",
         "''"
@@ -562,11 +858,23 @@ export default function AttendancePage() {
         `$url = '${escapedBaseUrl}/desktop-agent/one-click-setup.ps1'`,
         "$local = Join-Path $env:TEMP 'asba-one-click-setup.ps1'",
         "Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $local",
-        `& $local -BaseUrl '${escapedBaseUrl}' -AgentExeUrl '${escapedExeUrl}' -Token '${escapedToken}'`
+        `$pwd = Read-Host 'CRM password (same as login)' -AsSecureString`,
+        "$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)",
+        "$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)",
+        `[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)`,
+        `& $local -BaseUrl '${escapedBaseUrl}' -AgentExeUrl '${escapedExeUrl}' -Email '${escapedEmail}' -Password $plain`,
+        "$plain = $null"
       ].join("\r\n");
       setInstallCommand(command);
+      setShowInstallGuide(true);
       await navigator.clipboard.writeText(command);
-      toast.success("Install command ready and copied. Paste in PowerShell (Admin).");
+      const isReconfigure =
+        health?.state === "stale" || health?.state === "installed";
+      toast.success(
+        isReconfigure
+          ? "Command ready below and copied. Paste in PowerShell (Admin), enter CRM password, then Verify Agent."
+          : "Command ready below and copied. Paste in PowerShell (Admin), enter CRM password, then Verify Agent."
+      );
     } catch (err) {
       if (err instanceof ApiFetchError) {
         toast.error(err.message || "Could not prepare installer.");
@@ -621,14 +929,45 @@ export default function AttendancePage() {
     await action("/api/attendance/clock-in");
   }
 
-  useEffect(() => {
-    if (attendance?.clockIn && !attendance?.clockOut && status === "active") {
-      lastInputAtRef.current = Date.now();
-    }
-  }, [attendance?.clockIn, attendance?.clockOut, status]);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <div>
+        <div className="glass-chip mb-3 inline-flex text-sky-700 dark:text-sky-200">
+          Time & attendance
+        </div>
+        <h1 className="page-title">Attendance</h1>
+        <p className="page-subtitle max-w-3xl">
+          {isEmployeeViewer
+            ? "Clock in, track breaks, and view today's summary. Refreshes every 20 seconds."
+            : "Tracks working hours, breaks, and live status (refreshes every 20 seconds while this page is open)."}
+        </p>
+        {isEmployeeViewer ? (
+          <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
+            You can open other websites or browser tabs while you work. Only closing
+            this Attendance tab is reported to your manager.
+          </p>
+        ) : null}
+        {!isEmployeeViewer ? (
+          <ul className="mt-3 max-w-3xl space-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <li>Working hours: clock in/out and net work time (minus breaks)</li>
+            <li>Breaks: start/end break sessions with running totals</li>
+            <li>Live status: Active, Inactive, Break, or Offline</li>
+          </ul>
+        ) : null}
+      </div>
+
+      {awayNotice && isEmployeeViewer ? (
+        awayNotice.type === "tab_returned" ? (
+          <AttendanceTabCloseReturnedNotice
+            closedAt={awayNotice.closedAt}
+            awaySeconds={awayNotice.awaySeconds}
+          />
+        ) : awayNotice.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE ||
+          awayNotice.cause === UNSCHEDULED_CAUSE.SLEEP ? (
+          <AttendanceAwayNotice cause={awayNotice.cause} />
+        ) : null
+      ) : null}
+
       {showExtraBreakModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
@@ -677,31 +1016,9 @@ export default function AttendancePage() {
           </div>
         </div>
       ) : null}
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Attendance
-        </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          {isEmployeeViewer
-            ? "Clock in, track breaks, and view todayâ€™s summary. Refreshes every 20 seconds."
-            : "Tracks working hours, tracks breaks, and shows live status (refreshes every 20 seconds while this page is open)."}
-        </p>
-        {!isEmployeeViewer ? (
-          <ul className="mt-2 list-inside list-disc text-xs text-slate-500 dark:text-slate-400">
-            <li>Working hours: clock in/out and net work time (minus breaks)</li>
-            <li>Breaks: start/end break sessions with running totals</li>
-            <li>Live status: Active, Idle, Break, or Offline</li>
-          </ul>
-        ) : null}
-      </div>
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
           {error}
-        </div>
-      )}
-      {idleWarning && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-300">
-          You have been inactive for a while. Please resume work or start your official break.
         </div>
       )}
       {isEmployeeViewer ? (
@@ -712,7 +1029,8 @@ export default function AttendancePage() {
                 Background monitoring setup
               </div>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                Install the desktop agent once from Attendance page.
+                Install the desktop agent once per laptop. It auto-refreshes login — no daily
+                reinstall.
               </p>
               {installerReady !== null ? (
                 <p
@@ -750,7 +1068,9 @@ export default function AttendancePage() {
               size="sm"
               onClick={() => void prepareInstallCommand()}
             >
-              Install Agent
+              {agentHealth?.state === "stale" || agentHealth?.state === "installed"
+                ? "Reconfigure Agent"
+                : "Install Agent"}
             </Button>
             <Button
               type="button"
@@ -803,16 +1123,21 @@ export default function AttendancePage() {
                 Install guide (one-time per laptop)
               </p>
               <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-700 dark:text-slate-300">
-                <li>Click <strong>Install Agent</strong>.</li>
-                <li>Run downloaded <code>ASBA-Agent-Install.ps1</code> in PowerShell as Administrator.</li>
-                <li>Click <strong>Verify Agent</strong>.</li>
+                <li>Click <strong>Install Agent</strong> (or <strong>Reconfigure Agent</strong> if broken).</li>
+                <li>Paste the command in <strong>PowerShell as Administrator</strong>.</li>
+                <li>Enter your <strong>CRM password</strong> when asked (same as login).</li>
+                <li>Click <strong>Verify Agent</strong> — should show <strong>Running</strong>.</li>
               </ol>
             </div>
           ) : null}
           {installCommand ? (
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
-              <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+            <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
+              <p className="text-xs font-semibold uppercase text-sky-700 dark:text-sky-300">
                 One-click install command
+              </p>
+              <p className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+                Copied to clipboard. Paste in <strong>PowerShell (Run as Administrator)</strong>,
+                press Enter, then type your CRM password when prompted.
               </p>
               <textarea
                 readOnly
@@ -926,7 +1251,7 @@ export default function AttendancePage() {
                 !canStartBreak
                   ? shiftOpen
                     ? status === "idle"
-                      ? "Return to active status first; idle time is auto-classified."
+                      ? "Return to active status first; inactive time is auto-classified."
                       : "End your current break before starting another."
                     : "Clock in to start a break."
                   : undefined
@@ -961,8 +1286,9 @@ export default function AttendancePage() {
               />
               <AttendanceStatTile
                 label="Break minutes"
-                value={String(attendance?.totalBreakMinutes ?? 0)}
+                value={breakMinutesDisplay}
                 valueClassName="text-amber-700 dark:text-amber-300"
+                hint={BREAK_MINUTES_HINT}
               />
             </div>
           </div>
@@ -1095,7 +1421,7 @@ export default function AttendancePage() {
             Monitoring only
           </h2>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Admin and manager accounts do not mark attendance. Use Executive Dashboard to monitor employee status, idle events, and timelines.
+            Admin and manager accounts do not mark attendance. Use Executive Dashboard to monitor employee status, inactive events, and timelines.
           </p>
         </section>
       )}

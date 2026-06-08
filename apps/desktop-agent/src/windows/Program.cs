@@ -16,7 +16,7 @@ if (!options.HasValidConfiguration)
 AgentLogger.Write("Attendance agent starting...");
 AgentLogger.Write($"Base URL: {options.BaseUrl}");
 AgentLogger.Write(
-  $"Idle warning: {options.IdleWarningMinutes}m, idle start: {options.IdleStartMinutes}m"
+  $"Cursor away: {options.CursorIdleAwaySeconds}s, laptop sleep away: {options.LaptopSleepAwaySeconds}s"
 );
 
 var cancellation = new CancellationTokenSource();
@@ -44,11 +44,19 @@ SessionSwitchEventHandler sessionSwitchHandler = (_, e) =>
 {
   if (e.Reason == SessionSwitchReason.SessionLock)
   {
-    _ = PostEventAsync(client, auth, "lock", options, null, cancellation.Token);
+    state.SessionLocked = true;
+    state.LockStartedAt = DateTimeOffset.UtcNow;
+    state.LockAwaySent = false;
   }
   else if (e.Reason == SessionSwitchReason.SessionUnlock)
   {
-    _ = PostEventAsync(client, auth, "unlock", options, null, cancellation.Token);
+    if (state.LockAwaySent)
+    {
+      _ = PostEventAsync(client, auth, "unlock", options, null, "sleep", cancellation.Token);
+    }
+    state.SessionLocked = false;
+    state.LockStartedAt = null;
+    state.LockAwaySent = false;
   }
 };
 SystemEvents.SessionSwitch += sessionSwitchHandler;
@@ -81,36 +89,61 @@ static async Task RunTickAsync(
 {
   var now = DateTimeOffset.UtcNow;
   var idleSeconds = WindowsIdle.GetIdleSeconds();
-  var warningSeconds = options.IdleWarningMinutes * 60;
-  var autoIdleSeconds = options.IdleStartMinutes * 60;
+  var cursorAwaySeconds = options.CursorIdleAwaySeconds;
 
-  if (!state.WarningSent && idleSeconds >= warningSeconds)
+  if (!state.CursorAwaySent && idleSeconds >= cursorAwaySeconds)
   {
-    state.WarningSent = true;
-    await PostEventAsync(client, auth, "idle_warning", options, null, cancellationToken);
+    state.CursorAwaySent = true;
+    await PostEventAsync(
+      client,
+      auth,
+      "away_start",
+      options,
+      null,
+      "cursor_idle",
+      cancellationToken
+    );
   }
 
-  if (!state.IdleMarked && idleSeconds >= autoIdleSeconds)
+  if (state.CursorAwaySent && idleSeconds < cursorAwaySeconds)
   {
-    state.IdleMarked = true;
-    await PostEventAsync(client, auth, "idle_start", options, null, cancellationToken);
+    state.CursorAwaySent = false;
+    await PostEventAsync(
+      client,
+      auth,
+      "away_end",
+      options,
+      null,
+      "cursor_idle",
+      cancellationToken
+    );
   }
 
-  if (idleSeconds < warningSeconds)
+  if (
+    state.CursorAwaySent &&
+    idleSeconds >= cursorAwaySeconds &&
+    now >= state.NextAwayCheckAt
+  )
   {
-    if (state.WarningSent || state.IdleMarked)
-    {
-      var eventName = state.IdleMarked ? "idle_end" : "activity";
-      await PostEventAsync(client, auth, eventName, options, null, cancellationToken);
-    }
-    state.WarningSent = false;
-    state.IdleMarked = false;
+    await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
+    state.NextAwayCheckAt = now.AddSeconds(3);
   }
 
-  if (now >= state.NextActivityPingAt && idleSeconds < warningSeconds)
+  if (now >= state.NextActivityPingAt && idleSeconds < cursorAwaySeconds && !state.CursorAwaySent)
   {
-    await PostEventAsync(client, auth, "activity", options, null, cancellationToken);
+    await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
     state.NextActivityPingAt = now.AddSeconds(options.ActivityPingSeconds);
+  }
+
+  if (
+    state.SessionLocked &&
+    !state.LockAwaySent &&
+    state.LockStartedAt.HasValue &&
+    (now - state.LockStartedAt.Value).TotalSeconds >= options.LaptopSleepAwaySeconds
+  )
+  {
+    state.LockAwaySent = true;
+    await PostEventAsync(client, auth, "lock", options, null, "sleep", cancellationToken);
   }
 }
 
@@ -120,6 +153,7 @@ static async Task PostEventAsync(
   string eventName,
   AgentOptions options,
   string? reason,
+  string? awayCause,
   CancellationToken cancellationToken
 )
 {
@@ -137,6 +171,7 @@ static async Task PostEventAsync(
       @event = eventName,
       source = "agent",
       reason,
+      awayCause,
       observedAt = DateTimeOffset.UtcNow
     });
 
@@ -269,10 +304,10 @@ sealed class AgentAuthTokenProvider
       return false;
     }
 
-    var token = TryExtractCrmToken(response);
+    var token = await TryExtractAuthTokenAsync(response, cancellationToken);
     if (string.IsNullOrWhiteSpace(token))
     {
-      AgentLogger.Write("auth refresh failed: crm_token not found in Set-Cookie");
+      AgentLogger.Write("auth refresh failed: token not found in login response");
       return false;
     }
 
@@ -310,20 +345,43 @@ sealed class AgentAuthTokenProvider
     return expiryUtc.Value > DateTimeOffset.UtcNow.AddMinutes(refreshLeadMinutes);
   }
 
-  private static string? TryExtractCrmToken(HttpResponseMessage response)
+  private static async Task<string?> TryExtractAuthTokenAsync(
+    HttpResponseMessage response,
+    CancellationToken cancellationToken
+  )
   {
-    if (!response.Headers.TryGetValues("Set-Cookie", out var values))
+    if (response.Headers.TryGetValues("Set-Cookie", out var values))
+    {
+      foreach (var header in values)
+      {
+        var cookieToken = TryExtractCookieValue(header, "crm_token");
+        if (!string.IsNullOrWhiteSpace(cookieToken))
+        {
+          return cookieToken;
+        }
+      }
+    }
+
+    var body = await response.Content.ReadAsStringAsync(cancellationToken);
+    if (string.IsNullOrWhiteSpace(body))
     {
       return null;
     }
 
-    foreach (var header in values)
+    try
     {
-      var token = TryExtractCookieValue(header, "crm_token");
-      if (!string.IsNullOrWhiteSpace(token))
+      using var doc = JsonDocument.Parse(body);
+      if (
+        doc.RootElement.TryGetProperty("token", out var tokenElement) &&
+        tokenElement.ValueKind == JsonValueKind.String
+      )
       {
-        return token;
+        return tokenElement.GetString();
       }
+    }
+    catch
+    {
+      // Fall through to null.
     }
 
     return null;
@@ -412,9 +470,12 @@ sealed class AgentAuthTokenProvider
 
 sealed class AgentRuntimeState
 {
-  public bool WarningSent { get; set; }
-  public bool IdleMarked { get; set; }
+  public bool CursorAwaySent { get; set; }
   public DateTimeOffset NextActivityPingAt { get; set; } = DateTimeOffset.UtcNow;
+  public DateTimeOffset NextAwayCheckAt { get; set; } = DateTimeOffset.UtcNow;
+  public bool SessionLocked { get; set; }
+  public DateTimeOffset? LockStartedAt { get; set; }
+  public bool LockAwaySent { get; set; }
 }
 
 sealed class AgentOptions
@@ -423,10 +484,10 @@ sealed class AgentOptions
   public string Token { get; init; } = "";
   public string Email { get; init; } = "";
   public string Password { get; init; } = "";
-  public int IdleWarningMinutes { get; init; } = 7;
-  public int IdleStartMinutes { get; init; } = 10;
+  public int CursorIdleAwaySeconds { get; init; } = 10;
   public int ActivityPingSeconds { get; init; } = 60;
   public int PollSeconds { get; init; } = 10;
+  public int LaptopSleepAwaySeconds { get; init; } = 10;
   public int TokenRefreshLeadMinutes { get; init; } = 15;
   public bool Verbose { get; init; } = true;
 
@@ -445,10 +506,10 @@ sealed class AgentOptions
       Token = Environment.GetEnvironmentVariable("ATT_AGENT_TOKEN") ?? "",
       Email = Environment.GetEnvironmentVariable("ATT_AGENT_EMAIL") ?? "",
       Password = Environment.GetEnvironmentVariable("ATT_AGENT_PASSWORD") ?? "",
-      IdleWarningMinutes = ParseInt("ATT_AGENT_IDLE_WARNING_MINUTES", 7),
-      IdleStartMinutes = ParseInt("ATT_AGENT_IDLE_START_MINUTES", 10),
+      CursorIdleAwaySeconds = ParseInt("ATT_AGENT_CURSOR_IDLE_AWAY_SECONDS", 10),
       ActivityPingSeconds = ParseInt("ATT_AGENT_ACTIVITY_PING_SECONDS", 60),
       PollSeconds = ParseInt("ATT_AGENT_POLL_SECONDS", 10),
+      LaptopSleepAwaySeconds = ParseInt("ATT_AGENT_LAPTOP_SLEEP_AWAY_SECONDS", 10),
       TokenRefreshLeadMinutes = ParseInt("ATT_AGENT_TOKEN_REFRESH_LEAD_MINUTES", 15),
       Verbose = ParseBool("ATT_AGENT_VERBOSE", true)
     };

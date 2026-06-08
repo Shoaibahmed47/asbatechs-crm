@@ -4,12 +4,9 @@ This folder contains a Windows desktop agent scaffold for attendance compliance 
 
 ## What it sends
 
-- `activity`
-- `idle_warning`
-- `idle_start`
-- `idle_end`
-- `lock`
-- `unlock`
+- `activity` (heartbeat while active)
+- `away_start` / `away_end` with `awayCause: cursor_idle` (no mouse/keyboard for policy threshold)
+- `lock` / `unlock` with `awayCause: sleep` (laptop lock after policy threshold)
 
 These events are posted to the web backend route:
 
@@ -26,10 +23,10 @@ Set environment variables before running:
 - `ATT_AGENT_BASE_URL` example: `http://localhost:3000`
 - Auth mode A: `ATT_AGENT_TOKEN` (static bearer token)
 - Auth mode B (recommended): `ATT_AGENT_EMAIL` + `ATT_AGENT_PASSWORD` (agent auto-login and token refresh)
-- `ATT_AGENT_IDLE_WARNING_MINUTES` default `7`
-- `ATT_AGENT_IDLE_START_MINUTES` default `10`
+- `ATT_AGENT_CURSOR_IDLE_AWAY_SECONDS` default `10` (align with web `ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS`)
 - `ATT_AGENT_ACTIVITY_PING_SECONDS` default `60`
 - `ATT_AGENT_POLL_SECONDS` default `10`
+- `ATT_AGENT_LAPTOP_SLEEP_AWAY_SECONDS` default `10` (lock/sleep grace before away alert)
 - `ATT_AGENT_TOKEN_REFRESH_LEAD_MINUTES` default `15`
 
 ## Run (development)

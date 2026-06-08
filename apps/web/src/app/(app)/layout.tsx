@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
 import { AppHeaderUser } from "@/components/AppHeader";
@@ -15,7 +16,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell overflow-x-hidden">
-      <BodyPointerEventsGuard />
+      <Suspense fallback={null}>
+        <BodyPointerEventsGuard />
+      </Suspense>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.1),transparent_28%),radial-gradient(circle_at_right,rgba(6,182,212,0.08),transparent_24%)]" />
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[304px] p-5 xl:block">
         <div className="app-panel surface-reveal flex h-full min-h-0 flex-col overflow-hidden rounded-[30px] px-5 py-6">

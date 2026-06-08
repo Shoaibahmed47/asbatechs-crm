@@ -1,6 +1,19 @@
 import { POST } from "./route";
 
-const selectWhere = jest.fn();
+const selectLimit = jest.fn();
+let whereInvocation = 0;
+const selectWhere = jest.fn(() => {
+  whereInvocation += 1;
+  if (whereInvocation === 1) {
+    return { limit: selectLimit };
+  }
+  if (whereInvocation === 2) {
+    return Promise.resolve([
+      { id: 7, clockIn: new Date(), clockOut: null, status: "active" }
+    ]);
+  }
+  return Promise.resolve([]);
+});
 const txInsertValues = jest.fn();
 const txUpdateWhere = jest.fn();
 const txUpdateSet = jest.fn();
@@ -34,14 +47,28 @@ jest.mock("@/lib/db", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-05-13"
 }));
+jest.mock("@/lib/attendance-away-compliance", () => ({
+  startComplianceAway: jest.fn().mockResolvedValue({ started: false }),
+  endComplianceAway: jest.fn().mockResolvedValue({ ok: true }),
+  checkOpenComplianceAwayAlerts: jest.fn().mockResolvedValue(undefined),
+  normalizeComplianceAwayCause: jest.fn(() => null),
+  maybeAlertAdminsForOpenAway: jest.fn().mockResolvedValue({ alerted: false, awaySeconds: 0 })
+}));
 jest.mock("@asbatechs-crm/database", () => ({
-  schema: { attendanceLogs: {}, breakSessions: {} }
+  schema: {
+    attendanceLogs: {},
+    breakSessions: {},
+    users: { name: "name", id: "id" },
+    activityLogs: {},
+    notifications: {}
+  }
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
 
 beforeEach(() => {
   jest.clearAllMocks();
+  whereInvocation = 0;
   txInsertValues.mockResolvedValue([{ id: 1 }]);
   txUpdateSet.mockReturnValue({ where: txUpdateWhere });
   txUpdateWhere.mockResolvedValue([{ id: 1 }]);
@@ -63,19 +90,15 @@ describe("attendance activity route", () => {
     expect(res.status).toBe(401);
   });
 
-  it("classifies idle start as unscheduled idle", async () => {
+  it("ignores legacy idle_start events", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 5 });
-    selectWhere
-      .mockResolvedValueOnce([
-        { id: 7, clockIn: new Date(), clockOut: null, status: "active" }
-      ])
-      .mockResolvedValueOnce([]);
+    selectLimit.mockResolvedValueOnce([{ name: "Test User" }]);
 
     const res = await POST(req({ event: "idle_start", source: "browser" }));
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.status).toBe("idle");
-    expect(txInsertValues).toHaveBeenCalled();
+    expect(data.ignored).toBe(true);
+    expect(txInsertValues).not.toHaveBeenCalled();
   });
 });

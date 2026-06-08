@@ -133,7 +133,9 @@ export function AppHeaderUser() {
   async function handleLogout() {
     setAccountOpen(false);
     try {
-      await apiFetch.post("/api/auth/logout");
+      await apiFetch.post("/api/auth/logout", undefined, { timeoutMs: 30_000 });
+    } catch {
+      // Best-effort logout; still redirect if the server is slow or offline.
     } finally {
       router.push("/login");
     }

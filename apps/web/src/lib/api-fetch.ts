@@ -21,7 +21,7 @@ export type ApiFetchOptions = Omit<RequestInit, "body"> & {
   timeoutMs?: number;
 };
 
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const FORM_DATA_TIMEOUT_MS = 600000;
 const LOGIN_REDIRECT_FLAG = "crm_auth_redirected";
 

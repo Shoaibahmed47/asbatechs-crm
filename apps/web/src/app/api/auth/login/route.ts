@@ -213,7 +213,9 @@ export async function POST(req: Request) {
         email: user.email,
         role: user.role,
         departmentId: user.departmentId
-      }
+      },
+      // Desktop agent and other non-browser clients read this (HttpClient cannot rely on Set-Cookie).
+      token
     });
 
     res.cookies.set(COOKIE_NAME, token, {

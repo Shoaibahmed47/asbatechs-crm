@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   EmployeeDirectoryTable,
   type EmployeeDirectoryRow
@@ -23,6 +23,27 @@ type DirectoryResponse = {
   clientProjectOptions?: Array<{ projectId: number; label: string }>;
   viewerUserId?: number;
 };
+
+const COMPACT_CONTROL = "form-input-compact";
+
+function DirectoryFilterField({
+  label,
+  className,
+  children
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
 
 export function EmployeeDirectoryPanel({
   allowAdminActions
@@ -196,13 +217,35 @@ export function EmployeeDirectoryPanel({
         onClick={() => handleSort(key)}
       >
         {label}
-        {active ? (order === "asc" ? " â†‘" : " â†“") : null}
+        {active ? (order === "asc" ? " ↑" : " ↓") : null}
       </button>
     );
   };
 
-  const filterClass =
-    "form-input h-9 w-full rounded-lg px-3 py-1.5 text-xs shadow-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20";
+  const hasActiveFilters =
+    Boolean(
+      debouncedSearch ||
+        kind ||
+        filterDept ||
+        filterRole ||
+        filterInviteStatus ||
+        filterUserId ||
+        createdFrom ||
+        createdTo
+    );
+
+  const clearFilters = () => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setKind("");
+    setFilterDept("");
+    setFilterRole("");
+    setFilterInviteStatus("");
+    setFilterUserId("");
+    setCreatedFrom("");
+    setCreatedTo("");
+    setPage(1);
+  };
 
   return (
     <div className="space-y-4">
@@ -216,16 +259,53 @@ export function EmployeeDirectoryPanel({
       ) : null}
 
       <div className="data-card overflow-hidden p-0">
-        <div className="border-b border-slate-200/70 bg-slate-50/70 px-4 py-2.5 dark:border-slate-800/80 dark:bg-slate-950/25">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
-                Directory filters
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Search, filter, and sort employee records quickly.
-              </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 dark:border-slate-800/80 dark:from-slate-950/40 dark:to-slate-900/20 sm:px-5">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">
+              Directory filters
+            </p>
+            {hasActiveFilters ? (
+              <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Filters active</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-lg border border-slate-200/90 bg-white p-0.5 md:hidden dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-[11px] font-semibold transition",
+                  mobileView === "cards"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 dark:text-slate-300"
+                )}
+                onClick={() => setMobileView("cards")}
+              >
+                Cards
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-[11px] font-semibold transition",
+                  mobileView === "table"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 dark:text-slate-300"
+                )}
+                onClick={() => setMobileView("table")}
+              >
+                Table
+              </button>
             </div>
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={clearFilters}
+              >
+                Clear all
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -238,73 +318,29 @@ export function EmployeeDirectoryPanel({
             </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-3 p-3">
-          <div className="flex items-center justify-between gap-3 md:hidden">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Mobile view
-            </p>
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-              <button
-                type="button"
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
-                  mobileView === "cards"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                    : "text-slate-600 dark:text-slate-300"
-                )}
-                onClick={() => setMobileView("cards")}
-              >
-                Cards
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition",
-                  mobileView === "table"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                    : "text-slate-600 dark:text-slate-300"
-                )}
-                onClick={() => setMobileView("table")}
-              >
-                Table
-              </button>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-2 xl:grid-cols-12">
-            <div className="xl:col-span-3">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Search
-              </label>
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-4 lg:gap-y-3">
+            <DirectoryFilterField label="Search" className="sm:col-span-2 lg:col-span-4">
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Name or email"
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               />
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Kind
-              </label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                className={`${filterClass} mt-1`}
-              >
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Kind" className="lg:col-span-2">
+              <select value={kind} onChange={(e) => setKind(e.target.value)} className={COMPACT_CONTROL}>
                 <option value="">All</option>
-                <option value="user">Users only</option>
-                <option value="invite">Invites only</option>
+                <option value="user">Users</option>
+                <option value="invite">Invites</option>
               </select>
-            </div>
-            <div className="xl:col-span-3">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Department
-              </label>
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Department" className="sm:col-span-2 lg:col-span-2">
               <select
                 value={filterDept}
                 onChange={(e) => setFilterDept(e.target.value)}
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               >
                 <option value="">All</option>
                 {departments.map((d) => (
@@ -313,68 +349,61 @@ export function EmployeeDirectoryPanel({
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Role
-              </label>
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Role" className="lg:col-span-2">
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               >
                 <option value="">All</option>
                 <option value="admin">Admin</option>
                 <option value="manager">Manager</option>
                 <option value="employee">Employee</option>
               </select>
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Invite status
-              </label>
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Invite status" className="lg:col-span-2">
               <select
                 value={filterInviteStatus}
                 onChange={(e) => setFilterInviteStatus(e.target.value)}
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               >
                 <option value="">All</option>
                 <option value="pending">Pending</option>
                 <option value="accepted">Accepted</option>
               </select>
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                User id
-              </label>
+            </DirectoryFilterField>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200/70 bg-slate-50/50 p-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-12 dark:border-slate-800/80 dark:bg-slate-950/20 sm:p-4">
+            <DirectoryFilterField label="User ID" className="lg:col-span-2">
               <input
                 value={filterUserId}
                 onChange={(e) => setFilterUserId(e.target.value.replace(/\D/g, ""))}
-                placeholder="Exact id"
-                className={`${filterClass} mt-1`}
+                placeholder="e.g. 12"
+                className={COMPACT_CONTROL}
               />
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Created from
-              </label>
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Created from" className="sm:col-span-1 lg:col-span-3">
               <input
                 type="date"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               />
-            </div>
-            <div className="xl:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Created to
-              </label>
+            </DirectoryFilterField>
+            <DirectoryFilterField label="Created to" className="sm:col-span-1 lg:col-span-3">
               <input
                 type="date"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
-                className={`${filterClass} mt-1`}
+                className={COMPACT_CONTROL}
               />
+            </DirectoryFilterField>
+            <div className="hidden items-end pb-0.5 lg:col-span-4 lg:flex">
+              <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                Narrow by account ID or when the record was created.
+              </p>
             </div>
           </div>
         </div>

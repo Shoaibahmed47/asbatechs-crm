@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +41,14 @@ function formatMinutes(m: number | null | undefined): string {
   return `${h}h ${mm}m`;
 }
 
+/** Decimal hours (0.07) are easy to misread as "7h" — show minutes first. */
+function formatTotalWorkHours(detail: AttendanceEmployeeDetail): string {
+  if (detail.totalWorkMinutes <= 0 && detail.totalHours == null) return "—";
+  const decimal =
+    detail.totalHours ?? (detail.totalWorkMinutes / 60).toFixed(2);
+  return `${formatMinutes(detail.totalWorkMinutes)} (${decimal}h)`;
+}
+
 function formatAge(seconds: number | null): string {
   if (seconds == null) return "Never";
   if (seconds < 60) return `${seconds}s ago`;
@@ -56,6 +64,13 @@ function toneForStatus(status: string): string {
   if (status === "break") return "bg-amber-500/15 text-amber-900 dark:text-amber-300";
   if (status === "idle") return "bg-rose-500/15 text-rose-800 dark:text-rose-300";
   return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+}
+
+function attendanceStatusLabel(status: string): string {
+  if (status === "active") return "Active";
+  if (status === "break") return "Break";
+  if (status === "idle") return "Inactive";
+  return "Offline";
 }
 
 function toneForAgent(state: string): string {
@@ -153,7 +168,7 @@ export function AttendanceReportEmployeeDetailPanel({
       `Clock out: ${formatClock(detail.clockOut)}`,
       `Work: ${formatMinutes(detail.totalWorkMinutes)}`,
       `Break: ${formatMinutes(detail.totalBreakMinutes)}`,
-      `Idle: ${formatMinutes(detail.unscheduledIdleMinutes)}`,
+      `Inactive: ${formatMinutes(detail.unscheduledIdleMinutes)}`,
       `Sleep: ${formatMinutes(detail.sleepMinutes)}`,
       `Total hours: ${detail.totalHours != null ? `${detail.totalHours} h` : "—"}`,
       `Break sessions: ${breakSessionsSorted.length}`
@@ -248,7 +263,7 @@ export function AttendanceReportEmployeeDetailPanel({
     <p><strong>Clock out:</strong> ${escapeHtml(formatClock(detail.clockOut))}</p>
     <p><strong>Work:</strong> ${escapeHtml(formatMinutes(detail.totalWorkMinutes))}</p>
     <p><strong>Break:</strong> ${escapeHtml(formatMinutes(detail.totalBreakMinutes))}</p>
-    <p><strong>Idle:</strong> ${escapeHtml(formatMinutes(detail.unscheduledIdleMinutes))}</p>
+    <p><strong>Inactive:</strong> ${escapeHtml(formatMinutes(detail.unscheduledIdleMinutes))}</p>
     <p><strong>Sleep:</strong> ${escapeHtml(formatMinutes(detail.sleepMinutes))}</p>
     <p><strong>Total hours:</strong> ${escapeHtml(
       detail.totalHours != null ? `${detail.totalHours} h` : "—"
@@ -339,35 +354,50 @@ export function AttendanceReportEmployeeDetailPanel({
     void load();
   }, [load]);
 
+  const handleClose = useCallback(
+    (event?: MouseEvent) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      onClose();
+    },
+    [onClose]
+  );
+
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.body.style.removeProperty("pointer-events");
+    document.documentElement.style.removeProperty("pointer-events");
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") handleClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = prevOverflow;
+      document.body.style.removeProperty("pointer-events");
+      document.documentElement.style.removeProperty("pointer-events");
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [onClose]);
+  }, [handleClose]);
 
   if (!mounted) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/65 px-4 py-6 backdrop-blur-md sm:px-6 sm:py-8 dark:bg-slate-950/75"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5"
       role="presentation"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-slate-950/65 backdrop-blur-md dark:bg-slate-950/75"
+        aria-label="Close attendance detail"
+        onClick={handleClose}
+      />
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="attendance-detail-title"
-        onClick={(event) => event.stopPropagation()}
-        className="app-panel my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-slate-200/90 shadow-[0_30px_80px_rgba(15,23,42,0.25)] dark:border-slate-700 sm:max-w-[52rem] max-h-[min(92dvh,880px)]"
+        className="app-panel relative z-10 flex w-full max-w-[min(96vw,72rem)] max-h-[min(96dvh,960px)] min-h-[12rem] flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] dark:border-slate-700 dark:bg-slate-950"
       >
         <header className="shrink-0 border-b border-slate-200/90 px-4 py-4 dark:border-slate-800 sm:px-5">
           <div className="flex items-start justify-between gap-4">
@@ -395,16 +425,14 @@ export function AttendanceReportEmployeeDetailPanel({
                 ) : null}
               </div>
             </div>
-            <Button
+            <button
               type="button"
-              size="sm"
-              variant="outline"
-              onClick={onClose}
-              aria-label="Close"
-              className="shrink-0"
+              onClick={handleClose}
+              aria-label="Close attendance detail"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <X className="h-4 w-4" aria-hidden />
+            </button>
           </div>
         </header>
 
@@ -434,7 +462,7 @@ export function AttendanceReportEmployeeDetailPanel({
                       toneForStatus(detail.attendanceStatus)
                     )}
                   >
-                    {detail.attendanceStatus}
+                    {attendanceStatusLabel(detail.attendanceStatus)}
                   </span>
                   <span
                     className={cn(
@@ -499,19 +527,27 @@ export function AttendanceReportEmployeeDetailPanel({
                 </h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Metrics for <strong className="text-slate-900 dark:text-slate-100">{activeDate}</strong>
+                  {detail.openShift ? " · live until clock-out" : ""}
                 </p>
+                {detail.sleepMinutes === 0 && detail.openShift ? (
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                    <strong>Sleep</strong> counts only laptop <strong>lock</strong> (Win+L) via
+                    desktop agent — not mouse idle or closing tabs (
+                    <strong>Inactive</strong>). Test: clock in, press Win+L for ~15s, unlock.
+                  </p>
+                ) : null}
                 <div className="mt-3 grid grid-cols-2 gap-2.5 md:grid-cols-3">
                   <DetailStatTile label="Clock in" value={formatClock(detail.clockIn)} />
                   <DetailStatTile label="Clock out" value={formatClock(detail.clockOut)} />
                   <DetailStatTile label="Work" value={formatMinutes(detail.totalWorkMinutes)} />
                   <DetailStatTile label="Break" value={formatMinutes(detail.totalBreakMinutes)} />
-                  <DetailStatTile label="Idle" value={formatMinutes(detail.unscheduledIdleMinutes)} />
+                  <DetailStatTile label="Inactive" value={formatMinutes(detail.unscheduledIdleMinutes)} />
                   <DetailStatTile label="Sleep" value={formatMinutes(detail.sleepMinutes)} />
-                  <DetailStatTile label="Idle events" value={String(detail.idleEventsCount)} />
+                  <DetailStatTile label="Inactive events" value={String(detail.idleEventsCount)} />
                   <DetailStatTile label="Sleep events" value={String(detail.sleepEventsCount)} />
                   <DetailStatTile
-                    label="Total hours"
-                    value={detail.totalHours != null ? `${detail.totalHours} h` : "—"}
+                    label="Total work"
+                    value={formatTotalWorkHours(detail)}
                   />
                 </div>
               </section>
@@ -561,18 +597,20 @@ export function AttendanceReportEmployeeDetailPanel({
                   </p>
                 ) : (
                   <div className="mt-4 flex flex-col">
-                    <div className="overflow-x-auto rounded-xl border border-slate-200/90 dark:border-slate-700">
-                      <table className="w-full min-w-[32rem] text-left text-sm">
+                    <div className="-mx-1 overflow-x-auto rounded-xl border border-slate-200/90 dark:border-slate-700">
+                      <table className="w-full min-w-[56rem] table-auto text-left text-sm">
                         <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
                           <tr>
-                            {isMultiDayRange ? <th className="px-3 py-2.5">Date</th> : null}
-                            <th className="px-3 py-2.5">Start</th>
-                            <th className="px-3 py-2.5">End</th>
-                            <th className="px-3 py-2.5">Duration</th>
-                            <th className="px-3 py-2.5">Type</th>
-                            <th className="px-3 py-2.5">Cause</th>
-                            <th className="px-3 py-2.5">Return</th>
-                            <th className="px-3 py-2.5">Label</th>
+                            {isMultiDayRange ? (
+                              <th className="whitespace-nowrap px-3 py-2.5">Date</th>
+                            ) : null}
+                            <th className="whitespace-nowrap px-3 py-2.5">Start</th>
+                            <th className="whitespace-nowrap px-3 py-2.5">End</th>
+                            <th className="whitespace-nowrap px-3 py-2.5">Duration</th>
+                            <th className="whitespace-nowrap px-3 py-2.5">Type</th>
+                            <th className="whitespace-nowrap px-3 py-2.5">Cause</th>
+                            <th className="min-w-[10rem] px-3 py-2.5">Return</th>
+                            <th className="min-w-[18rem] px-3 py-2.5">Label / details</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -605,10 +643,10 @@ export function AttendanceReportEmployeeDetailPanel({
                             <td className="px-3 py-2.5 text-slate-700 dark:text-slate-200">
                               {row.unscheduledCause ?? "—"}
                             </td>
-                            <td className="max-w-[8rem] truncate px-3 py-2.5 text-slate-700 dark:text-slate-200">
+                            <td className="min-w-[10rem] max-w-[14rem] whitespace-normal break-words px-3 py-2.5 align-top text-slate-700 dark:text-slate-200">
                               {row.returnReason?.trim() ? row.returnReason : "—"}
                             </td>
-                            <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">
+                            <td className="min-w-[18rem] whitespace-normal break-words px-3 py-2.5 align-top font-medium leading-relaxed text-slate-800 dark:text-slate-100">
                               {row.reasonLabel}
                             </td>
                           </tr>
@@ -636,11 +674,11 @@ export function AttendanceReportEmployeeDetailPanel({
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/90 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/90 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6">
+          <p className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
             Detail actions
           </p>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end lg:gap-2.5">
             <Button type="button" size="sm" variant="outline" onClick={() => void copyReport()} disabled={loading || !detail}>
               Copy report
             </Button>
@@ -660,4 +698,3 @@ export function AttendanceReportEmployeeDetailPanel({
     document.body
   );
 }
-

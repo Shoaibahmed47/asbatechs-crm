@@ -3,7 +3,11 @@ export type AttendanceStatusKind = "active" | "break" | "idle" | "offline";
 /** Canonical unscheduled-away causes used across attendance APIs and UI. */
 export const UNSCHEDULED_CAUSE = {
   IDLE: "idle",
-  SLEEP: "sleep"
+  SLEEP: "sleep",
+  /** Attendance tab hidden/closed longer than policy threshold. */
+  TAB_CLOSE: "tab_close",
+  /** No cursor movement longer than policy threshold. */
+  CURSOR_IDLE: "cursor_idle"
 } as const;
 
 export type UnscheduledCause =
@@ -18,6 +22,9 @@ export const ATTENDANCE_REASON_CODE = {
   IDLE_SLEEP: "idle_sleep",
   IDLE_AGENT: "idle_agent",
   IDLE_BROWSER: "idle_browser",
+  AWAY_TAB_CLOSE: "away_tab_close",
+  AWAY_CURSOR_IDLE: "away_cursor_idle",
+  AWAY_LAPTOP_SLEEP: "away_laptop_sleep",
   ACTIVE_WITH_ACTIVITY: "active_with_activity",
   ACTIVE_DEFAULT: "active_default"
 } as const;
@@ -53,6 +60,12 @@ export function buildAttendanceReason(params: {
       if (openUnscheduledCause === UNSCHEDULED_CAUSE.SLEEP) {
         return ATTENDANCE_REASON_CODE.IDLE_SLEEP;
       }
+      if (openUnscheduledCause === UNSCHEDULED_CAUSE.TAB_CLOSE) {
+        return ATTENDANCE_REASON_CODE.AWAY_TAB_CLOSE;
+      }
+      if (openUnscheduledCause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
+        return ATTENDANCE_REASON_CODE.AWAY_CURSOR_IDLE;
+      }
       return source === "desktop agent"
         ? ATTENDANCE_REASON_CODE.IDLE_AGENT
         : ATTENDANCE_REASON_CODE.IDLE_BROWSER;
@@ -76,6 +89,12 @@ export function buildAttendanceReason(params: {
       [ATTENDANCE_REASON_CODE.IDLE_SLEEP]: "Laptop lock/sleep detected during duty.",
       [ATTENDANCE_REASON_CODE.IDLE_AGENT]: "No activity detected by desktop agent.",
       [ATTENDANCE_REASON_CODE.IDLE_BROWSER]: "No activity detected in attendance page.",
+      [ATTENDANCE_REASON_CODE.AWAY_TAB_CLOSE]:
+        "Attendance browser tab was closed (switching to other tabs is allowed).",
+      [ATTENDANCE_REASON_CODE.AWAY_CURSOR_IDLE]:
+        "No cursor movement longer than allowed.",
+      [ATTENDANCE_REASON_CODE.AWAY_LAPTOP_SLEEP]:
+        "Laptop sleep/lock longer than allowed.",
       [ATTENDANCE_REASON_CODE.ACTIVE_DEFAULT]: "Working."
     };
 

@@ -2,6 +2,28 @@ param(
   [string]$TaskName = "ASBA Attendance Agent"
 )
 
+function Get-LatestAuthStatusFromLog {
+  param([string[]]$Lines)
+
+  $authLines = @(
+    $Lines | Where-Object {
+      $_ -match 'auth refreshed' -or
+      $_ -match 'auth refresh failed' -or
+      $_ -match 'Unable to initialize auth token'
+    }
+  )
+
+  if ($authLines.Count -eq 0) {
+    return 'unknown'
+  }
+
+  $last = $authLines[$authLines.Count - 1]
+  if ($last -match 'auth refreshed') {
+    return 'ok'
+  }
+  return 'failed'
+}
+
 Write-Host "=== Scheduled Task ==="
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($task) {
@@ -29,7 +51,24 @@ Write-Host ""
 Write-Host "=== Log File ==="
 if (Test-Path $logPath) {
   Write-Host "Log path: $logPath"
-  Get-Content -Path $logPath -Tail 20
+  $tail = Get-Content -Path $logPath -Tail 15
+  $tail | ForEach-Object { Write-Host $_ }
+
+  $authStatus = Get-LatestAuthStatusFromLog -Lines $tail
+  $hasRecentActivity = @($tail | Where-Object { $_ -match 'event=activity sent' }).Count -gt 0
+
+  Write-Host ""
+  if ($authStatus -eq 'ok') {
+    Write-Host "Auth: OK (token refreshed)"
+    if ($hasRecentActivity) {
+      Write-Host "Heartbeat: OK (activity reaching server)"
+      Write-Host "Next: Open Attendance page and click Verify Agent."
+    }
+  } elseif ($authStatus -eq 'failed') {
+    Write-Host "Auth: FAILED - re-run install with correct CRM password, then Verify Agent on Attendance page."
+  } else {
+    Write-Host "Auth: waiting (agent just started - check again in 10 seconds)"
+  }
 } else {
   Write-Host "Log file not found yet: $logPath"
 }

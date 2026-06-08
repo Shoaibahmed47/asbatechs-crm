@@ -4,6 +4,13 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getLocalDateString } from "@/lib/attendance-date";
+import {
+  checkOpenComplianceAwayAlerts,
+  endComplianceAway,
+  normalizeComplianceAwayCause,
+  startComplianceAway,
+  type ComplianceAwayCause
+} from "@/lib/attendance-away-compliance";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
 
 type ActivityEvent =
@@ -12,9 +19,12 @@ type ActivityEvent =
   | "idle_start"
   | "idle_end"
   | "lock"
-  | "unlock";
+  | "unlock"
+  | "away_start"
+  | "away_end";
 
 type SourceType = "browser" | "agent";
+
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
   if (!authHeader) return null;
@@ -33,7 +43,9 @@ function normalizeEvent(value: unknown): ActivityEvent {
     normalized === "idle_start" ||
     normalized === "idle_end" ||
     normalized === "lock" ||
-    normalized === "unlock"
+    normalized === "unlock" ||
+    normalized === "away_start" ||
+    normalized === "away_end"
   ) {
     return normalized;
   }
@@ -59,6 +71,14 @@ function normalizeReason(value: unknown): string | null {
   return trimmed.slice(0, 240);
 }
 
+function isComplianceCause(value: string | null | undefined): value is ComplianceAwayCause {
+  return (
+    value === UNSCHEDULED_CAUSE.TAB_CLOSE ||
+    value === UNSCHEDULED_CAUSE.CURSOR_IDLE ||
+    value === UNSCHEDULED_CAUSE.SLEEP
+  );
+}
+
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value ?? getBearerToken(req);
   const payload = token ? await verifyAuthToken(token) : null;
@@ -77,9 +97,19 @@ export async function POST(req: NextRequest) {
   const eventType = normalizeEvent(body.event);
   const source = normalizeSource(body.source);
   const reason = normalizeReason(body.reason);
+  const awayCause =
+    normalizeComplianceAwayCause(body.awayCause) ??
+    (eventType === "lock" ? UNSCHEDULED_CAUSE.SLEEP : null);
   const eventAt = normalizeObservedAt(body.observedAt);
   const userId = payload.userId;
   const today = getLocalDateString(eventAt);
+
+  const [employee] = await db
+    .select({ name: schema.users.name })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  const employeeName = employee?.name ?? "Employee";
 
   const [log] = await db
     .select()
@@ -145,66 +175,113 @@ export async function POST(req: NextRequest) {
   const hasOpenUnscheduledBreak = Boolean(
     openSession && openSession.breakType === "unscheduled"
   );
-  const unscheduledCause: UnscheduledCause =
-    eventType === "lock" ? UNSCHEDULED_CAUSE.SLEEP : UNSCHEDULED_CAUSE.IDLE;
 
-  // Inactivity threshold crossed: classify as unscheduled idle break if there is no open break.
-  if (eventType === "idle_start" || eventType === "lock") {
+  if (eventType === "away_start" && awayCause) {
+    const started = await startComplianceAway({
+      attendanceLogId: log.id,
+      cause: awayCause,
+      eventAt,
+      hasOpenManualBreak,
+      employeeUserId: userId,
+      employeeName
+    });
+    return NextResponse.json({ ok: true, status: "idle", awayCause, started: started.started });
+  }
+
+  if ((eventType === "away_end" || eventType === "unlock") && awayCause) {
+    const endCause =
+      eventType === "unlock" ? UNSCHEDULED_CAUSE.SLEEP : awayCause;
+    const ended = await endComplianceAway({
+      attendanceLogId: log.id,
+      employeeUserId: userId,
+      employeeName,
+      cause: endCause,
+      eventAt,
+      reason,
+      source
+    });
+    return NextResponse.json({
+      ok: true,
+      resumed: true,
+      awaySeconds: ended.awaySeconds,
+      addedMinutes: ended.addedMinutes,
+      autoReason: ended.autoReason
+    });
+  }
+
+  if (eventType === "lock" && awayCause === UNSCHEDULED_CAUSE.SLEEP) {
     if (hasOpenManualBreak) {
       return NextResponse.json({ ok: true, status: "break", classified: false });
     }
+    const started = await startComplianceAway({
+      attendanceLogId: log.id,
+      cause: UNSCHEDULED_CAUSE.SLEEP,
+      eventAt,
+      hasOpenManualBreak
+    });
+    await checkOpenComplianceAwayAlerts({
+      employeeUserId: userId,
+      employeeName,
+      attendanceLogId: log.id,
+      now: eventAt
+    });
+    return NextResponse.json({ ok: true, status: "idle", classified: started.started });
+  }
 
-    if (!hasOpenUnscheduledBreak) {
-      await db.transaction(async (tx) => {
-        await tx.insert(schema.breakSessions).values({
-          attendanceLogId: log.id,
-          breakStart: eventAt,
-          breakType: "unscheduled",
-          unscheduledCause
-        });
-        await tx
-          .update(schema.attendanceLogs)
-          .set({
-            status: "idle",
-            idleEventsCount:
-              unscheduledCause === UNSCHEDULED_CAUSE.IDLE
-                ? sql`${schema.attendanceLogs.idleEventsCount} + 1`
-                : schema.attendanceLogs.idleEventsCount,
-            sleepEventsCount:
-              unscheduledCause === UNSCHEDULED_CAUSE.SLEEP
-                ? sql`${schema.attendanceLogs.sleepEventsCount} + 1`
-                : schema.attendanceLogs.sleepEventsCount
-          })
-          .where(eq(schema.attendanceLogs.id, log.id));
-      });
-      return NextResponse.json({ ok: true, status: "idle", classified: true });
-    }
+  if (
+    eventType === "idle_end" &&
+    hasOpenUnscheduledBreak &&
+    openSession?.unscheduledCause === UNSCHEDULED_CAUSE.IDLE
+  ) {
+    const addedMinutes = Math.max(
+      0,
+      Math.floor((eventAt.getTime() - new Date(openSession.breakStart as Date).getTime()) / 60000)
+    );
 
-    await db
-      .update(schema.attendanceLogs)
-      .set({ status: "idle" })
-      .where(eq(schema.attendanceLogs.id, log.id));
-
-    if (
-      eventType === "lock" &&
-      openSession?.unscheduledCause !== UNSCHEDULED_CAUSE.SLEEP
-    ) {
-      await db
+    await db.transaction(async (tx) => {
+      await tx
         .update(schema.breakSessions)
-        .set({ unscheduledCause: UNSCHEDULED_CAUSE.SLEEP })
-        .where(eq(schema.breakSessions.id, openSession!.id));
+        .set({
+          breakEnd: eventAt,
+          returnReason: reason ?? openSession.returnReason
+        })
+        .where(eq(schema.breakSessions.id, openSession.id));
+
+      await tx
+        .update(schema.attendanceLogs)
+        .set({
+          status: "active",
+          totalBreakMinutes: sql`${schema.attendanceLogs.totalBreakMinutes} + ${addedMinutes}`,
+          unscheduledIdleMinutes: sql`${schema.attendanceLogs.unscheduledIdleMinutes} + ${addedMinutes}`,
+          lastActivityAt: eventAt,
+          lastActivitySource: source
+        })
+        .where(eq(schema.attendanceLogs.id, log.id));
+    });
+
+    return NextResponse.json({ ok: true, resumed: true, addedMinutes });
+  }
+
+  if (eventType === "idle_start" || eventType === "idle_warning") {
+    return NextResponse.json({ ok: true, ignored: true, legacy: true });
+  }
+
+  if (hasOpenUnscheduledBreak && openSession) {
+    if (isComplianceCause(openSession.unscheduledCause)) {
+      await checkOpenComplianceAwayAlerts({
+        employeeUserId: userId,
+        employeeName,
+        attendanceLogId: log.id,
+        now: eventAt
+      });
+      return NextResponse.json({
+        ok: true,
+        status: "idle",
+        openAwayCause: openSession.unscheduledCause,
+        needsAwayEnd: true
+      });
     }
 
-    return NextResponse.json({ ok: true, status: "idle", classified: false });
-  }
-
-  if (eventType === "idle_warning") {
-    // UI-only advisory event; no persistent transition needed.
-    return NextResponse.json({ ok: true, warned: true });
-  }
-
-  // Activity resumed: close unscheduled idle break if one is open.
-  if (hasOpenUnscheduledBreak && openSession) {
     const addedMinutes = Math.max(
       0,
       Math.floor((eventAt.getTime() - new Date(openSession.breakStart as Date).getTime()) / 60000)
@@ -237,6 +314,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, resumed: true, addedMinutes });
   }
+
+  await checkOpenComplianceAwayAlerts({
+    employeeUserId: userId,
+    employeeName,
+    attendanceLogId: log.id,
+    now: eventAt
+  });
 
   const nextStatus = hasOpenManualBreak ? "break" : "active";
   await db

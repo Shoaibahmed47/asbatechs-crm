@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClientSession } from "@/lib/client-session";
@@ -21,7 +22,9 @@ export default async function ClientPortalLayout({ children }: { children: React
 
   return (
     <div className="min-h-screen bg-slate-100/80 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <BodyPointerEventsGuard />
+      <Suspense fallback={null}>
+        <BodyPointerEventsGuard />
+      </Suspense>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>

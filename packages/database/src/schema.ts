@@ -67,6 +67,12 @@ export const attendanceLogs = pgTable("attendance_logs", {
   sleepMinutes: integer("sleep_minutes").default(0),
   /** Count of sleep/lock auto-away events during shift. */
   sleepEventsCount: integer("sleep_events_count").default(0),
+  /** Minutes away while attendance tab was closed/hidden beyond policy. */
+  tabCloseMinutes: integer("tab_close_minutes").default(0),
+  tabCloseEventsCount: integer("tab_close_events_count").default(0),
+  /** Minutes away with no cursor movement beyond policy. */
+  cursorAwayMinutes: integer("cursor_away_minutes").default(0),
+  cursorAwayEventsCount: integer("cursor_away_events_count").default(0),
   /** Last known client/agent activity timestamp while shift is open. */
   lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
   /** Source that reported the last activity (browser | agent). */

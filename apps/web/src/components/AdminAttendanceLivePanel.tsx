@@ -16,7 +16,7 @@ function StatusPill({ status }: { status: PersonAttendanceStatus["status"] }) {
     status === "active"
       ? "Active"
       : status === "idle"
-        ? "Idle"
+        ? "Inactive"
         : status === "break"
           ? "On break"
           : "Offline";
@@ -55,7 +55,7 @@ export function AdminAttendanceLivePanel({
             Live attendance - {date}
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-            Who is working, on break, idle, or offline right now. Break start and end show the
+            Who is working, on break, inactive, or offline right now. Break start and end show the
             <span className="font-medium text-slate-700 dark:text-slate-300"> current break </span>
             if one is open, otherwise the
             <span className="font-medium text-slate-700 dark:text-slate-300"> most recent completed break </span>
@@ -75,7 +75,7 @@ export function AdminAttendanceLivePanel({
           </div>
           <div className="rounded-2xl border border-rose-200/80 bg-rose-50/40 px-4 py-2 dark:border-rose-900/40 dark:bg-rose-950/30">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-rose-900 dark:text-rose-400">
-              Idle
+              Inactive
             </div>
             <div className="text-lg font-semibold text-rose-800 dark:text-rose-300">{c.idle}</div>
           </div>

@@ -6,14 +6,16 @@ export type BreakSessionForLabel = {
   returnReason?: string | null;
 };
 
-/** Display label for a break row (custom reason, official break, or idle type). */
+/** Display label for a break row (custom reason, official break, or inactive type). */
 export function breakSessionReasonLabel(session: BreakSessionForLabel): string {
   const custom = session.returnReason?.trim();
   if (custom) return custom;
   if (session.breakType === "manual") return "Official break";
   if (session.breakType === "extra") return "Extra break";
-  if (session.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP) return "Away (screen locked)";
-  if (session.breakType === "unscheduled") return "Unscheduled idle";
+  if (session.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP) return "Away (laptop sleep/lock)";
+  if (session.unscheduledCause === UNSCHEDULED_CAUSE.TAB_CLOSE) return "Away (Attendance tab closed)";
+  if (session.unscheduledCause === UNSCHEDULED_CAUSE.CURSOR_IDLE) return "Away (no cursor movement)";
+  if (session.breakType === "unscheduled") return "Unscheduled inactive";
   return "-";
 }
 

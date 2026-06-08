@@ -303,7 +303,7 @@ export function EmployeeDirectoryTable({
               <th className="hidden w-[7rem] px-4 py-2.5 md:table-cell">Role</th>
               <th className="hidden w-[11rem] px-4 py-2.5 md:table-cell">Department</th>
               <th className="hidden w-[15rem] px-4 py-2.5 lg:table-cell">Client project</th>
-              <th className="w-[12rem] px-4 py-2.5 text-right">Actions</th>
+              <th className="w-[11rem] px-4 py-2.5">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -367,7 +367,7 @@ export function EmployeeDirectoryTable({
                       {allowAdminActions && row.kind === "user" && onUpdateDepartment ? (
                         <div className="flex min-w-0 items-center gap-2">
                           <select
-                            className="form-input h-8 w-full rounded-lg px-2.5 py-1 text-xs shadow-none"
+                            className="form-input-compact max-w-[11rem]"
                             value={
                               row.departmentId == null ? "" : String(row.departmentId)
                             }
@@ -400,7 +400,7 @@ export function EmployeeDirectoryTable({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 w-full justify-between gap-2 rounded-lg px-2.5 text-xs shadow-none"
+                              className="h-7 w-full max-w-[12rem] justify-between gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2 text-xs font-normal shadow-none dark:border-slate-700 dark:bg-slate-900"
                             >
                               <span className="truncate text-left">
                                 {(() => {
@@ -450,8 +450,8 @@ export function EmployeeDirectoryTable({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 align-middle">
-                      <div className="flex flex-col items-stretch justify-end gap-1.5">
+                    <td className="w-[11rem] px-4 py-3 align-top">
+                      <div className="flex w-full min-w-[9.5rem] flex-col items-stretch gap-1.5">
                         {showResend ? (
                           <Button
                             type="button"
@@ -508,7 +508,7 @@ export function EmployeeDirectoryTable({
                         ) : null}
 
                         {!showResend && !showReset && !showRemove ? (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                          <span className="px-0.5 text-xs text-slate-400 dark:text-slate-500">—</span>
                         ) : null}
                       </div>
                     </td>

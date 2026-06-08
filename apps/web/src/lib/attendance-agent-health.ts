@@ -3,8 +3,10 @@ import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
+import { getLocalDateString } from "@/lib/attendance-date";
 import {
-  classifyAgentState,
+  pickLatestAgentSignalOnDate,
+  resolveAgentHealthState,
   type AgentHealthState
 } from "@/lib/attendance-agent-health-state";
 import { buildAttendanceReason } from "@/lib/attendance-reason";
@@ -96,20 +98,6 @@ export async function getAttendanceAgentHealth(params: {
       )
     );
 
-  const agentLogs = await db
-    .select({
-      userId: schema.attendanceLogs.userId,
-      lastActivityAt: schema.attendanceLogs.lastActivityAt
-    })
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        inArray(schema.attendanceLogs.userId, userIds),
-        eq(schema.attendanceLogs.lastActivitySource, "agent"),
-        isNotNull(schema.attendanceLogs.lastActivityAt)
-      )
-    );
-
   const heartbeatLogs = await db
     .select({
       userId: schema.activityLogs.userId,
@@ -169,20 +157,33 @@ export async function getAttendanceAgentHealth(params: {
   const todayByUser = new Map(todayLogs.map((l) => [l.userId, l]));
   const latestAgentByUser = new Map<number, Date>();
   const latestSetupByUser = new Map<number, Date>();
-  for (const row of agentLogs) {
-    if (!row.lastActivityAt) continue;
-    const current = latestAgentByUser.get(row.userId);
-    const next = new Date(row.lastActivityAt as Date);
-    if (!current || next.getTime() > current.getTime()) {
-      latestAgentByUser.set(row.userId, next);
-    }
-  }
+  const heartbeatsByUser = new Map<number, Date[]>();
   for (const row of heartbeatLogs) {
     if (!row.createdAt) continue;
-    const current = latestAgentByUser.get(row.userId);
     const next = new Date(row.createdAt as Date);
-    if (!current || next.getTime() > current.getTime()) {
-      latestAgentByUser.set(row.userId, next);
+    if (getLocalDateString(next) !== date) continue;
+    const list = heartbeatsByUser.get(row.userId) ?? [];
+    list.push(next);
+    heartbeatsByUser.set(row.userId, list);
+  }
+  for (const todayLog of todayLogs) {
+    const fromLog =
+      todayLog.lastActivitySource === "agent" && todayLog.lastActivityAt
+        ? new Date(todayLog.lastActivityAt as Date)
+        : null;
+    const lastAgentAt = pickLatestAgentSignalOnDate(date, [
+      fromLog,
+      ...(heartbeatsByUser.get(todayLog.userId) ?? [])
+    ]);
+    if (lastAgentAt) {
+      latestAgentByUser.set(todayLog.userId, lastAgentAt);
+    }
+  }
+  for (const [userId, beats] of heartbeatsByUser) {
+    if (latestAgentByUser.has(userId)) continue;
+    const lastAgentAt = pickLatestAgentSignalOnDate(date, beats);
+    if (lastAgentAt) {
+      latestAgentByUser.set(userId, lastAgentAt);
     }
   }
   for (const row of setupLogs) {
@@ -245,8 +246,11 @@ export async function getAttendanceAgentHealth(params: {
       const lastSeenAgeSeconds = lastSeenAt
         ? Math.max(0, Math.floor((now - lastSeenAt.getTime()) / 1000))
         : null;
-      const { state: actualState, ageSeconds } = classifyAgentState(lastAgentAt);
-      const state = lastAgentAt ? actualState : lastSetupAt ? "installed" : "not_installed";
+      const { state, ageSeconds } = resolveAgentHealthState({
+        lastAgentAtOnDate: lastAgentAt,
+        lastSetupAt,
+        openShift
+      });
       const needsAttention =
         openShift &&
         lastSeenAgeSeconds != null &&

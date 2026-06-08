@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asbatech CRM — Attendance Security Audit</title>
+  <style>
+    @page { margin: 18mm 16mm; size: A4; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+      line-height: 1.5;
+      font-size: 11pt;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 { font-size: 22pt; margin: 0 0 6px; color: #0369a1; }
+    h2 { font-size: 14pt; margin: 28px 0 10px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
+    h3 { font-size: 12pt; margin: 18px 0 8px; color: #334155; }
+    p, li { margin: 0 0 8px; }
+    .meta { color: #64748b; font-size: 10pt; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 10pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-weight: 600; }
+    .ok { color: #047857; font-weight: 600; }
+    .warn { color: #b45309; font-weight: 600; }
+    .bad { color: #b91c1c; font-weight: 600; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9pt; font-weight: 600; }
+    .badge-ok { background: #d1fae5; color: #065f46; }
+    .badge-warn { background: #fef3c7; color: #92400e; }
+    .badge-bad { background: #fee2e2; color: #991b1b; }
+    .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+    .flow { font-family: Consolas, monospace; font-size: 9pt; white-space: pre-wrap; background: #f1f5f9; padding: 12px; border-radius: 6px; }
+    @media print {
+      body { padding: 0; }
+      h2 { page-break-after: avoid; }
+      table, .box { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Asbatech CRM — Attendance Security Audit</h1>
+  <p class="meta">
+    Document: Employee &amp; Admin attendance security review<br />
+    Product: Asbatech CRM · Module: Time &amp; Attendance<br />
+    Generated: June 5, 2026
+  </p>
+
+  <div class="box">
+    <strong>Summary</strong><br />
+    Core employee monitoring (tab close, cursor idle, breaks, clock in/out) is implemented and working.
+    Laptop sleep requires the desktop agent. Two API routes lack authentication (critical).
+    One logic bug may false-alarm when switching browser tabs while Attendance stays open in background.
+  </div>
+
+  <h2>1. Employee security features</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Security</th><th>How it works</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Clock in / clock out</td><td>Employee must clock in to start shift; clock out ends shift.</td><td class="ok">Working</td></tr>
+      <tr><td>2</td><td>Official break</td><td>First break is official; must end before another.</td><td class="ok">Working</td></tr>
+      <tr><td>3</td><td>Extra break</td><td>Second break requires a written reason.</td><td class="ok">Working</td></tr>
+      <tr><td>4</td><td>Tab close</td><td>Closing the Attendance browser tab notifies admin and records away time.</td><td class="ok">Working</td></tr>
+      <tr><td>5</td><td>Other tabs / sites</td><td>Switching to Gmail, YouTube, etc. is allowed — not reported as tab close.</td><td class="warn">Mostly working*</td></tr>
+      <tr><td>6</td><td>No mouse / keyboard</td><td>~10 seconds no activity → away / break recorded (browser).</td><td class="ok">Working</td></tr>
+      <tr><td>7</td><td>Laptop sleep / lock</td><td>Win+L, lid close, sleep → away after ~10 sec via desktop agent.</td><td class="warn">Needs agent</td></tr>
+      <tr><td>8</td><td>Agent required for clock-in</td><td>UI blocks clock-in if agent not installed.</td><td class="warn">UI only**</td></tr>
+      <tr><td>9</td><td>Away notices</td><td>Employee sees warnings (cursor, sleep, tab reopened).</td><td class="ok">Working</td></tr>
+      <tr><td>10</td><td>Break minutes</td><td>Total counted away + breaks in Today’s summary.</td><td class="ok">Working</td></tr>
+      <tr><td>11</td><td>Page scope</td><td>Browser monitoring runs only on /attendance page.</td><td class="ok">By design</td></tr>
+    </tbody>
+  </table>
+  <p><small>* See bug #1 — cursor idle may still fire if Attendance tab is open but hidden in background.<br />
+  ** API does not enforce agent check — can be bypassed with direct API call.</small></p>
+
+  <h2>2. Admin security features</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Feature</th><th>What admin gets</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Executive dashboard</td><td>Agent health table, employee rows, click for detail.</td><td class="ok">Working</td></tr>
+      <tr><td>2</td><td>Attendance detail popup</td><td>Clock in/out, work/break/inactive/sleep, break list.</td><td class="ok">Working</td></tr>
+      <tr><td>3</td><td>Tab close alerts</td><td>Notification when employee closes Attendance tab.</td><td class="ok">Working</td></tr>
+      <tr><td>4</td><td>Tab reopen alerts</td><td>Notification when employee returns + duration away.</td><td class="ok">Working</td></tr>
+      <tr><td>5</td><td>Cursor idle alerts</td><td>Notification after ~10 sec no mouse/keyboard.</td><td class="ok">Working</td></tr>
+      <tr><td>6</td><td>Sleep alerts</td><td>Notification when agent detects lock/sleep.</td><td class="warn">Agent only</td></tr>
+      <tr><td>7</td><td>Agent health</td><td>Running / Installed / No activity / Not installed.</td><td class="ok">Working</td></tr>
+      <tr><td>8</td><td>Live status</td><td>Active / Inactive / Break / Offline + reason.</td><td class="ok">Working</td></tr>
+      <tr><td>9</td><td>Daily / range reports</td><td>Data loads on server.</td><td class="warn">Partial UI</td></tr>
+      <tr><td>10</td><td>In-app notifications</td><td>Stored in DB for admins.</td><td class="warn">No bell UI</td></tr>
+      <tr><td>11</td><td>Manager role</td><td>APIs support managers.</td><td class="warn">Admin UI only</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Policy thresholds (attendance-policy.ts)</h2>
+  <table>
+    <thead><tr><th>Rule</th><th>Threshold</th></tr></thead>
+    <tbody>
+      <tr><td>Tab close away</td><td>10 seconds (browser tab unload only)</td></tr>
+      <tr><td>Cursor idle away</td><td>10 seconds</td></tr>
+      <tr><td>Laptop sleep / lock away</td><td>10 seconds (desktop agent)</td></tr>
+      <tr><td>Activity heartbeat (browser)</td><td>60 seconds ping while active</td></tr>
+      <tr><td>Agent “running”</td><td>Signal within 180 seconds</td></tr>
+      <tr><td>Agent stale alert</td><td>10 minutes no signal during open shift</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. How monitoring flows</h2>
+  <div class="flow">EMPLOYEE                              ADMIN
+────────                              ─────
+Clock in ───────────────────────────► Sees "Open shift"
+     │
+     ├─ Attendance tab open
+     │    ├─ Mouse idle 10s+ ───────► Inactive + alert
+     │    ├─ Close tab ─────────────► Inactive + alert (time + duration)
+     │    └─ Other tabs OK ─────────► No tab-close alert
+     │
+     ├─ Desktop agent (for sleep)
+     │    ├─ Laptop lock/sleep ─────► Sleep minutes + alert
+     │    └─ Idle in any app ───────► Background monitoring
+     │
+     └─ Clock out ──────────────────► Final work/break totals</div>
+
+  <h2>5. What is working well</h2>
+  <ul>
+    <li>Tab close vs tab switch (main business rule)</li>
+    <li>Cursor idle detection on Attendance page</li>
+    <li>Break rules (official + extra with reason)</li>
+    <li>Server-side away compliance and break minutes</li>
+    <li>Admin employee detail with live totals</li>
+    <li>Agent health date scoping (today, not yesterday)</li>
+    <li>Desktop agent code for sleep/lock (when installed)</li>
+    <li>API auth on most attendance routes</li>
+  </ul>
+
+  <h2>6. Errors and gaps</h2>
+
+  <h3><span class="badge badge-bad">Critical</span> Security holes</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Problem</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td><code>/api/reports/attendance-summary</code> has no login</td><td>Anyone can see all employees’ work/break totals</td></tr>
+      <tr><td>B</td><td><code>/api/exports/attendance</code> has no login</td><td>Anyone can download full attendance CSV</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="badge badge-warn">High</span> Logic / trust issues</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Problem</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Tab switch + cursor idle conflict</td><td>If Attendance tab stays open in background, cursor idle may fire after ~10s even though switching tabs is allowed.</td></tr>
+      <tr><td>2</td><td>Laptop sleep without agent</td><td>Sleep/lock not detected in browser only. Employees without verified agent show Sleep: 0.</td></tr>
+      <tr><td>3</td><td>Monitoring only on /attendance</td><td>Other CRM pages are not browser-monitored; agent needed for background.</td></tr>
+      <tr><td>4</td><td>Clock-in agent check is UI-only</td><td>API allows clock-in without agent verification.</td></tr>
+      <tr><td>5</td><td>“Manager notified” text</td><td>UI says manager; server notifies admins only.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="badge badge-warn">Medium</span> Incomplete features</h3>
+  <ul>
+    <li>AdminAttendanceLivePanel built but not wired to dashboard</li>
+    <li>Daily/range report tables not fully shown in UI</li>
+    <li>No notification bell in header for attendance alerts</li>
+    <li>Managers have APIs but no full attendance dashboard like admin</li>
+    <li>Re-clock-in same day may not reset all tab/cursor counters</li>
+  </ul>
+
+  <h2>7. Employee example checklist</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Typical result (browser-only employee)</th></tr></thead>
+    <tbody>
+      <tr><td>Tab close security</td><td class="ok">Working — breaks show “Attendance tab closed”</td></tr>
+      <tr><td>Cursor idle security</td><td class="ok">Working — breaks show “no mouse/keyboard”</td></tr>
+      <tr><td>Laptop sleep security</td><td class="bad">Not active without verified agent</td></tr>
+      <tr><td>Sleep minutes</td><td>0 until agent installed and running</td></tr>
+      <tr><td>Admin visibility</td><td class="ok">Yes — via browser last seen and detail popup</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Recommended fix priority</h2>
+  <ol>
+    <li><strong>Add authentication</strong> to attendance-summary and exports/attendance APIs</li>
+    <li><strong>Pause cursor idle</strong> when Attendance tab is hidden (fix tab-switch false alarm)</li>
+    <li><strong>Enforce agent check</strong> on clock-in API (not only UI)</li>
+    <li><strong>Fix copy</strong> — “Admin notified” instead of “manager notified”</li>
+    <li><strong>Add sleep status badge</strong> on employee Attendance page</li>
+    <li><strong>Wire notification UI</strong> for admins</li>
+  </ol>
+
+  <h2>9. Key file locations</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Path</th></tr></thead>
+    <tbody>
+      <tr><td>Employee page</td><td>apps/web/src/app/(app)/attendance/page.tsx</td></tr>
+      <tr><td>Activity API</td><td>apps/web/src/app/api/attendance/activity/route.ts</td></tr>
+      <tr><td>Away compliance</td><td>apps/web/src/lib/attendance-away-compliance.ts</td></tr>
+      <tr><td>Policy</td><td>apps/web/src/lib/attendance-policy.ts</td></tr>
+      <tr><td>Desktop agent</td><td>apps/desktop-agent/src/windows/Program.cs</td></tr>
+      <tr><td>Admin dashboard</td><td>apps/web/src/app/(app)/dashboard/page.tsx</td></tr>
+      <tr><td>Employee detail</td><td>apps/web/src/components/attendance/AttendanceReportEmployeeDetailPanel.tsx</td></tr>
+      <tr><td>Agent health</td><td>apps/web/src/lib/attendance-agent-health.ts</td></tr>
+    </tbody>
+  </table>
+
+  <h2>10. Bottom line</h2>
+  <table>
+    <thead><tr><th>Side</th><th>Overall</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Employee</strong></td>
+        <td>Core rules work (tab close, cursor idle, breaks). Sleep needs agent. Tab-switch + idle has one bug.</td>
+      </tr>
+      <tr>
+        <td><strong>Admin</strong></td>
+        <td>Dashboard + detail work well. Two APIs are open without login (serious). Notifications exist but are hard to see in UI.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="meta" style="margin-top: 32px;">
+    Asbatech CRM · Attendance Security Audit · Confidential internal document
+  </p>
+</body>
+</html>
