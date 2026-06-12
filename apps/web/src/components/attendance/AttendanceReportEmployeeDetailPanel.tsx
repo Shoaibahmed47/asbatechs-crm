@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+  type ReactNode
+} from "react";
 import { createPortal } from "react-dom";
-import { Loader2, X } from "lucide-react";
+import { Activity, BarChart3, CalendarRange, Loader2, UserCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,8 +19,12 @@ import {
 import { TablePagination } from "@/components/TablePagination";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
-import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
+import {
+  formatAttendanceClock,
+  formatAttendanceDateTime
+} from "@/lib/attendance-date";
 import type { AttendanceEmployeeDetail } from "@/lib/attendance-employee-detail";
+import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -24,14 +35,11 @@ type Props = {
 };
 
 function formatClock(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    timeZone: ATTENDANCE_TIME_ZONE,
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return formatAttendanceDateTime(iso);
+}
+
+function formatShiftClock(iso: string | null): string {
+  return formatAttendanceClock(iso);
 }
 
 function formatMinutes(m: number | null | undefined): string {
@@ -47,16 +55,6 @@ function formatTotalWorkHours(detail: AttendanceEmployeeDetail): string {
   const decimal =
     detail.totalHours ?? (detail.totalWorkMinutes / 60).toFixed(2);
   return `${formatMinutes(detail.totalWorkMinutes)} (${decimal}h)`;
-}
-
-function formatAge(seconds: number | null): string {
-  if (seconds == null) return "Never";
-  if (seconds < 60) return `${seconds}s ago`;
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function toneForStatus(status: string): string {
@@ -99,14 +97,38 @@ function formatDayHeading(iso: string): string {
 
 function DetailStatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-3 shadow-sm dark:border-slate-700/90 dark:from-slate-900/80 dark:to-slate-950/50">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 shadow-sm transition hover:border-sky-200/80 dark:border-slate-700/80 dark:bg-slate-900/70 dark:hover:border-sky-800/50">
+      <div className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-1.5 text-sm font-semibold leading-snug tabular-nums text-slate-900 dark:text-slate-100">
+      <div className="mt-1 text-sm font-semibold leading-snug tabular-nums text-slate-900 dark:text-slate-100">
         {value}
       </div>
     </div>
+  );
+}
+
+function SectionCard({
+  icon: Icon,
+  title,
+  children
+}: {
+  icon: typeof Activity;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/50">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200/80 bg-sky-50 text-sky-700 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
+          {title}
+        </h3>
+      </div>
+      <div className="mt-3">{children}</div>
+    </section>
   );
 }
 
@@ -164,8 +186,8 @@ export function AttendanceReportEmployeeDetailPanel({
       `Date: ${activeDate}`,
       `Status: ${detail.attendanceStatus}`,
       `Reason: ${detail.attendanceReason}`,
-      `Clock in: ${formatClock(detail.clockIn)}`,
-      `Clock out: ${formatClock(detail.clockOut)}`,
+      `Clock in: ${formatShiftClock(detail.clockIn)}`,
+      `Clock out: ${formatShiftClock(detail.clockOut)}`,
       `Work: ${formatMinutes(detail.totalWorkMinutes)}`,
       `Break: ${formatMinutes(detail.totalBreakMinutes)}`,
       `Inactive: ${formatMinutes(detail.unscheduledIdleMinutes)}`,
@@ -259,8 +281,8 @@ export function AttendanceReportEmployeeDetailPanel({
   <div class="section">
     <p><strong>Status:</strong> ${escapeHtml(detail.attendanceStatus)}</p>
     <p><strong>Reason:</strong> ${escapeHtml(detail.attendanceReason)}</p>
-    <p><strong>Clock in:</strong> ${escapeHtml(formatClock(detail.clockIn))}</p>
-    <p><strong>Clock out:</strong> ${escapeHtml(formatClock(detail.clockOut))}</p>
+    <p><strong>Clock in:</strong> ${escapeHtml(formatShiftClock(detail.clockIn))}</p>
+    <p><strong>Clock out:</strong> ${escapeHtml(formatShiftClock(detail.clockOut))}</p>
     <p><strong>Work:</strong> ${escapeHtml(formatMinutes(detail.totalWorkMinutes))}</p>
     <p><strong>Break:</strong> ${escapeHtml(formatMinutes(detail.totalBreakMinutes))}</p>
     <p><strong>Inactive:</strong> ${escapeHtml(formatMinutes(detail.unscheduledIdleMinutes))}</p>
@@ -366,16 +388,14 @@ export function AttendanceReportEmployeeDetailPanel({
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.body.style.removeProperty("pointer-events");
-    document.documentElement.style.removeProperty("pointer-events");
+    clearInteractionLocks();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") handleClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = prevOverflow;
-      document.body.style.removeProperty("pointer-events");
-      document.documentElement.style.removeProperty("pointer-events");
+      clearInteractionLocks();
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [handleClose]);
@@ -384,52 +404,61 @@ export function AttendanceReportEmployeeDetailPanel({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5"
+      className="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5"
       role="presentation"
     >
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-slate-950/65 backdrop-blur-md dark:bg-slate-950/75"
+        className="absolute inset-0 z-0 cursor-default bg-slate-900/40 backdrop-blur-[3px] dark:bg-slate-950/60"
         aria-label="Close attendance detail"
-        onClick={handleClose}
+        onPointerDown={(event) => handleClose(event)}
       />
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="attendance-detail-title"
-        className="app-panel relative z-10 flex w-full max-w-[min(96vw,72rem)] max-h-[min(96dvh,960px)] min-h-[12rem] flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] dark:border-slate-700 dark:bg-slate-950"
+        className="relative z-10 flex w-full max-w-[min(96vw,72rem)] max-h-[min(96dvh,960px)] min-h-[12rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-950 dark:ring-white/10"
       >
-        <header className="shrink-0 border-b border-slate-200/90 px-4 py-4 dark:border-slate-800 sm:px-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
-                Attendance detail
-              </p>
-              <h2
-                id="attendance-detail-title"
-                className="page-title mt-2 text-2xl sm:text-3xl"
-              >
-                {userName}
-              </h2>
-              <p className="page-subtitle mt-1 max-w-none text-sm">
-                {detail?.userEmail ?? "Loading…"}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  Day: {formatDayHeading(activeDate)}
-                </span>
-                {isMultiDayRange ? (
-                  <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
-                    Breaks: {formatAttendanceRangeLabel(dateFrom, dateTo)}
+        <header className="relative shrink-0 overflow-hidden border-b border-slate-200/80 px-4 py-4 dark:border-slate-800 sm:px-5">
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.9),transparent)] dark:bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_42%)]"
+            aria-hidden
+          />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-200/90 bg-sky-50 text-sky-700 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/50 dark:text-sky-300">
+                <UserCircle className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
+                  Attendance detail
+                </p>
+                <h2
+                  id="attendance-detail-title"
+                  className="mt-1 font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-[1.65rem]"
+                >
+                  {userName}
+                </h2>
+                <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+                  {detail?.userEmail ?? "Loading…"}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2 text-sm">
+                  <span className="rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                    {formatDayHeading(activeDate)}
                   </span>
-                ) : null}
+                  {isMultiDayRange ? (
+                    <span className="rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 font-medium text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-200">
+                      Breaks · {formatAttendanceRangeLabel(dateFrom, dateTo)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
             <button
               type="button"
               onClick={handleClose}
               aria-label="Close attendance detail"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white/90 text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -439,10 +468,11 @@ export function AttendanceReportEmployeeDetailPanel({
         <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
           {loading ? (
             <div className="flex min-h-[18rem] items-center justify-center">
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/80 px-8 py-7 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
-                <Loader2 className="h-14 w-14 animate-spin text-slate-500/80 dark:text-slate-300/70" />
-                <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Loading...</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Loading attendance data</p>
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-sky-200/70 bg-sky-50/50 px-8 py-7 dark:border-sky-900/50 dark:bg-sky-950/25">
+                <Loader2 className="h-10 w-10 animate-spin text-sky-600 dark:text-sky-400" />
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Loading attendance…
+                </p>
               </div>
             </div>
           ) : error ? (
@@ -451,14 +481,11 @@ export function AttendanceReportEmployeeDetailPanel({
             </div>
           ) : detail ? (
             <div className="space-y-4">
-              <section className="data-card p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Current status
-                </h3>
-                <div className="mt-3 flex flex-wrap gap-2">
+              <SectionCard icon={Activity} title="Current status">
+                <div className="flex flex-wrap gap-2">
                   <span
                     className={cn(
-                      "inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase",
+                      "inline-flex rounded-full px-3 py-1 text-sm font-semibold uppercase",
                       toneForStatus(detail.attendanceStatus)
                     )}
                   >
@@ -466,32 +493,32 @@ export function AttendanceReportEmployeeDetailPanel({
                   </span>
                   <span
                     className={cn(
-                      "inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase",
+                      "inline-flex rounded-full px-3 py-1 text-sm font-semibold uppercase",
                       toneForAgent(detail.agentState)
                     )}
                   >
                     Agent: {detail.agentStateLabel}
                   </span>
-                  <span className="inline-flex rounded-full bg-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="inline-flex rounded-full bg-slate-200/80 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     Shift: {detail.openShift ? "Open" : "Closed"}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                <p className="mt-4 text-base leading-relaxed text-slate-800 dark:text-slate-200">
                   <span className="font-semibold text-slate-600 dark:text-slate-400">Reason: </span>
                   {detail.attendanceReason}
                 </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
                   {agentStateHint(detail.agentState)}
                 </p>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                    <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">Email</dt>
+                    <dt className="text-base font-medium text-slate-500 dark:text-slate-400">Email</dt>
                     <dd className="mt-0.5 break-all font-medium text-slate-900 dark:text-slate-100">
                       {detail.userEmail}
                     </dd>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                    <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <dt className="text-base font-medium text-slate-500 dark:text-slate-400">
                       Department
                     </dt>
                     <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
@@ -499,18 +526,7 @@ export function AttendanceReportEmployeeDetailPanel({
                     </dd>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                    <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                      Last agent heartbeat
-                    </dt>
-                    <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
-                      {detail.lastAgentActivityAt
-                        ? formatClock(detail.lastAgentActivityAt)
-                        : "—"}{" "}
-                      <span className="text-slate-500">({formatAge(detail.lastAgentAgeSeconds)})</span>
-                    </dd>
-                  </div>
-                  <div className="rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                    <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <dt className="text-base font-medium text-slate-500 dark:text-slate-400">
                       Last activity
                     </dt>
                     <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
@@ -519,26 +535,23 @@ export function AttendanceReportEmployeeDetailPanel({
                     </dd>
                   </div>
                 </dl>
-              </section>
+              </SectionCard>
 
-              <section className="data-card p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Day totals
-                </h3>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              <SectionCard icon={BarChart3} title="Day totals">
+                <p className="text-base text-slate-600 dark:text-slate-400">
                   Metrics for <strong className="text-slate-900 dark:text-slate-100">{activeDate}</strong>
                   {detail.openShift ? " · live until clock-out" : ""}
                 </p>
                 {detail.sleepMinutes === 0 && detail.openShift ? (
-                  <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                    <strong>Sleep</strong> counts only laptop <strong>lock</strong> (Win+L) via
-                    desktop agent — not mouse idle or closing tabs (
-                    <strong>Inactive</strong>). Test: clock in, press Win+L for ~15s, unlock.
+                  <p className="mt-2 text-base leading-relaxed text-slate-600 dark:text-slate-400">
+                    <strong>Sleep</strong> counts laptop <strong>lock</strong> (Win+L), lid close,
+                    or OS sleep via desktop agent — not mouse idle or closing tabs (
+                    <strong>Inactive</strong>). Test: clock in, sleep laptop ~1 min, wake.
                   </p>
                 ) : null}
                 <div className="mt-3 grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                  <DetailStatTile label="Clock in" value={formatClock(detail.clockIn)} />
-                  <DetailStatTile label="Clock out" value={formatClock(detail.clockOut)} />
+                  <DetailStatTile label="Clock in" value={formatShiftClock(detail.clockIn)} />
+                  <DetailStatTile label="Clock out" value={formatShiftClock(detail.clockOut)} />
                   <DetailStatTile label="Work" value={formatMinutes(detail.totalWorkMinutes)} />
                   <DetailStatTile label="Break" value={formatMinutes(detail.totalBreakMinutes)} />
                   <DetailStatTile label="Inactive" value={formatMinutes(detail.unscheduledIdleMinutes)} />
@@ -550,9 +563,9 @@ export function AttendanceReportEmployeeDetailPanel({
                     value={formatTotalWorkHours(detail)}
                   />
                 </div>
-              </section>
+              </SectionCard>
 
-              <section className="data-card p-4">
+              <SectionCard icon={CalendarRange} title="Break sessions">
                 <AttendanceDateRangeCalendar
                   variant="compact"
                   display="inline"
@@ -570,17 +583,14 @@ export function AttendanceReportEmployeeDetailPanel({
                   onActiveDateChange={setActiveDate}
                   headerStart={
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Break sessions & reasons
-                      </h3>
-                      <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+                      <p className="text-base font-medium text-slate-900 dark:text-slate-100">
                         {breakSessionsSorted.length}{" "}
                         {breakSessionsSorted.length === 1 ? "session" : "sessions"}
                         {isMultiDayRange
                           ? ` · ${formatAttendanceRangeLabel(dateFrom, dateTo)}`
                           : ` · ${activeDate}`}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
                         Day totals above are for {activeDate} only.
                       </p>
                     </div>
@@ -588,7 +598,7 @@ export function AttendanceReportEmployeeDetailPanel({
                 />
 
                 {breakSessionsSorted.length === 0 ? (
-                  <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mt-4 text-base text-slate-500 dark:text-slate-400">
                     {isMultiDayRange
                       ? "No break sessions in this date range."
                       : detail.hasLog
@@ -599,7 +609,7 @@ export function AttendanceReportEmployeeDetailPanel({
                   <div className="mt-4 flex flex-col">
                     <div className="-mx-1 overflow-x-auto rounded-xl border border-slate-200/90 dark:border-slate-700">
                       <table className="w-full min-w-[56rem] table-auto text-left text-sm">
-                        <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
+                        <thead className="bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
                           <tr>
                             {isMultiDayRange ? (
                               <th className="whitespace-nowrap px-3 py-2.5">Date</th>
@@ -669,26 +679,47 @@ export function AttendanceReportEmployeeDetailPanel({
                     />
                   </div>
                 )}
-              </section>
+              </SectionCard>
             </div>
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/90 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6">
-          <p className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-            Detail actions
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/90 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p className="shrink-0 text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            Export &amp; actions
           </p>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end lg:gap-2.5">
-            <Button type="button" size="sm" variant="outline" onClick={() => void copyReport()} disabled={loading || !detail}>
-              Copy report
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-white dark:bg-slate-900"
+              onClick={() => void copyReport()}
+              disabled={loading || !detail}
+            >
+              Copy
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => downloadReport()} disabled={loading || !detail}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-white dark:bg-slate-900"
+              onClick={() => downloadReport()}
+              disabled={loading || !detail}
+            >
               Download
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => exportPdf()} disabled={loading || !detail}>
-              Export PDF
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-white dark:bg-slate-900"
+              onClick={() => exportPdf()}
+              disabled={loading || !detail}
+            >
+              PDF
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+            <Button type="button" size="sm" onClick={() => void load()} disabled={loading}>
               Refresh
             </Button>
           </div>

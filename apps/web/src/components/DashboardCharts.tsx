@@ -99,7 +99,7 @@ export function DashboardCharts({
         <h2 className="font-[var(--font-display)] text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
           Performance analytics
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
           Revenue and pipeline activity
           {showTeamAttendanceOverview ? ", plus staffing visibility, " : " "}
           in a clearer executive format.
@@ -111,7 +111,7 @@ export function DashboardCharts({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Lead mix</h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
                 Relative split between active hot and sales lead records.
               </p>
             </div>
@@ -121,8 +121,8 @@ export function DashboardCharts({
             {leadMixTotal === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
                 <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No leads to chart yet</p>
-                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No leads to chart yet</p>
+                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
                   The dashboard is working. Add hot or sales leads under <span className="font-semibold">Operations</span> and this chart will show the mix.
                 </p>
               </div>
@@ -143,7 +143,7 @@ export function DashboardCharts({
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="rounded-full border border-slate-200/80 bg-white/90 px-5 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/85">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total</div>
+                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total</div>
                     <div className="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{leadMixTotal}</div>
                   </div>
                 </div>
@@ -156,7 +156,7 @@ export function DashboardCharts({
                 key={item.name}
                 className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
               >
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
                   {item.name}
                 </div>
@@ -170,24 +170,24 @@ export function DashboardCharts({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Sales performance</h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Monthly booked revenue for the last six months.</p>
+              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Monthly booked revenue for the last six months.</p>
             </div>
             <div className="glass-chip text-slate-600 dark:text-slate-300">Revenue</div>
           </div>
           <div className="mt-3 flex items-end justify-between gap-4 rounded-2xl border border-slate-200/75 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Booked total</div>
+              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Booked total</div>
               <div className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">
                 {data.totalSalesAmount.toLocaleString(undefined, { style: "currency", currency: "USD" })}
               </div>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">6-month window</div>
+            <div className="text-base text-slate-500 dark:text-slate-400">6-month window</div>
           </div>
           <div className="relative mt-4 h-[340px] w-full min-w-0">
             {!hasMonthlySales ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No revenue in this window</p>
-                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No revenue in this window</p>
+                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
                   Sale leads with amounts in the last six months appear here. Totals above still include all-time booked revenue.
                 </p>
               </div>
@@ -224,7 +224,7 @@ export function DashboardCharts({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Pipeline activity</h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Newly created lead records month over month.</p>
+              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Newly created lead records month over month.</p>
             </div>
             <div className="glass-chip text-slate-600 dark:text-slate-300">Trend</div>
           </div>
@@ -232,8 +232,8 @@ export function DashboardCharts({
             {!hasMonthlyNewLeads ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
                 <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No new leads this period</p>
-                <p className="max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No new leads this period</p>
+                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
                   When leads are created, monthly counts will show here. The axis still shows the last six months for context.
                 </p>
               </div>
@@ -266,14 +266,14 @@ export function DashboardCharts({
           <div className="data-card surface-reveal flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Team attendance today</h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Share of users with an active open shift right now.</p>
+              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Share of users with an active open shift right now.</p>
             </div>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-5">
               <div className="relative flex h-52 w-52 items-center justify-center rounded-full border-[14px] border-slate-100 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.94))] dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.85),rgba(15,23,42,0.95))]">
                 <div className="text-center">
                   <div className="text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">{attendanceRate}%</div>
-                  <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Active</div>
+                  <div className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Active</div>
                 </div>
               </div>
 
@@ -283,11 +283,11 @@ export function DashboardCharts({
 
               <div className="grid w-full gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Open shifts</div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Open shifts</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{data.activeToday}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total users</div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total users</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{data.totalUsers}</div>
                 </div>
               </div>
@@ -297,7 +297,7 @@ export function DashboardCharts({
           <div className="data-card surface-reveal flex flex-col justify-center gap-4 px-6 py-10 text-center">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Attendance</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-base leading-relaxed text-slate-500 dark:text-slate-400">
                 Organization-wide attendance and live team presence are limited to administrator accounts so employee dashboards stay focused on their own work.
               </p>
             </div>

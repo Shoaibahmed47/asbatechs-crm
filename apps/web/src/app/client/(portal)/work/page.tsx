@@ -101,14 +101,14 @@ function PickedFilePreview({ file, onRemove }: { file: File; onRemove: () => voi
   }
   if (file.type === "application/pdf") {
     return (
-      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white text-[10px] text-slate-700 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300">
+      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white text-base text-slate-700 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300">
         {removeButton}
         PDF
       </div>
     );
   }
   return (
-    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-[10px] text-slate-700 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300">
+    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-base text-slate-700 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300">
       {removeButton}
       {file.name}
     </div>
@@ -208,7 +208,7 @@ function ExistingAttachmentPreview({
         href={src}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-[10px] text-slate-700 hover:bg-slate-50 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900/50"
+        className="flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900/50"
         title={attachment.fileName}
       >
         {attachment.fileName}
@@ -257,7 +257,7 @@ function ExistingLegacyPreview({ item }: { item: LegacyMediaPreview }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-[10px] text-slate-700 hover:bg-slate-50 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900/50"
+      className="flex aspect-square w-full items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-center text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700/60 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900/50"
       title={item.fileName}
     >
       {item.fileName}
@@ -532,7 +532,7 @@ export default function ClientWorkPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Work updates</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-base text-slate-600 dark:text-slate-400">
           Share progress with your Git repository link and supporting files: images, PDF, and video
           (MP4, WebM, QuickTime). Drag files here or browse — up to {MAX_FILES} files per update, up to
           100MB per file.
@@ -553,13 +553,13 @@ export default function ClientWorkPage() {
           {editingUpdateId != null ? "Edit update" : "New update"}
         </div>
         {editingUpdateId != null ? (
-          <p className="text-xs text-amber-700 dark:text-amber-300">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
             Editing update #{editingUpdateId}. You can keep/remove existing media and add new files.
           </p>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Title</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Title</label>
             <input
               className="form-input w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={title}
@@ -569,7 +569,7 @@ export default function ClientWorkPage() {
             />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Notes</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Notes</label>
             <textarea
               className="form-input min-h-[88px] w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={notes}
@@ -577,7 +577,7 @@ export default function ClientWorkPage() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Project (optional)</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Project (optional)</label>
             <select
               className="form-input w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={projectId}
@@ -592,7 +592,7 @@ export default function ClientWorkPage() {
             </select>
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Git repository</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Git repository</label>
             <input
               className="form-input w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={gitRepoUrl}
@@ -605,7 +605,7 @@ export default function ClientWorkPage() {
         {editingUpdateId != null &&
         (editingAttachments.length > 0 || editingLegacyMedia.length > 0) ? (
           <div className="space-y-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Existing media</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Existing media</label>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
               <div className="grid grid-cols-5 gap-1.5 md:grid-cols-10">
                 {editingAttachments.map((attachment, index) => (
@@ -633,7 +633,7 @@ export default function ClientWorkPage() {
         ) : null}
 
         <div className="space-y-2">
-          <label className="text-xs text-slate-600 dark:text-slate-400">Files (drag & drop)</label>
+          <label className="text-base text-slate-600 dark:text-slate-400">Files (drag & drop)</label>
           <div
             role="button"
             tabIndex={0}
@@ -672,7 +672,7 @@ export default function ClientWorkPage() {
             <p className="text-sm">
               Drop files here or <span className="font-medium text-sky-400">choose files</span>
             </p>
-            <p className="text-xs text-slate-600 dark:text-slate-500">
+            <p className="text-base text-slate-600 dark:text-slate-500">
               Images, PDF, MP4, WebM, QuickTime · max {MAX_FILES} files · up to 100MB each
             </p>
           </div>
@@ -732,7 +732,7 @@ export default function ClientWorkPage() {
           Recent updates
         </h2>
         {updates.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-base text-slate-600 dark:border-slate-700 dark:text-slate-500">
             No updates yet.
           </p>
         ) : (
@@ -752,12 +752,12 @@ export default function ClientWorkPage() {
                 <div className="relative z-10 flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 pointer-events-none">
                     <div className="font-medium text-slate-900 dark:text-white">{u.title}</div>
-                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-500">
+                    <div className="mt-1 text-base text-slate-600 dark:text-slate-500">
                       Project: {projectName(u.projectId)}
                       {u.status ? ` · ${u.status}` : ""}
                       {u.createdAt ? ` · ${new Date(u.createdAt).toLocaleString()}` : ""}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 font-semibold tracking-wide",
@@ -771,7 +771,7 @@ export default function ClientWorkPage() {
                       </span>
                     </div>
                     {u.notes ? (
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{u.notes}</p>
+                      <p className="mt-2 text-base text-slate-600 dark:text-slate-400">{u.notes}</p>
                     ) : null}
                   </div>
                   <div className="relative z-10 flex shrink-0 gap-2 pointer-events-auto">

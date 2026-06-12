@@ -10,6 +10,24 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-late-checkin", () => ({
+  hasPendingLateExplanation: jest.fn().mockResolvedValue(false),
+  getExpectedCheckInTimeForUser: jest.fn().mockResolvedValue("09:00"),
+  computeLateMinutes: jest.fn().mockReturnValue(0)
+}));
+jest.mock("@/lib/attendance-early-leave", () => ({
+  hasPendingEarlyLeaveExplanation: jest.fn().mockResolvedValue(false)
+}));
+jest.mock("@/lib/attendance-absence", () => ({
+  hasPendingAbsenceExplanation: jest.fn().mockResolvedValue(false)
+}));
+jest.mock("@/lib/attendance-office-settings", () => ({
+  getAttendanceOfficeHours: jest.fn().mockResolvedValue({
+    expectedCheckInTime: "09:00",
+    shiftEndTime: "17:00",
+    lateGraceMinutes: 15
+  })
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({

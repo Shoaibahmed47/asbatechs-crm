@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asbatech CRM — Attendance Testing Workflow</title>
+  <style>
+    @page { margin: 18mm 16mm; size: A4; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+      line-height: 1.45;
+      font-size: 10.5pt;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 { font-size: 22pt; margin: 0 0 6px; color: #0369a1; }
+    h2 { font-size: 14pt; margin: 26px 0 8px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
+    h3 { font-size: 11.5pt; margin: 16px 0 6px; color: #334155; }
+    p, li { margin: 0 0 6px; }
+    ul, ol { margin: 6px 0 10px; padding-left: 22px; }
+    .meta { color: #64748b; font-size: 9.5pt; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 9.5pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-weight: 600; }
+    .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+    .box-warn { background: #fffbeb; border-color: #fcd34d; }
+    .box-ok { background: #ecfdf5; border-color: #6ee7b7; }
+    .step { counter-increment: step; }
+    .steps { counter-reset: step; list-style: none; padding-left: 0; }
+    .steps li { position: relative; padding-left: 28px; margin-bottom: 8px; }
+    .steps li::before {
+      content: counter(step);
+      position: absolute; left: 0; top: 0;
+      width: 20px; height: 20px; border-radius: 999px;
+      background: #0369a1; color: #fff; font-size: 9pt; font-weight: 700;
+      text-align: center; line-height: 20px;
+    }
+    .check { font-family: Consolas, monospace; font-size: 9pt; }
+    .page-break { page-break-before: always; }
+    @media print {
+      body { padding: 0; }
+      h2, h3 { page-break-after: avoid; }
+      table, .box { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Asbatech CRM — Attendance Testing Workflow</h1>
+<p class="meta">
+  Document: Complete Employee &amp; Admin step-by-step guide for QA<br />
+  Product: Asbatech CRM · Module: Time &amp; Attendance<br />
+  Timezone default: Asia/Karachi · Weekend off: Saturday &amp; Sunday<br />
+  Generated: June 12, 2026
+</p>
+
+<div class="box box-ok">
+  <strong>Purpose</strong><br />
+  Use this document to test every attendance feature end-to-end. Each section lists steps,
+  expected results, and what the admin should see.
+</div>
+
+<h2>1. Before you start (setup)</h2>
+<table>
+  <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>URLs</td><td>Staff login: <code>/login</code> · Employee attendance: <code>/attendance</code> · Admin dashboard: <code>/dashboard</code> · Attendance report: <code>/attendance/report</code></td></tr>
+    <tr><td>Default admin (seed)</td><td>admin@crm.com / admin123</td></tr>
+    <tr><td>Employee account</td><td>Create via Employees → Invite employee, or use existing employee login</td></tr>
+    <tr><td>Desktop agent</td><td>One-time install per laptop (PowerShell Admin). Required for reliable clock-in verification</td></tr>
+    <tr><td>Clear test data</td><td>Attendance only: SQL in README or delete break/attendance rows · Full reset: <code>npm run db:clear</code> then <code>npm run db:seed</code></td></tr>
+    <tr><td>Dev test mode</td><td>In development, late / early-leave / absence popups may appear <strong>same day</strong> (yellow banner on Attendance). Production uses <strong>next working day</strong></td></tr>
+  </tbody>
+</table>
+
+<h2>2. Employee — daily workflow (happy path)</h2>
+<ol class="steps">
+  <li class="step">Log in at <code>/login</code> with employee credentials.</li>
+  <li class="step">Open sidebar → <strong>Attendance</strong> (employees only; admins use Dashboard).</li>
+  <li class="step"><strong>Install / verify agent</strong> (first time or if status not Running):
+    <ul>
+      <li>Click <strong>Install Agent</strong> → copy PowerShell command → run as Administrator → enter CRM password.</li>
+      <li>Click <strong>Verify Agent</strong> → badge should show <strong>Running</strong>.</li>
+    </ul>
+  </li>
+  <li class="step"><strong>Clock in</strong> (Mon–Fri only; weekend blocked):
+    <ul>
+      <li>Click <strong>Clock in</strong>.</li>
+      <li>Expected: Live status = <strong>Active (working)</strong>; Clock in time recorded; work timer starts.</li>
+      <li>If late (after grace): late minutes stored; explanation popup rules apply (see §5).</li>
+    </ul>
+  </li>
+  <li class="step"><strong>Start break</strong> (once per day):
+    <ul>
+      <li>Click <strong>Start break</strong> → popup: choose type (Lunch, Prayer, Tea/coffee, Personal, Other) + optional note.</li>
+      <li>Expected: Status = <strong>Break</strong>; Start break disabled; End break enabled.</li>
+    </ul>
+  </li>
+  <li class="step"><strong>End break</strong>:
+    <ul>
+      <li>Click <strong>End break</strong> → popup: describe where you went / what you did (required, min 3 chars).</li>
+      <li>Expected: Status = <strong>Active</strong>; break minutes added to Today’s summary; admin gets notification with times + reason.</li>
+    </ul>
+  </li>
+  <li class="step"><strong>Clock out</strong> at end of shift:
+    <ul>
+      <li>Click <strong>Clock out</strong>.</li>
+      <li>Expected: Shift closed; work hours finalized; if early leave → explanation rules apply (see §5).</li>
+    </ul>
+  </li>
+  <li class="step">Review <strong>Today’s summary</strong> (clock in/out, work hours, break minutes) and <strong>Breaks</strong> table at bottom.</li>
+</ol>
+
+<h2>3. Employee — feature details</h2>
+
+<h3>3.1 Clock in / clock out</h3>
+<table>
+  <thead><tr><th>Rule</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>Weekend</td><td>Saturday &amp; Sunday: no clock-in, no breaks; banner “Weekend off”</td></tr>
+    <tr><td>Pending explanations</td><td>Cannot clock in until pending late, early-leave, or absence reason is submitted</td></tr>
+    <tr><td>Second shift same day</td><td>After clock out, Clock in again starts a new shift (same calendar day)</td></tr>
+    <tr><td>Agent</td><td>Clock in blocked in UI if agent not installed; verify agent first</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 Break (Start / End buttons)</h3>
+<table>
+  <thead><tr><th>Step</th><th>Employee action</th><th>Expected</th></tr></thead>
+  <tbody>
+    <tr><td>Start</td><td>Modal: break type + note</td><td>Status Break; only 1 manual break/day</td></tr>
+    <tr><td>End</td><td>Modal: return note required</td><td>Back to Active; admin notification with start/end/duration/reasons</td></tr>
+    <tr><td>Break types</td><td>Lunch, Prayer, Tea/coffee, Personal, Other</td><td>Other requires note at start (3+ chars)</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Away monitoring (Attendance page open)</h3>
+<table>
+  <thead><tr><th>Event</th><th>Threshold</th><th>Employee sees</th><th>Admin sees</th></tr></thead>
+  <tbody>
+    <tr><td>Close Attendance tab</td><td>~10 sec</td><td>Notice when tab reopened</td><td>Tab-close alert + away time</td></tr>
+    <tr><td>Other browser tabs</td><td>—</td><td>Allowed (Gmail, YouTube, etc.)</td><td>Not reported as tab close</td></tr>
+    <tr><td>Cursor idle</td><td>Disabled in policy</td><td>Not active currently</td><td>—</td></tr>
+    <tr><td>Laptop sleep / lock</td><td>~10 sec (with agent)</td><td>Sleep notice when awake</td><td>Away alert if agent running</td></tr>
+  </tbody>
+</table>
+
+<h3>3.4 Per-employee check-in time &amp; grace</h3>
+<table>
+  <thead><tr><th>Setting</th><th>Source</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Expected check-in</td><td>Admin sets per employee OR office default</td><td>Employee 7:00 AM, office 9:00 AM</td></tr>
+    <tr><td>Late grace</td><td>Office setting (default 15 min)</td><td>7:00 + 15 min grace → 7:15 OK; 7:16 = 16 min late</td></tr>
+    <tr><td>Shift end</td><td>Office setting</td><td>Used for early-leave calculation</td></tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>4. Employee — explanation popups (late / early leave / absence)</h2>
+<div class="box box-warn">
+  <strong>Popup timing</strong><br />
+  <strong>Production:</strong> popup on the <strong>next working day</strong> (weekends skipped).<br />
+  <strong>Development:</strong> popup can appear <strong>same day</strong> (yellow “Test mode” banner).<br />
+  <strong>Rule:</strong> Popup cannot be dismissed without submitting reason → clock-in blocked until done.
+</div>
+
+<h3>4.1 Late arrival</h3>
+<ol class="steps">
+  <li class="step">Clock in after expected time + grace (e.g. 7:16 with 7:00 start and 15 min grace).</li>
+  <li class="step">On next working day, open Attendance → <strong>Late arrival explanation</strong> modal appears.</li>
+  <li class="step">Submit reason (min 3 chars) → popup closes → clock-in allowed.</li>
+  <li class="step">Skip reason → popup stays → clock-in blocked.</li>
+</ol>
+<p><strong>Example:</strong> Friday late → popup Monday (not Saturday/Sunday).</p>
+
+<h3>4.2 Early leave</h3>
+<ol class="steps">
+  <li class="step">Clock out before shift end time.</li>
+  <li class="step">Next working day → <strong>Early leave explanation</strong> modal.</li>
+  <li class="step">Submit reason → clock-in allowed. No grace on early leave.</li>
+</ol>
+
+<h3>4.3 Absence (did not come)</h3>
+<ol class="steps">
+  <li class="step">Employee absent on a working day (no clock-in record).</li>
+  <li class="step">Next working day when they open Attendance → <strong>Absence explanation</strong> modal for that date.</li>
+  <li class="step">Submit reason → clock-in allowed. Admin sees reason in Absence column + notification.</li>
+</ol>
+<p><strong>Example:</strong> Monday present, Tuesday absent, Wednesday return → Wednesday popup for Tuesday.</p>
+
+<h3>4.4 Absent day (no popup same day)</h3>
+<p>Absence does <strong>not</strong> trigger a popup on the absent day itself. Admin report shows <strong>Absent</strong> for that date.</p>
+
+<h2>5. Admin — navigation &amp; roles</h2>
+<table>
+  <thead><tr><th>Role</th><th>Attendance menu</th><th>Main screens</th></tr></thead>
+  <tbody>
+    <tr><td>Employee</td><td>Attendance only</td><td>/attendance — clock in, breaks, own summary</td></tr>
+    <tr><td>Manager</td><td>Attendance report</td><td>/dashboard, /attendance/report — team view</td></tr>
+    <tr><td>Admin</td><td>Attendance report + Admin Control</td><td>/dashboard, /attendance/report, /admin/overview</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Admin — daily workflow</h2>
+<ol class="steps">
+  <li class="step">Log in as admin → open <strong>Executive Dashboard</strong> (<code>/dashboard</code>).</li>
+  <li class="step">Review <strong>Agent health</strong> table: employee name, check-in time, agent state, late, early leave, absence, last seen, shift status.</li>
+  <li class="step">Click <strong>Late</strong> / <strong>Early leave</strong> / <strong>Absence</strong> badges to view employee reasons and times.</li>
+  <li class="step">Click a row → <strong>Employee attendance detail</strong> panel (timeline, breaks, export).</li>
+  <li class="step">Edit employee <strong>Check-in time</strong> via Edit button in table (per-employee schedule modal).</li>
+  <li class="step">Open <strong>Admin Control</strong> or dashboard office section → set <strong>Office hours</strong> (expected check-in, shift end, late grace minutes).</li>
+  <li class="step">Check <strong>Notifications</strong> for: away alerts, tab close, break ended (type, times, reasons), absence explanations.</li>
+  <li class="step">Open <strong>Attendance report</strong> (<code>/attendance/report</code>) for date filters, daily/range reports, exports.</li>
+</ol>
+
+<h2>7. Admin — what to verify per feature</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Where admin sees it</th><th>Expected data</th></tr></thead>
+  <tbody>
+    <tr><td>Live attendance</td><td>Dashboard agent table</td><td>Active / Break / Inactive / Offline, open/closed shift</td></tr>
+    <tr><td>Late</td><td>Late column + modal</td><td>Minutes late, expected time, clock-in time, reason or “Pending”</td></tr>
+    <tr><td>Early leave</td><td>Early leave column + modal</td><td>Minutes early, shift end, clock-out, reason</td></tr>
+    <tr><td>Absence</td><td>Absence column</td><td>“reason pending” or “View reason” with submitted text</td></tr>
+    <tr><td>Break</td><td>Notifications + employee detail breaks table</td><td>Type, start note, end note, start/end time, duration</td></tr>
+    <tr><td>Away / tab close</td><td>Notifications + Reason column</td><td>Auto away messages, sleep, tab close</td></tr>
+    <tr><td>Agent health</td><td>Agent state column</td><td>Running / Installed / Stale / Not installed</td></tr>
+    <tr><td>Office settings</td><td>Admin Control / dashboard</td><td>Default check-in, shift end, grace minutes</td></tr>
+    <tr><td>Per-employee time</td><td>Check-in time column + Edit</td><td>Override or “(office)” default</td></tr>
+    <tr><td>Reports</td><td>/attendance/report</td><td>Present / absent / working counts; export</td></tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>8. QA test checklists</h2>
+
+<h3>8.1 Employee — must pass</h3>
+<table>
+  <thead><tr><th>#</th><th>Test</th><th>Steps</th><th>Pass criteria</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Agent + clock in</td><td>Verify agent → Clock in</td><td>Active; clock-in time shown</td></tr>
+    <tr><td>2</td><td>Break flow</td><td>Start break (Lunch) → End break with note</td><td>Break minutes increase; admin notification</td></tr>
+    <tr><td>3</td><td>Clock out</td><td>Clock out after work</td><td>Shift closed; work hours shown</td></tr>
+    <tr><td>4</td><td>Weekend block</td><td>Open Attendance on Saturday</td><td>No clock-in; weekend banner</td></tr>
+    <tr><td>5</td><td>Late popup</td><td>Clock in late → next day open Attendance</td><td>Modal blocks until reason submitted</td></tr>
+    <tr><td>6</td><td>Early leave popup</td><td>Clock out early → next day</td><td>Modal + block until reason</td></tr>
+    <tr><td>7</td><td>Absence popup</td><td>Skip one working day → return next day</td><td>Absence modal for missed day</td></tr>
+    <tr><td>8</td><td>Tab close</td><td>Close Attendance tab 10+ sec → reopen</td><td>Return notice; admin alert</td></tr>
+    <tr><td>9</td><td>Calendar history</td><td>Pick past date in calendar</td><td>Summary + breaks for that day</td></tr>
+    <tr><td>10</td><td>Second break blocked</td><td>Try Start break twice same day</td><td>Error: break already used</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 Admin — must pass</h3>
+<table>
+  <thead><tr><th>#</th><th>Test</th><th>Pass criteria</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Dashboard loads agent rows</td><td>All employees listed with live status</td></tr>
+    <tr><td>2</td><td>Late detail modal</td><td>Shows minutes, times, reason status</td></tr>
+    <tr><td>3</td><td>Absence column</td><td>Pending or submitted reason visible</td></tr>
+    <tr><td>4</td><td>Edit check-in time</td><td>Save → employee uses new expected time</td></tr>
+    <tr><td>5</td><td>Office grace change</td><td>15→20 min → late calc uses new grace</td></tr>
+    <tr><td>6</td><td>Break notification</td><td>After employee ends break: type, times, notes</td></tr>
+    <tr><td>7</td><td>Employee detail panel</td><td>Break list shows type + start/return notes</td></tr>
+    <tr><td>8</td><td>Attendance report</td><td>Filter by date; absent days counted</td></tr>
+    <tr><td>9</td><td>Re-issue install</td><td>Admin can trigger agent setup for employee</td></tr>
+  </tbody>
+</table>
+
+<h3>8.3 Edge cases</h3>
+<ul>
+  <li><strong>Friday late → Monday:</strong> No popup Sat/Sun; popup Monday.</li>
+  <li><strong>Friday absent → Monday:</strong> Absence popup Monday for Friday.</li>
+  <li><strong>Pending late + try clock in:</strong> Blocked until reason submitted.</li>
+  <li><strong>On time clock-in:</strong> No late popup.</li>
+  <li><strong>Within grace:</strong> e.g. 7:14 for 7:00 + 15 grace = not late.</li>
+  <li><strong>Logout / login:</strong> Session + attendance state persist for the day.</li>
+</ul>
+
+<h2>9. Quick reference — status labels</h2>
+<table>
+  <thead><tr><th>Employee live status</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>Active (working)</td><td>Clocked in, not on break</td></tr>
+    <tr><td>Break</td><td>Manual break in progress</td></tr>
+    <tr><td>Inactive</td><td>Unscheduled away (idle/sleep/tab) — open break session</td></tr>
+    <tr><td>Offline</td><td>Not clocked in or already clocked out</td></tr>
+  </tbody>
+</table>
+
+<div class="box">
+  <strong>Generate PDF</strong><br />
+  From project root run: <code>node docs/generate-workflow-pdf.mjs</code><br />
+  Output: <code>docs/Attendance-Testing-Workflow.pdf</code><br />
+  Or open this HTML file in Chrome → Print → Save as PDF.
+</div>
+
+</body>
+</html>

@@ -2,15 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect } from "react";
-
-function clearInteractionLocks() {
-  document.body.style.removeProperty("pointer-events");
-  document.documentElement.style.removeProperty("pointer-events");
-  document.body.style.removeProperty("overflow");
-  document.documentElement.style.removeProperty("overflow");
-  document.body.removeAttribute("data-scroll-locked");
-  document.documentElement.removeAttribute("data-scroll-locked");
-}
+import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 
 function stripEmployeeQueryParam(pathname: string, search: string): string | null {
   if (!search.includes("employee=")) return null;
@@ -30,9 +22,13 @@ export function BodyPointerEventsGuard() {
 
   useLayoutEffect(() => {
     clearInteractionLocks();
+    const nextPath = stripEmployeeQueryParam(pathname, window.location.search);
+    if (nextPath) {
+      router.replace(nextPath, { scroll: false });
+    }
     const t = requestAnimationFrame(() => clearInteractionLocks());
     return () => cancelAnimationFrame(t);
-  }, [pathname]);
+  }, [pathname, router]);
 
   useEffect(() => {
     clearInteractionLocks();
@@ -54,11 +50,15 @@ export function BodyPointerEventsGuard() {
 
     document.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("focus", clearInteractionLocks);
+    window.addEventListener("pageshow", clearInteractionLocks);
+    document.addEventListener("visibilitychange", clearInteractionLocks);
     document.addEventListener("keydown", onKeyDown);
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("focus", clearInteractionLocks);
+      window.removeEventListener("pageshow", clearInteractionLocks);
+      document.removeEventListener("visibilitychange", clearInteractionLocks);
       document.removeEventListener("keydown", onKeyDown);
       clearInteractionLocks();
     };

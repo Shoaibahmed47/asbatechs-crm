@@ -114,12 +114,20 @@ export async function POST(req: NextRequest) {
       resent: action === "resend",
       delivery: inviteResult.delivery
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Unknown error";
     console.error("Failed to send invitation:", error);
     return NextResponse.json(
       {
         error:
-          "Failed to send invitation. Check Supabase Auth settings, redirect URLs, service role key, and SMTP fallback."
+          process.env.NODE_ENV === "production"
+            ? "Failed to send invitation. Check Supabase Auth settings, redirect URLs, service role key, and SMTP fallback."
+            : `Failed to send invitation: ${message}`
       },
       { status: 500 }
     );

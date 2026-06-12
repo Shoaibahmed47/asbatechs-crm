@@ -20,7 +20,11 @@ const transporter =
     : null;
 
 export async function sendInviteEmail(to: string, signupUrl: string) {
-  if (!transporter) return;
+  if (!transporter) {
+    throw new Error(
+      "SMTP is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS in apps/web/.env, then restart the dev server."
+    );
+  }
 
   await transporter.sendMail({
     from: `"AsbaTechs CRM" <${user}>`,

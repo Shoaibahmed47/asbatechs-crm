@@ -11,7 +11,9 @@ import {
   startComplianceAway,
   type ComplianceAwayCause
 } from "@/lib/attendance-away-compliance";
+import { ATTENDANCE_CURSOR_IDLE_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
+import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 type ActivityEvent =
   | "activity"
@@ -87,6 +89,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const weekendBlocked = rejectAttendanceOnWeekend();
+  if (weekendBlocked) return weekendBlocked;
+
   let body: Record<string, unknown> = {};
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -145,12 +150,16 @@ export async function POST(req: NextRequest) {
       Date.now() - new Date(latestHeartbeat.createdAt as Date).getTime() >= 90 * 1000;
 
     if (shouldInsertHeartbeat) {
-      await db.insert(schema.activityLogs).values({
-        userId,
-        action: "agent_heartbeat",
-        entityType: "attendance_agent",
-        entityId: 0
-      });
+      try {
+        await db.insert(schema.activityLogs).values({
+          userId,
+          action: "agent_heartbeat",
+          entityType: "attendance_agent",
+          entityId: 0
+        });
+      } catch (heartbeatError) {
+        console.warn("Agent heartbeat log skipped:", heartbeatError);
+      }
     }
   }
 
@@ -175,6 +184,18 @@ export async function POST(req: NextRequest) {
   const hasOpenUnscheduledBreak = Boolean(
     openSession && openSession.breakType === "unscheduled"
   );
+
+  if (
+    !ATTENDANCE_CURSOR_IDLE_ENABLED &&
+    awayCause === UNSCHEDULED_CAUSE.CURSOR_IDLE &&
+    (eventType === "away_start" || eventType === "away_end")
+  ) {
+    return NextResponse.json({
+      ok: true,
+      ignored: true,
+      reason: "cursor_idle_tracking_disabled"
+    });
+  }
 
   if (eventType === "away_start" && awayCause) {
     const started = await startComplianceAway({

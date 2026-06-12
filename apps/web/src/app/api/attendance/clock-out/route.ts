@@ -2,17 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { computeEarlyLeaveForClockOut } from "@/lib/attendance-early-leave";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
+import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const payload = token ? await verifyAuthToken(token) : null;
+  const payload = await resolveStaffAuth(req);
 
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const weekendBlocked = rejectAttendanceOnWeekend();
+  if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
   const today = getLocalDateString();
@@ -86,6 +90,13 @@ export async function POST(req: NextRequest) {
 
   const totalHours = (totalWorkMinutes / 60).toFixed(2);
 
+  const { earlyLeaveMinutes, expectedShiftEndTime } = await computeEarlyLeaveForClockOut({
+    userId,
+    logDate: String(log.date),
+    clockIn: new Date(log.clockIn as Date),
+    clockOut: now
+  });
+
   const [updated] = await db.transaction(async (tx) => {
     if (openBreak) {
       await tx
@@ -105,7 +116,9 @@ export async function POST(req: NextRequest) {
         status: "offline",
         totalHours,
         lastActivityAt: now,
-        lastActivitySource: "browser"
+        lastActivitySource: "browser",
+        earlyLeaveMinutes,
+        expectedShiftEndTime
       })
       .where(eq(schema.attendanceLogs.id, log.id))
       .returning();

@@ -11,6 +11,13 @@ import {
 } from "@/lib/attendance-agent-health-state";
 import { buildAttendanceReason } from "@/lib/attendance-reason";
 import { ATTENDANCE_AGENT_ALERT_STALE_MINUTES } from "@/lib/attendance-policy";
+import { formatOfficeTimeLabel } from "@/lib/attendance-office-hours";
+import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
+import { formatShiftEndLabel } from "@/lib/attendance-early-leave";
+import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
+import { formatAttendanceClock, formatAttendanceDateLabel } from "@/lib/attendance-date";
+import { findPendingAbsenceExplanation } from "@/lib/attendance-absence";
+import { isAttendanceWorkingDay } from "@/lib/attendance-working-days";
 
 export type { AgentHealthState };
 
@@ -32,6 +39,28 @@ export type AttendanceAgentHealthRow = {
   lastSeenAgeSeconds: number | null;
   state: AgentHealthState;
   needsAttention: boolean;
+  employeeExpectedCheckInTime: string | null;
+  effectiveExpectedCheckInTime: string;
+  effectiveExpectedCheckInLabel: string;
+  usesOfficeDefault: boolean;
+  clockIn: string | null;
+  clockOut: string | null;
+  lateMinutes: number;
+  lateReason: string | null;
+  lateReasonSubmittedAt: string | null;
+  lateDateLabel: string | null;
+  expectedCheckInLabel: string | null;
+  clockInLabel: string | null;
+  earlyLeaveMinutes: number;
+  expectedShiftEndLabel: string | null;
+  clockOutLabel: string | null;
+  earlyLeaveReason: string | null;
+  earlyLeaveReasonSubmittedAt: string | null;
+  pendingAbsenceDate: string | null;
+  pendingAbsenceDateLabel: string | null;
+  viewDateAbsenceReason: string | null;
+  viewDateAbsenceReasonSubmittedAt: string | null;
+  viewDateAbsentWithoutClockIn: boolean;
 };
 
 export async function getAttendanceAgentHealth(params: {
@@ -54,13 +83,16 @@ export async function getAttendanceAgentHealth(params: {
     alertsOnly = false
   } = params;
 
+  const officeHours = await getAttendanceOfficeHours();
+
   const scopedUsers = await db
     .select({
       id: schema.users.id,
       name: schema.users.name,
       email: schema.users.email,
       departmentId: schema.users.departmentId,
-      departmentName: schema.departments.name
+      departmentName: schema.departments.name,
+      employeeExpectedCheckInTime: schema.users.expectedCheckInTime
     })
     .from(schema.users)
     .leftJoin(schema.departments, eq(schema.users.departmentId, schema.departments.id))
@@ -83,12 +115,21 @@ export async function getAttendanceAgentHealth(params: {
     .select({
       logId: schema.attendanceLogs.id,
       userId: schema.attendanceLogs.userId,
+      logDate: schema.attendanceLogs.date,
       clockIn: schema.attendanceLogs.clockIn,
       clockOut: schema.attendanceLogs.clockOut,
       status: schema.attendanceLogs.status,
       lastActivityAt: schema.attendanceLogs.lastActivityAt,
       lastActivitySource: schema.attendanceLogs.lastActivitySource,
-      sleepMinutes: schema.attendanceLogs.sleepMinutes
+      sleepMinutes: schema.attendanceLogs.sleepMinutes,
+      lateMinutes: schema.attendanceLogs.lateMinutes,
+      lateReason: schema.attendanceLogs.lateReason,
+      lateReasonSubmittedAt: schema.attendanceLogs.lateReasonSubmittedAt,
+      logExpectedCheckInTime: schema.attendanceLogs.expectedCheckInTime,
+      earlyLeaveMinutes: schema.attendanceLogs.earlyLeaveMinutes,
+      logExpectedShiftEndTime: schema.attendanceLogs.expectedShiftEndTime,
+      earlyLeaveReason: schema.attendanceLogs.earlyLeaveReason,
+      earlyLeaveReasonSubmittedAt: schema.attendanceLogs.earlyLeaveReasonSubmittedAt
     })
     .from(schema.attendanceLogs)
     .where(
@@ -197,6 +238,49 @@ export async function getAttendanceAgentHealth(params: {
 
   const normalizedSearch = search.trim().toLowerCase();
   const now = Date.now();
+  const todayStr = getLocalDateString();
+
+  const pendingAbsencePairs = await Promise.all(
+    scopedUsers.map(async (user) => ({
+      userId: user.id,
+      pending: await findPendingAbsenceExplanation(user.id)
+    }))
+  );
+  const pendingAbsenceByUser = new Map(
+    pendingAbsencePairs
+      .filter((entry) => entry.pending != null)
+      .map((entry) => [entry.userId, entry.pending!])
+  );
+
+  const viewDateAbsenceRows =
+    isAttendanceWorkingDay(date) && date < todayStr
+      ? await db
+          .select({
+            userId: schema.attendanceAbsenceRecords.userId,
+            reason: schema.attendanceAbsenceRecords.reason,
+            reasonSubmittedAt: schema.attendanceAbsenceRecords.reasonSubmittedAt
+          })
+          .from(schema.attendanceAbsenceRecords)
+          .where(
+            and(
+              inArray(schema.attendanceAbsenceRecords.userId, userIds),
+              eq(schema.attendanceAbsenceRecords.date, date as any)
+            )
+          )
+      : [];
+
+  const viewDateAbsenceByUser = new Map(
+    viewDateAbsenceRows.map((row) => [
+      row.userId,
+      {
+        reason: row.reason,
+        reasonSubmittedAt: row.reasonSubmittedAt
+          ? new Date(row.reasonSubmittedAt as Date).toISOString()
+          : null
+      }
+    ])
+  );
+
   const rows = scopedUsers
     .map((user) => {
       const todayLog = todayByUser.get(user.id);
@@ -255,6 +339,17 @@ export async function getAttendanceAgentHealth(params: {
         openShift &&
         lastSeenAgeSeconds != null &&
         lastSeenAgeSeconds >= ATTENDANCE_AGENT_ALERT_STALE_MINUTES * 60;
+
+      const employeeOverride = user.employeeExpectedCheckInTime?.trim() ?? "";
+      const usesOfficeDefault = !employeeOverride;
+      const effectiveExpectedCheckInTime = usesOfficeDefault
+        ? officeHours.expectedCheckInTime
+        : employeeOverride;
+      const lateMinutes = todayLog?.lateMinutes ?? 0;
+      const logDate = todayLog?.logDate ? String(todayLog.logDate) : date;
+      const snapshotExpected = todayLog?.logExpectedCheckInTime?.trim() ?? "";
+      const expectedForLateLabel = snapshotExpected || effectiveExpectedCheckInTime;
+
       return {
         userId: user.id,
         userName: user.name,
@@ -272,7 +367,53 @@ export async function getAttendanceAgentHealth(params: {
         lastSeenSource,
         lastSeenAgeSeconds,
         state,
-        needsAttention
+        needsAttention,
+        employeeExpectedCheckInTime: usesOfficeDefault ? null : employeeOverride,
+        effectiveExpectedCheckInTime,
+        effectiveExpectedCheckInLabel: formatOfficeTimeLabel(effectiveExpectedCheckInTime),
+        usesOfficeDefault,
+        clockIn: todayLog?.clockIn
+          ? new Date(todayLog.clockIn as Date).toISOString()
+          : null,
+        clockOut: todayLog?.clockOut
+          ? new Date(todayLog.clockOut as Date).toISOString()
+          : null,
+        lateMinutes,
+        lateReason: todayLog?.lateReason ?? null,
+        lateReasonSubmittedAt: todayLog?.lateReasonSubmittedAt
+          ? new Date(todayLog.lateReasonSubmittedAt as Date).toISOString()
+          : null,
+        lateDateLabel: lateMinutes > 0 ? formatAttendanceDateLabel(logDate) : null,
+        expectedCheckInLabel:
+          lateMinutes > 0 ? formatExpectedCheckInLabel(expectedForLateLabel) : null,
+        clockInLabel:
+          lateMinutes > 0 && todayLog?.clockIn
+            ? formatAttendanceClock(todayLog.clockIn as Date)
+            : null,
+        earlyLeaveMinutes: todayLog?.earlyLeaveMinutes ?? 0,
+        expectedShiftEndLabel:
+          (todayLog?.earlyLeaveMinutes ?? 0) > 0
+            ? formatShiftEndLabel(
+                todayLog?.logExpectedShiftEndTime?.trim() || officeHours.shiftEndTime
+              )
+            : null,
+        clockOutLabel:
+          (todayLog?.earlyLeaveMinutes ?? 0) > 0 && todayLog?.clockOut
+            ? formatAttendanceClock(todayLog.clockOut as Date)
+            : null,
+        earlyLeaveReason: todayLog?.earlyLeaveReason ?? null,
+        earlyLeaveReasonSubmittedAt: todayLog?.earlyLeaveReasonSubmittedAt
+          ? new Date(todayLog.earlyLeaveReasonSubmittedAt as Date).toISOString()
+          : null,
+        pendingAbsenceDate: pendingAbsenceByUser.get(user.id)?.date ?? null,
+        pendingAbsenceDateLabel: pendingAbsenceByUser.get(user.id)?.dateLabel ?? null,
+        viewDateAbsentWithoutClockIn:
+          isAttendanceWorkingDay(date) &&
+          date < todayStr &&
+          !todayLog?.clockIn,
+        viewDateAbsenceReason: viewDateAbsenceByUser.get(user.id)?.reason ?? null,
+        viewDateAbsenceReasonSubmittedAt:
+          viewDateAbsenceByUser.get(user.id)?.reasonSubmittedAt ?? null
       } satisfies AttendanceAgentHealthRow;
     })
     .filter((row) => {

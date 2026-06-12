@@ -24,10 +24,10 @@ export function EmptyState({
         <div className="mx-auto flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border-2 border-sky-200/90 bg-gradient-to-br from-white to-sky-50 text-sky-600 shadow-[0_12px_40px_-12px_rgba(14,165,233,0.45)] dark:border-sky-500/40 dark:from-slate-900 dark:to-sky-950/80 dark:text-sky-400 dark:shadow-[0_12px_40px_-12px_rgba(56,189,248,0.25)]">
           <Icon className="h-9 w-9" strokeWidth={1.25} aria-hidden />
         </div>
-        <h3 className="mt-6 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+        <h3 className="card-title mt-6 tracking-tight text-slate-900 dark:text-slate-50">
           {title}
         </h3>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        <p className="mt-3 text-base leading-relaxed text-slate-600 dark:text-slate-400">
           {description}
         </p>
         {children ? (

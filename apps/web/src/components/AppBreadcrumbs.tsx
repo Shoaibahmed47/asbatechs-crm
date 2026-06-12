@@ -89,7 +89,7 @@ export function AppBreadcrumbs() {
                     {crumb.href && !isLast ? (
                       <Link
                         href={crumb.href}
-                        className="rounded-lg px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-sky-950/50 dark:hover:text-sky-300"
+                        className="rounded-lg px-2.5 py-1.5 text-base font-medium text-slate-600 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-sky-950/50 dark:hover:text-sky-300"
                       >
                         {crumb.label}
                       </Link>
@@ -98,9 +98,9 @@ export function AppBreadcrumbs() {
                         className={
                           isLast
                             ? isCompact
-                              ? "text-sm font-semibold tracking-tight text-slate-900 dark:text-white"
-                              : "rounded-lg bg-gradient-to-r from-sky-600/12 to-cyan-600/10 px-3 py-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:from-sky-400/15 dark:to-cyan-400/10 dark:text-white"
-                            : "px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400"
+                              ? "text-base font-semibold tracking-tight text-slate-900 dark:text-white"
+                              : "rounded-lg bg-gradient-to-r from-sky-600/12 to-cyan-600/10 px-3 py-1.5 text-base font-semibold tracking-tight text-slate-900 dark:from-sky-400/15 dark:to-cyan-400/10 dark:text-white"
+                            : "px-2.5 py-1.5 text-base font-medium text-slate-500 dark:text-slate-400"
                         }
                         aria-current={isLast ? "page" : undefined}
                       >
@@ -113,7 +113,7 @@ export function AppBreadcrumbs() {
             </ol>
           </>
         ) : (
-          <span className="text-sm font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+          <span className="text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100">
             Executive dashboard
           </span>
         )}

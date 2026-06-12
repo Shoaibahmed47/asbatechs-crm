@@ -361,7 +361,7 @@ export default async function DashboardPage({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                 Total team members
               </div>
               <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
@@ -372,7 +372,7 @@ export default async function DashboardPage({
               </div>
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                 {isAdminViewer ? "Team attendance (today)" : "Attendance"}
               </div>
               {isAdminViewer && liveAttendanceToday ? (
@@ -391,7 +391,7 @@ export default async function DashboardPage({
                       offline
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-base text-slate-500 dark:text-slate-400">
                     {activeToday} with an open shift (incl. break)
                   </div>
                 </div>
@@ -407,7 +407,7 @@ export default async function DashboardPage({
               </div>
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                 Revenue booked
               </div>
               <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
@@ -431,7 +431,7 @@ export default async function DashboardPage({
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.75),transparent)] dark:bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_34%)]" />
               <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
                     Attendance command center
                   </div>
                   <h2 className="mt-3 font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
@@ -444,7 +444,7 @@ export default async function DashboardPage({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[30rem]">
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
                       Active
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
@@ -452,7 +452,7 @@ export default async function DashboardPage({
                     </p>
                   </div>
                   <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-300">
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-300">
                       Break
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-amber-800 dark:text-amber-300">
@@ -460,7 +460,7 @@ export default async function DashboardPage({
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-300/70 bg-slate-100/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                       Open shifts
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
@@ -505,7 +505,7 @@ export default async function DashboardPage({
                     </span>
                   </div>
                 )}
-                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 sm:ml-auto">
+                <div className="text-base font-medium text-slate-600 dark:text-slate-400 sm:ml-auto">
                   Date:{" "}
                   <span className="text-slate-900 dark:text-white">
                     {new Date(reportDate + "T12:00:00").toLocaleDateString(undefined, {
@@ -575,7 +575,7 @@ export default async function DashboardPage({
             <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               Assigned client projects
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
               These are the client projects assigned to your account by admin.
             </p>
           </div>
@@ -590,13 +590,13 @@ export default async function DashboardPage({
                   key={item.assignmentId}
                   className="rounded-xl border border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
                 >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                     {item.clientName}
                   </p>
                   <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
                     {item.projectName}
                   </p>
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
                     Assigned{" "}
                     {item.assignedAt ? new Date(item.assignedAt).toLocaleDateString() : "recently"}
                   </p>
@@ -609,49 +609,49 @@ export default async function DashboardPage({
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="metric-card">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Total leads
           </div>
           <div className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
             {totalLeads}
           </div>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
             Combined hot and sales pipeline records.
           </p>
         </div>
 
         <div className="metric-card">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Hot leads
           </div>
           <div className="mt-3 text-3xl font-semibold text-sky-600 dark:text-sky-400">
             {Number(hotCount?.value ?? 0)}
           </div>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
             Prioritized follow-up opportunities awaiting action.
           </p>
         </div>
 
         <div className="metric-card">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Sales leads
           </div>
           <div className="mt-3 text-3xl font-semibold text-violet-600 dark:text-violet-400">
             {Number(saleCount?.value ?? 0)}
           </div>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
             Records mapped to closing and revenue tracking.
           </p>
         </div>
 
         <div className="metric-card">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Open shifts
           </div>
           <div className="mt-3 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
             {activeToday}
           </div>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
             Employees currently clocked in and not yet clocked out.
           </p>
         </div>

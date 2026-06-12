@@ -41,6 +41,8 @@ export const users = pgTable("users", {
   inviteStatus: text("invite_status").notNull().default("accepted"),
   resetToken: text("reset_token").unique(),
   resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
+  /** Per-employee expected check-in (HH:mm). Null = use company office default. */
+  expectedCheckInTime: text("expected_check_in_time"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });
@@ -51,6 +53,21 @@ export const users = pgTable("users", {
  * - attendance: id, user_id, clock_in, clock_out, total_hours, status
  * DB table name remains `attendance_logs` for migration continuity.
  */
+/** Singleton row: company office hours for attendance (expected check-in + shift end). */
+export const attendanceOfficeSettings = pgTable("attendance_office_settings", {
+  id: integer("id").primaryKey().default(1),
+  /** Local time HH:mm — expected employee clock-in (e.g. 19:00 = 7:00 PM). */
+  expectedCheckInTime: text("expected_check_in_time").notNull().default("19:00"),
+  /** Local time HH:mm — official shift end (may be next day if before check-in time). */
+  shiftEndTime: text("shift_end_time").notNull().default("16:00"),
+  /** Minutes after expected check-in that do not count as late (e.g. 15). */
+  lateGraceMinutes: integer("late_grace_minutes").notNull().default(15),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  updatedByUserId: integer("updated_by_user_id").references(() => users.id, {
+    onDelete: "set null"
+  })
+});
+
 export const attendanceLogs = pgTable("attendance_logs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -81,8 +98,45 @@ export const attendanceLogs = pgTable("attendance_logs", {
   status: text("status").notNull().default("offline"),
   /** Total worked hours when shift is complete (set on clock-out). */
   totalHours: numeric("total_hours", { precision: 8, scale: 2 }),
+  /** Minutes after expected office check-in on first clock-in of the day. */
+  lateMinutes: integer("late_minutes").default(0),
+  /** Snapshot of expected check-in (HH:mm) used for late calculation. */
+  expectedCheckInTime: text("expected_check_in_time"),
+  /** Employee explanation for late arrival (submitted on a later day). */
+  lateReason: text("late_reason"),
+  lateReasonSubmittedAt: timestamp("late_reason_submitted_at", { withTimezone: true }),
+  /** Minutes before expected shift end when employee clocked out early. */
+  earlyLeaveMinutes: integer("early_leave_minutes").default(0),
+  /** Snapshot of expected shift end (HH:mm) used for early-leave calculation. */
+  expectedShiftEndTime: text("expected_shift_end_time"),
+  /** Employee explanation for leaving before shift end (submitted on a later day). */
+  earlyLeaveReason: text("early_leave_reason"),
+  earlyLeaveReasonSubmittedAt: timestamp("early_leave_reason_submitted_at", {
+    withTimezone: true
+  }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
 });
+
+/** Employee-submitted reason for a working day with no clock-in. */
+export const attendanceAbsenceRecords = pgTable(
+  "attendance_absence_records",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    date: date("date").notNull(),
+    reason: text("reason").notNull(),
+    reasonSubmittedAt: timestamp("reason_submitted_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
+  },
+  (table) => ({
+    userDateUnique: uniqueIndex("attendance_absence_records_user_date_idx").on(
+      table.userId,
+      table.date
+    )
+  })
+);
 
 /**
  * Break intervals for an attendance row.
@@ -100,7 +154,13 @@ export const breakSessions = pgTable("break_sessions", {
   /** For unscheduled breaks: idle | sleep. */
   unscheduledCause: text("unscheduled_cause"),
   /** Optional explanation captured when user returns from unscheduled idle. */
-  returnReason: text("return_reason")
+  returnReason: text("return_reason"),
+  /** Employee break type: lunch, prayer, personal, etc. */
+  breakCategory: text("break_category"),
+  /** Note when break started (optional detail). */
+  startNote: text("start_note"),
+  /** Note when break ended (where they went / what they did). */
+  endNote: text("end_note")
 });
 
 /**

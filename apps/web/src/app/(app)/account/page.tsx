@@ -38,7 +38,7 @@ export default async function AccountPage() {
   return (
     <div className="space-y-6">
       <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
           Your profile
         </div>
         <h1 className="page-title mt-3">Account</h1>
@@ -48,19 +48,19 @@ export default async function AccountPage() {
 
         <dl className="mt-8 grid gap-6 sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <dt className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Name
             </dt>
             <dd className="mt-1 text-sm font-medium text-slate-950 dark:text-white">{row.name}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <dt className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Email
             </dt>
             <dd className="mt-1 text-sm font-medium text-slate-950 dark:text-white">{row.email}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <dt className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Department
             </dt>
             <dd className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
@@ -68,7 +68,7 @@ export default async function AccountPage() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <dt className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Role
             </dt>
             <dd className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
@@ -76,7 +76,7 @@ export default async function AccountPage() {
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <dt className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Member since
             </dt>
             <dd className="mt-1 text-sm font-medium text-slate-950 dark:text-white">

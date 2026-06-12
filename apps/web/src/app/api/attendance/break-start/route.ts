@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
+import { normalizeBreakCategory } from "@/lib/attendance-break-shared";
+import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const payload = token ? await verifyAuthToken(token) : null;
+  const payload = await resolveStaffAuth(req);
 
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const weekendBlocked = rejectAttendanceOnWeekend();
+  if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
   const today = getLocalDateString();
@@ -63,6 +68,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
+
+  const category = normalizeBreakCategory(body.category);
+  if (!category) {
+    return NextResponse.json(
+      { error: "Please select a break type (lunch, prayer, etc.)." },
+      { status: 400 }
+    );
+  }
+
+  const rawNote = typeof body.note === "string" ? body.note.trim() : "";
+  if (category === "other" && rawNote.length < 3) {
+    return NextResponse.json(
+      { error: "Please describe your break when type is Other (at least 3 characters)." },
+      { status: 400 }
+    );
+  }
+
   const manualSessionsToday = await db
     .select({ id: schema.breakSessions.id })
     .from(schema.breakSessions)
@@ -74,22 +102,11 @@ export async function POST(req: NextRequest) {
     );
   const hasUsedOfficialBreak = manualSessionsToday.length >= 1;
 
-  let body: Record<string, unknown> = {};
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    body = {};
-  }
-  const rawReason = typeof body.reason === "string" ? body.reason.trim() : "";
-  const normalizedReason = hasUsedOfficialBreak ? rawReason : "";
-
-  if (hasUsedOfficialBreak) {
-    if (!normalizedReason) {
-      return NextResponse.json(
-        { error: "Extra break reason is required." },
-        { status: 400 }
-      );
-    }
+  if (hasUsedOfficialBreak && !ATTENDANCE_EXTRA_BREAK_ENABLED) {
+    return NextResponse.json(
+      { error: "You already used your break for today. Contact your manager if you need another." },
+      { status: 400 }
+    );
   }
 
   const now = new Date();
@@ -98,10 +115,9 @@ export async function POST(req: NextRequest) {
     .values({
       attendanceLogId: log.id,
       breakStart: now,
-      breakType: hasUsedOfficialBreak ? "extra" : "manual",
-      returnReason: hasUsedOfficialBreak
-        ? `Extra break: ${normalizedReason.slice(0, 200)}`
-        : null
+      breakType: "manual",
+      breakCategory: category,
+      startNote: rawNote ? rawNote.slice(0, 240) : null
     })
     .returning();
 

@@ -11,6 +11,12 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-early-leave", () => ({
+  computeEarlyLeaveForClockOut: jest.fn().mockResolvedValue({
+    earlyLeaveMinutes: 0,
+    expectedShiftEndTime: "17:00"
+  })
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({

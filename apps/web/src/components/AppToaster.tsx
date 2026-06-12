@@ -28,9 +28,9 @@ export function AppToaster() {
       toastOptions={{
         classNames: {
           toast:
-            "group toast app-toast !rounded-2xl !border !p-4 !gap-3 !text-[0.875rem]",
-          title: "!text-[0.9375rem] !font-semibold !leading-snug",
-          description: "!text-[0.8125rem] !leading-relaxed !opacity-90"
+            "group toast app-toast !rounded-2xl !border !p-4 !gap-3 !text-base",
+          title: "!text-base !font-semibold !leading-snug",
+          description: "!text-sm !leading-relaxed !opacity-90"
         }
       }}
     />

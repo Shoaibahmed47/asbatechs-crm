@@ -94,14 +94,14 @@ function ExistingAttachmentPreview({
   }
   if (att.mimeType === "application/pdf") {
     return (
-      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 text-[10px] text-slate-300">
+      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 text-base text-slate-300">
         {removeButton}
         PDF
       </div>
     );
   }
   return (
-    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 px-2 text-center text-[10px] text-slate-300">
+    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 px-2 text-center text-base text-slate-300">
       {removeButton}
       {att.fileName}
     </div>
@@ -154,14 +154,14 @@ function PickedFilePreview({ file, onRemove }: { file: File; onRemove: () => voi
   }
   if (file.type === "application/pdf") {
     return (
-      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 text-[10px] text-slate-300">
+      <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 text-base text-slate-300">
         {removeButton}
         PDF
       </div>
     );
   }
   return (
-    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 px-2 text-center text-[10px] text-slate-300">
+    <div className="relative flex aspect-square w-full items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/40 px-2 text-center text-base text-slate-300">
       {removeButton}
       {file.name}
     </div>
@@ -327,7 +327,7 @@ export default function InternalWorkUpdatesPage() {
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">Client</label>
+            <label className="text-sm text-slate-500">Client</label>
             <select
               className="form-input w-full"
               value={clientId}
@@ -346,7 +346,7 @@ export default function InternalWorkUpdatesPage() {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">Project</label>
+            <label className="text-sm text-slate-500">Project</label>
             <select className="form-input w-full" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               {!isAssignmentRestricted ? <option value="">General</option> : <option value="">Select project</option>}
               {visibleProjects.map((p) => (
@@ -357,15 +357,15 @@ export default function InternalWorkUpdatesPage() {
             </select>
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-500">Title</label>
+            <label className="text-sm text-slate-500">Title</label>
             <input className="form-input w-full" value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-500">Notes</label>
+            <label className="text-sm text-slate-500">Notes</label>
             <textarea className="form-input min-h-[86px] w-full" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-500">Git repository</label>
+            <label className="text-sm text-slate-500">Git repository</label>
             <input
               className="form-input w-full"
               value={gitRepoUrl}
@@ -374,7 +374,7 @@ export default function InternalWorkUpdatesPage() {
             />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-500">Files</label>
+            <label className="text-sm text-slate-500">Files</label>
             <input
               type="file"
               multiple
@@ -419,7 +419,7 @@ export default function InternalWorkUpdatesPage() {
           </div>
         </div>
         {isAssignmentRestricted ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-sm text-slate-500">
             You can only post updates for client projects assigned to you by admin.
           </p>
         ) : null}
@@ -460,11 +460,11 @@ export default function InternalWorkUpdatesPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">{u.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm text-slate-500">
                       {u.clientName ?? "Client"} · {u.projectName ?? "General"} · {u.status}
                       {u.createdAt ? ` · ${new Date(u.createdAt).toLocaleString()}` : ""}
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 font-semibold tracking-wide",

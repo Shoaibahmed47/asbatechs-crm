@@ -418,18 +418,18 @@ export default function SalesLeadsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Sales leads
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Closed revenue in the unified <code className="text-xs">leads</code>{" "}
-          table (<code className="text-xs">type = sale</code>) with{" "}
-          <code className="text-xs">sale_amount</code>,{" "}
-          <code className="text-xs">service_purchased</code>, and{" "}
-          <code className="text-xs">sale_date</code>.
+        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+          Closed revenue in the unified <code className="text-sm">leads</code>{" "}
+          table (<code className="text-sm">type = sale</code>) with{" "}
+          <code className="text-sm">sale_amount</code>,{" "}
+          <code className="text-sm">service_purchased</code>, and{" "}
+          <code className="text-sm">sale_date</code>.
         </p>
       </div>
 
       {error && (
         <div
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300"
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300"
           role="alert"
         >
           {error}
@@ -437,7 +437,7 @@ export default function SalesLeadsPage() {
       )}
 
       {editingLeadId ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
           <span>Editing lead #{editingLeadId}. Update fields and save.</span>
         </div>
       ) : null}
@@ -490,7 +490,7 @@ export default function SalesLeadsPage() {
             </h2>
             <div className="flex flex-wrap items-end gap-2">
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Search
                 </label>
                 <input
@@ -501,7 +501,7 @@ export default function SalesLeadsPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Department
                 </label>
                 <select
@@ -518,7 +518,7 @@ export default function SalesLeadsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Assigned
                 </label>
                 <select
@@ -535,7 +535,7 @@ export default function SalesLeadsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Stage
                 </label>
                 <select
@@ -552,7 +552,7 @@ export default function SalesLeadsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Created from
                 </label>
                 <input
@@ -563,7 +563,7 @@ export default function SalesLeadsPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Created to
                 </label>
                 <input
@@ -574,7 +574,7 @@ export default function SalesLeadsPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Sale from
                 </label>
                 <input
@@ -585,7 +585,7 @@ export default function SalesLeadsPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+                <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                   Sale to
                 </label>
                 <input
@@ -610,7 +610,7 @@ export default function SalesLeadsPage() {
           <div className="max-h-[min(65vh,560px)] overflow-auto rounded-lg border border-slate-200/40 dark:border-slate-700/40">
             <table className="w-full min-w-[640px] table-auto text-sm">
               <thead>
-                <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-xs uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.3)]">
+                <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-sm uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.3)]">
                   {sortHead("client_name", "Client")}
                   {sortHead("service_purchased", "Service")}
                   {sortHead("sale_amount", "Amount")}
@@ -686,10 +686,10 @@ export default function SalesLeadsPage() {
                       <td className="py-2 text-sm font-medium text-slate-900 dark:text-slate-100">
                         {lead.clientName}
                       </td>
-                      <td className="py-2 text-xs text-slate-600 dark:text-slate-300">
+                      <td className="py-2 text-base text-slate-600 dark:text-slate-300">
                         <ServicePurchasedTagsDisplay value={lead.servicePurchased} />
                       </td>
-                      <td className="py-2 text-xs text-slate-700 dark:text-slate-300">
+                      <td className="py-2 text-base text-slate-700 dark:text-slate-300">
                         {lead.saleAmount
                           ? Number(lead.saleAmount).toLocaleString(undefined, {
                               style: "currency",
@@ -697,18 +697,18 @@ export default function SalesLeadsPage() {
                             })
                           : "—"}
                       </td>
-                      <td className="py-2 text-xs text-slate-600 dark:text-slate-300">
+                      <td className="py-2 text-base text-slate-600 dark:text-slate-300">
                         {lead.dateOfSale
                           ? new Date(lead.dateOfSale + "T12:00:00").toLocaleDateString()
                           : "—"}
                       </td>
-                      <td className="py-2 text-xs text-slate-700 dark:text-slate-300">
+                      <td className="py-2 text-base text-slate-700 dark:text-slate-300">
                         {deptName(lead.departmentId)}
                       </td>
-                      <td className="py-2 text-xs text-slate-700 dark:text-slate-300">
+                      <td className="py-2 text-base text-slate-700 dark:text-slate-300">
                         {userName(lead.assignedUserId)}
                       </td>
-                      <td className="py-2 text-xs font-medium text-slate-800 dark:text-slate-200">
+                      <td className="py-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                         {lead.status}
                       </td>
                       <td className="py-2 pl-2 text-right">
@@ -753,7 +753,7 @@ export default function SalesLeadsPage() {
           />
         </div>
         <div className="data-card p-4">
-          <div className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase text-slate-500 dark:text-slate-400">
             Summary (filtered)
           </div>
           <div className="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">
@@ -762,7 +762,7 @@ export default function SalesLeadsPage() {
               currency: "USD"
             })}
           </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
             Total sale amount for all rows matching current filters (all pages).
           </p>
         </div>

@@ -70,7 +70,7 @@ export default function ClientProfilePage() {
     <div className="max-w-lg space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Profile</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-base text-slate-600 dark:text-slate-400">
           Your name and company shown to your delivery team.
         </p>
       </div>
@@ -86,17 +86,17 @@ export default function ClientProfilePage() {
       )}
       <form className="space-y-4" onSubmit={save}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+          <label className="text-base font-medium text-slate-700 dark:text-slate-300">Email</label>
           <input
             type="email"
             value={client?.email ?? ""}
             disabled
             className="form-input w-full border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-900"
           />
-          <p className="text-xs text-slate-600 dark:text-slate-500">Email cannot be changed here.</p>
+          <p className="text-base text-slate-600 dark:text-slate-500">Email cannot be changed here.</p>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Display name</label>
+          <label className="text-base font-medium text-slate-700 dark:text-slate-300">Display name</label>
           <input
             type="text"
             value={name}
@@ -106,7 +106,7 @@ export default function ClientProfilePage() {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Company (optional)</label>
+          <label className="text-base font-medium text-slate-700 dark:text-slate-300">Company (optional)</label>
           <input
             type="text"
             value={companyName}

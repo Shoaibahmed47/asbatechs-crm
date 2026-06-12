@@ -34,8 +34,7 @@ export const navSections: { label: string; items: NavItem[] }[] = [
       { href: "/leads/hot", label: "Hot Leads", icon: TrendingUp },
       { href: "/leads/sales", label: "Sales Leads", icon: Megaphone },
       { href: "/work-updates", label: "Work Updates", icon: Activity },
-      { href: "/attendance", label: "Attendance", icon: Gauge },
-      { href: "/attendance/report", label: "Attendance report", icon: UserRoundCog }
+      { href: "/attendance", label: "Attendance", icon: Gauge }
     ]
   },
   {
@@ -61,7 +60,6 @@ export function filterNavItems(
       return isAdminRole(role) || isManagerRole(role);
     if (item.href === "/attendance")
       return !isAdminRole(role) && !isManagerRole(role);
-    if (item.href === "/attendance/report") return false;
     return true;
   });
 }
@@ -72,7 +70,7 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
 
   return (
     <nav
-      className="mt-6 min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto overscroll-contain pr-0.5"
+      className="mt-5 min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto overscroll-contain pr-0.5 2xl:mt-6"
       aria-label="Main navigation"
     >
       {navSections.map((section) => {
@@ -82,7 +80,7 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
         return (
           <div key={section.label}>
             <div className="app-section-label">{section.label}</div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {items.map((item) => {
                 const active =
                   pathname === item.href ||
@@ -96,7 +94,11 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
                     href={item.href}
                     className={`app-nav-link ${active ? "app-nav-link-active" : ""}`}
                   >
-                    {item.icon ? <item.icon className="h-3.5 w-3.5 opacity-80" /> : <span className="h-2 w-2 rounded-full bg-current opacity-60" />}
+                    {item.icon ? (
+                      <item.icon className="h-5 w-5 shrink-0 opacity-85" aria-hidden />
+                    ) : (
+                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-60" />
+                    )}
                     <span>{item.label}</span>
                   </Link>
                 );

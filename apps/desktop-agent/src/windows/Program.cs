@@ -47,6 +47,7 @@ SessionSwitchEventHandler sessionSwitchHandler = (_, e) =>
     state.SessionLocked = true;
     state.LockStartedAt = DateTimeOffset.UtcNow;
     state.LockAwaySent = false;
+    state.CursorAwaySent = false;
   }
   else if (e.Reason == SessionSwitchReason.SessionUnlock)
   {
@@ -54,12 +55,34 @@ SessionSwitchEventHandler sessionSwitchHandler = (_, e) =>
     {
       _ = PostEventAsync(client, auth, "unlock", options, null, "sleep", cancellation.Token);
     }
-    state.SessionLocked = false;
-    state.LockStartedAt = null;
-    state.LockAwaySent = false;
+    ResetSleepTrackingState(state);
   }
 };
 SystemEvents.SessionSwitch += sessionSwitchHandler;
+
+PowerModeChangedEventHandler powerModeHandler = (_, e) =>
+{
+  if (e.Mode == PowerModes.Suspend)
+  {
+    state.PowerSuspended = true;
+    state.SuspendStartedAt = DateTimeOffset.UtcNow;
+    state.CursorAwaySent = false;
+    // Laptop lid close / OS sleep suspends the process — send lock immediately.
+    _ = PostEventAsync(client, auth, "lock", options, null, "sleep", cancellation.Token);
+    state.LockAwaySent = true;
+    AgentLogger.Write("power suspend detected; sleep lock sent");
+  }
+  else if (e.Mode == PowerModes.Resume)
+  {
+    if (state.LockAwaySent || state.PowerSuspended)
+    {
+      _ = PostEventAsync(client, auth, "unlock", options, null, "sleep", cancellation.Token);
+      AgentLogger.Write("power resume detected; sleep unlock sent");
+    }
+    ResetSleepTrackingState(state);
+  }
+};
+SystemEvents.PowerModeChanged += powerModeHandler;
 
 try
 {
@@ -76,6 +99,7 @@ catch (OperationCanceledException)
 finally
 {
   SystemEvents.SessionSwitch -= sessionSwitchHandler;
+  SystemEvents.PowerModeChanged -= powerModeHandler;
   AgentLogger.Write("Attendance agent stopped.");
 }
 
@@ -90,46 +114,69 @@ static async Task RunTickAsync(
   var now = DateTimeOffset.UtcNow;
   var idleSeconds = WindowsIdle.GetIdleSeconds();
   var cursorAwaySeconds = options.CursorIdleAwaySeconds;
+  var skipCursorIdle = state.SessionLocked || state.PowerSuspended;
 
-  if (!state.CursorAwaySent && idleSeconds >= cursorAwaySeconds)
+  if (options.CursorIdleEnabled)
   {
-    state.CursorAwaySent = true;
-    await PostEventAsync(
-      client,
-      auth,
-      "away_start",
-      options,
-      null,
-      "cursor_idle",
-      cancellationToken
-    );
-  }
+    if (
+      !skipCursorIdle &&
+      !state.CursorAwaySent &&
+      idleSeconds >= cursorAwaySeconds
+    )
+    {
+      state.CursorAwaySent = true;
+      await PostEventAsync(
+        client,
+        auth,
+        "away_start",
+        options,
+        null,
+        "cursor_idle",
+        cancellationToken
+      );
+    }
 
-  if (state.CursorAwaySent && idleSeconds < cursorAwaySeconds)
-  {
-    state.CursorAwaySent = false;
-    await PostEventAsync(
-      client,
-      auth,
-      "away_end",
-      options,
-      null,
-      "cursor_idle",
-      cancellationToken
-    );
-  }
+    if (
+      !skipCursorIdle &&
+      state.CursorAwaySent &&
+      idleSeconds < cursorAwaySeconds
+    )
+    {
+      state.CursorAwaySent = false;
+      await PostEventAsync(
+        client,
+        auth,
+        "away_end",
+        options,
+        null,
+        "cursor_idle",
+        cancellationToken
+      );
+    }
 
-  if (
-    state.CursorAwaySent &&
-    idleSeconds >= cursorAwaySeconds &&
-    now >= state.NextAwayCheckAt
-  )
-  {
-    await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
-    state.NextAwayCheckAt = now.AddSeconds(3);
-  }
+    if (
+      !skipCursorIdle &&
+      state.CursorAwaySent &&
+      idleSeconds >= cursorAwaySeconds &&
+      now >= state.NextAwayCheckAt
+    )
+    {
+      await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
+      state.NextAwayCheckAt = now.AddSeconds(3);
+    }
 
-  if (now >= state.NextActivityPingAt && idleSeconds < cursorAwaySeconds && !state.CursorAwaySent)
+    if (
+      !skipCursorIdle &&
+      now >= state.NextActivityPingAt &&
+      idleSeconds < cursorAwaySeconds &&
+      !state.CursorAwaySent
+    )
+    {
+      await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
+      state.NextActivityPingAt = now.AddSeconds(options.ActivityPingSeconds);
+    }
+  }
+  else if (now >= state.NextActivityPingAt)
   {
     await PostEventAsync(client, auth, "activity", options, null, null, cancellationToken);
     state.NextActivityPingAt = now.AddSeconds(options.ActivityPingSeconds);
@@ -221,6 +268,16 @@ static async Task<HttpResponseMessage> SendEventAsync(
   request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
   request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
   return await client.SendAsync(request, cancellationToken);
+}
+
+static void ResetSleepTrackingState(AgentRuntimeState state)
+{
+  state.SessionLocked = false;
+  state.LockStartedAt = null;
+  state.LockAwaySent = false;
+  state.PowerSuspended = false;
+  state.SuspendStartedAt = null;
+  state.CursorAwaySent = false;
 }
 
 sealed class AgentAuthTokenProvider
@@ -476,6 +533,8 @@ sealed class AgentRuntimeState
   public bool SessionLocked { get; set; }
   public DateTimeOffset? LockStartedAt { get; set; }
   public bool LockAwaySent { get; set; }
+  public bool PowerSuspended { get; set; }
+  public DateTimeOffset? SuspendStartedAt { get; set; }
 }
 
 sealed class AgentOptions
@@ -484,6 +543,7 @@ sealed class AgentOptions
   public string Token { get; init; } = "";
   public string Email { get; init; } = "";
   public string Password { get; init; } = "";
+  public bool CursorIdleEnabled { get; init; } = false;
   public int CursorIdleAwaySeconds { get; init; } = 10;
   public int ActivityPingSeconds { get; init; } = 60;
   public int PollSeconds { get; init; } = 10;
@@ -506,6 +566,7 @@ sealed class AgentOptions
       Token = Environment.GetEnvironmentVariable("ATT_AGENT_TOKEN") ?? "",
       Email = Environment.GetEnvironmentVariable("ATT_AGENT_EMAIL") ?? "",
       Password = Environment.GetEnvironmentVariable("ATT_AGENT_PASSWORD") ?? "",
+      CursorIdleEnabled = ParseBool("ATT_AGENT_CURSOR_IDLE_ENABLED", false),
       CursorIdleAwaySeconds = ParseInt("ATT_AGENT_CURSOR_IDLE_AWAY_SECONDS", 10),
       ActivityPingSeconds = ParseInt("ATT_AGENT_ACTIVITY_PING_SECONDS", 60),
       PollSeconds = ParseInt("ATT_AGENT_POLL_SECONDS", 10),

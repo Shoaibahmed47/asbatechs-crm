@@ -27,7 +27,7 @@ export function ClientPortalThemeToggle() {
     <div className="flex items-center rounded-2xl border border-slate-200/80 bg-white/80 p-1 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/80">
       <button
         type="button"
-        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
           theme === "light"
             ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
             : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -39,7 +39,7 @@ export function ClientPortalThemeToggle() {
       </button>
       <button
         type="button"
-        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
           theme === "dark"
             ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
             : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"

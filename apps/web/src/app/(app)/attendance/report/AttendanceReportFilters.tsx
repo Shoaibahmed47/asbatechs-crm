@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
+import { areSearchQueriesEqual } from "@/lib/url-search-params";
 
 type DepartmentOption = { id: number; name: string };
 
@@ -153,10 +154,6 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
     if (agentState !== "all") q.set("agentState", agentState);
     if (alertsOnly) q.set("alerts", "1");
     if (departmentId) q.set("departmentId", departmentId);
-    const selectedEmployee = searchParams.get("employee");
-    if (selectedEmployee && /^\d+$/.test(selectedEmployee)) {
-      q.set("employee", selectedEmployee);
-    }
     return q.toString();
   }, [
     props.date,
@@ -168,15 +165,12 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
     status,
     agentState,
     alertsOnly,
-    departmentId,
-    searchParams
+    departmentId
   ]);
 
   const pushFilters = useCallback(() => {
-    const next = `${pathname}?${queryString}`;
-    const current = `${pathname}?${searchParams.toString()}`;
-    if (next === current) return;
-    router.replace(next);
+    if (areSearchQueriesEqual(queryString, searchParams.toString())) return;
+    router.replace(`${pathname}?${queryString}`);
   }, [pathname, queryString, router, searchParams]);
 
   useEffect(() => {
@@ -209,7 +203,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
     <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/50">
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             Date range
           </label>
           <select
@@ -225,7 +219,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
           </select>
         </div>
         <div className="min-w-[14rem] flex-1">
-          <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             Search (name or email)
           </label>
           <input
@@ -237,7 +231,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
           />
         </div>
         <div>
-          <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             Status
           </label>
           <select
@@ -254,7 +248,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
         </div>
         {props.isAdmin ? (
           <div>
-            <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
               Agent
             </label>
             <select
@@ -274,7 +268,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
         ) : null}
         {props.isAdmin ? (
           <div className="flex min-h-[2.75rem] items-center">
-            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-base text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={alertsOnly}
@@ -287,7 +281,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
         ) : null}
         {props.isAdmin ? (
           <div>
-            <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
               Department
             </label>
             <select

@@ -463,13 +463,13 @@ function AllLeadsPageContent() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">All leads</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
           Unified view to manage hot and sales leads from one place.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
           {error}
         </div>
       ) : null}
@@ -482,7 +482,7 @@ function AllLeadsPageContent() {
               type="button"
               onClick={() => setTypeFilter(tab.value)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-full border px-3 py-1.5 text-sm font-semibold transition",
                 typeFilter === tab.value
                   ? "border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-300"
                   : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -493,7 +493,7 @@ function AllLeadsPageContent() {
           ))}
           <div className="ml-auto flex flex-wrap items-end gap-2">
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Search
               </label>
               <input
@@ -504,7 +504,7 @@ function AllLeadsPageContent() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Stage
               </label>
               <select
@@ -527,7 +527,7 @@ function AllLeadsPageContent() {
         </div>
 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link href="/leads/hot" className="text-sky-700 hover:underline dark:text-sky-300">
               + Add hot lead
             </Link>
@@ -581,7 +581,7 @@ function AllLeadsPageContent() {
         <div className="max-h-[min(65vh,560px)] overflow-auto rounded-lg border border-slate-200/40 dark:border-slate-700/40">
           <table className="w-full min-w-[1180px] table-auto text-sm">
             <thead>
-              <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-xs uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400">
+              <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-sm uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400">
                 <th className="w-10 pb-2 pl-1 pr-0 text-left font-medium">
                   <input
                     ref={selectAllRef}
@@ -674,26 +674,26 @@ function AllLeadsPageContent() {
                         aria-label={`Select ${lead.clientName}`}
                       />
                     </td>
-                    <td className="py-2.5 text-xs font-semibold uppercase text-slate-700 dark:text-slate-300">
+                    <td className="py-2.5 text-sm font-semibold uppercase text-slate-700 dark:text-slate-300">
                       {lead.type}
                     </td>
                     <td className="py-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">
                       {lead.clientName}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {[lead.phone, lead.email].filter(Boolean).join(" · ") || "—"}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.source || "—"}
                     </td>
                     <td
-                      className="max-w-[10rem] truncate py-2.5 text-xs text-slate-700 dark:text-slate-200"
+                      className="max-w-[10rem] truncate py-2.5 text-base text-slate-700 dark:text-slate-200"
                       title={lead.departmentName ?? undefined}
                     >
                       {lead.departmentName ?? "—"}
                     </td>
                     <td
-                      className="max-w-[11rem] truncate py-2.5 text-xs text-slate-700 dark:text-slate-200"
+                      className="max-w-[11rem] truncate py-2.5 text-base text-slate-700 dark:text-slate-200"
                       title={
                         lead.assignedUserName && lead.assignedUserEmail
                           ? `${lead.assignedUserName} · ${lead.assignedUserEmail}`
@@ -702,17 +702,17 @@ function AllLeadsPageContent() {
                     >
                       {lead.assignedUserName ?? lead.assignedUserEmail ?? "—"}
                     </td>
-                    <td className="py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                    <td className="py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200">
                       {lead.status}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.type === "sale" ? (
                         <ServicePurchasedTagsDisplay value={lead.servicePurchased} />
                       ) : (
                         <span className="text-slate-600 dark:text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-700 dark:text-slate-300">
                       {lead.saleAmount
                         ? Number(lead.saleAmount).toLocaleString(undefined, {
                             style: "currency",
@@ -720,18 +720,18 @@ function AllLeadsPageContent() {
                           })
                         : "—"}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.dateOfSale
                         ? new Date(lead.dateOfSale + "T12:00:00").toLocaleDateString()
                         : "—"}
                     </td>
-                    <td className="py-2.5 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
+                    <td className="py-2.5 whitespace-nowrap text-base text-slate-500 dark:text-slate-400">
                       {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : "—"}
                     </td>
                     <td className="py-2.5 text-right">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                         onClick={() => setDeleteTarget(lead)}
                         aria-label={`Delete lead ${lead.clientName}`}
                       >

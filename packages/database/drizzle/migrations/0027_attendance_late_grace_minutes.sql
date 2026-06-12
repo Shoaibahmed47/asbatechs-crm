@@ -1,0 +1,2 @@
+ALTER TABLE "attendance_office_settings"
+  ADD COLUMN IF NOT EXISTS "late_grace_minutes" integer NOT NULL DEFAULT 15;

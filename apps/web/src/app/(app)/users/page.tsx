@@ -24,7 +24,7 @@ export default async function UsersPage() {
       <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+            <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
               Administration
             </div>
             <h1 className="page-title mt-3">Employee directory</h1>

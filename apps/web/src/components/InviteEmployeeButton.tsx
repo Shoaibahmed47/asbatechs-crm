@@ -173,7 +173,7 @@ export function InviteEmployeeButton() {
             >
             <div className="flex items-start justify-between border-b border-slate-200/80 px-6 py-5 dark:border-slate-800">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">
                   Employee onboarding
                 </div>
                 <h2
@@ -182,7 +182,7 @@ export function InviteEmployeeButton() {
                 >
                   Invite new employee
                 </h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
                   Send a secure invitation and assign the employee to the correct department.
                 </p>
               </div>
@@ -203,7 +203,7 @@ export function InviteEmployeeButton() {
               )}
               <form className="space-y-5" onSubmit={handleSubmit}>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                     Email
                   </label>
                   <input
@@ -218,7 +218,7 @@ export function InviteEmployeeButton() {
 
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                       First name
                     </label>
                     <input
@@ -230,7 +230,7 @@ export function InviteEmployeeButton() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                       Last name
                     </label>
                     <input
@@ -244,7 +244,7 @@ export function InviteEmployeeButton() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                     Department
                   </label>
                   <select

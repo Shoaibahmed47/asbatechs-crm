@@ -35,26 +35,26 @@ export default function ForgotPasswordPage() {
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Forgot password</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-base text-slate-500">
             Enter your email and we&apos;ll send you a reset link through Supabase Auth.
           </p>
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {success}
           </div>
         )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-700">Email</label>
+            <label className="block text-base font-medium text-slate-700">Email</label>
             <input
               type="email"
               value={email}

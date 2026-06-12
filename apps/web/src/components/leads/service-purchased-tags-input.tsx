@@ -48,7 +48,7 @@ export function ServicePurchasedTagsInput({ tags, onChange, hasError }: Props) {
       {tags.map((tag, index) => (
         <span
           key={`${tag}-${index}`}
-          className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-900 py-1 pl-2.5 pr-1 text-xs font-medium text-white dark:bg-black"
+          className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-900 py-1 pl-2.5 pr-1 text-sm font-medium text-white dark:bg-black"
         >
           <span className="truncate" title={tag}>
             {tag}
@@ -95,7 +95,7 @@ export function ServicePurchasedTagsDisplay({ value }: { value: string | null })
       {tags.map((t, i) => (
         <span
           key={`${t}-${i}`}
-          className="inline-block max-w-[200px] truncate rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white dark:bg-black"
+          className="inline-block max-w-[200px] truncate rounded-md bg-slate-900 px-2 py-0.5 text-sm font-medium text-white dark:bg-black"
           title={t}
         >
           {t}

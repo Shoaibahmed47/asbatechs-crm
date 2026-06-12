@@ -176,7 +176,7 @@ export function AdminExportControls({ snapshot }: { snapshot: AdminSnapshot }) {
         type="button"
         variant="outline"
         size="sm"
-        className="gap-1.5 text-xs"
+        className="gap-1.5 text-sm"
         onClick={downloadCsv}
       >
         <FileDown className="h-3.5 w-3.5" />
@@ -186,7 +186,7 @@ export function AdminExportControls({ snapshot }: { snapshot: AdminSnapshot }) {
         type="button"
         variant="outline"
         size="sm"
-        className="gap-1.5 text-xs"
+        className="gap-1.5 text-sm"
         disabled={busy}
         onClick={downloadPdf}
       >

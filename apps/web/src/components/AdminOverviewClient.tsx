@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Filter, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, Filter, RefreshCw } from "lucide-react";
 import { AdminExportControls } from "@/components/AdminExportControls";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
 import type { AdminSnapshot } from "@/lib/admin-snapshot-types";
+import {
+  formatOfficeTimeLabel,
+  officeShiftEndsNextDay,
+  type AttendanceOfficeHours
+} from "@/lib/attendance-office-hours";
 
 type Role = "admin" | "manager";
 type SortDirection = "asc" | "desc";
@@ -158,7 +163,7 @@ function SortableHead({
 function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <td colSpan={colSpan} className="px-3 py-6 text-center text-base text-slate-500 dark:text-slate-400">
         {message}
       </td>
     </tr>
@@ -201,6 +206,14 @@ export function AdminOverviewClient({
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [officeHours, setOfficeHours] = useState<AttendanceOfficeHours | null>(null);
+  const [officeCheckInTime, setOfficeCheckInTime] = useState("19:00");
+  const [officeEndTime, setOfficeEndTime] = useState("16:00");
+  const [officeLateGraceMinutes, setOfficeLateGraceMinutes] = useState(15);
+  const [officeHoursLoading, setOfficeHoursLoading] = useState(false);
+  const [officeHoursSaving, setOfficeHoursSaving] = useState(false);
+  const [officeHoursMessage, setOfficeHoursMessage] = useState<string | null>(null);
+  const [officeHoursError, setOfficeHoursError] = useState<string | null>(null);
   const [agentRows, setAgentRows] = useState<AgentHealthRow[]>([]);
   const [agentCounts, setAgentCounts] = useState<
     Record<Exclude<AgentHealthState, "all">, number>
@@ -260,6 +273,40 @@ export function AdminOverviewClient({
       cancelled = true;
     };
   }, [isAdmin, search, departmentFilter, agentStateFilter]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let cancelled = false;
+    const loadOfficeHours = async () => {
+      setOfficeHoursLoading(true);
+      setOfficeHoursError(null);
+      try {
+        const data = await apiFetch<{ settings: AttendanceOfficeHours }>(
+          "/api/admin/attendance/office-hours"
+        );
+        if (cancelled) return;
+        setOfficeHours(data.settings);
+        setOfficeCheckInTime(data.settings.expectedCheckInTime);
+        setOfficeEndTime(data.settings.shiftEndTime);
+        setOfficeLateGraceMinutes(data.settings.lateGraceMinutes ?? 15);
+      } catch (error) {
+        if (cancelled) return;
+        setOfficeHoursError(
+          error instanceof ApiFetchError
+            ? error.message
+            : "Could not load office timing."
+        );
+      } finally {
+        if (!cancelled) setOfficeHoursLoading(false);
+      }
+    };
+
+    void loadOfficeHours();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
 
   const statusOptions = useMemo(() => {
     const leadStatuses = snapshot.leads.map((l) => l.status);
@@ -425,6 +472,33 @@ export function AdminOverviewClient({
     setActivePanel((current) => (current === panel ? null : panel));
   };
 
+  const handleSaveOfficeHours = async () => {
+    setOfficeHoursSaving(true);
+    setOfficeHoursMessage(null);
+    setOfficeHoursError(null);
+    try {
+      const data = await apiFetch.put<{ settings: AttendanceOfficeHours }>(
+        "/api/admin/attendance/office-hours",
+        {
+          expectedCheckInTime: officeCheckInTime,
+          shiftEndTime: officeEndTime,
+          lateGraceMinutes: officeLateGraceMinutes
+        }
+      );
+      setOfficeHours(data.settings);
+      setOfficeCheckInTime(data.settings.expectedCheckInTime);
+      setOfficeEndTime(data.settings.shiftEndTime);
+      setOfficeLateGraceMinutes(data.settings.lateGraceMinutes ?? 15);
+      setOfficeHoursMessage("Office timing saved.");
+    } catch (error) {
+      setOfficeHoursError(
+        error instanceof ApiFetchError ? error.message : "Failed to save office timing."
+      );
+    } finally {
+      setOfficeHoursSaving(false);
+    }
+  };
+
   const handleResendInvite = async () => {
     if (!resendEmail.trim()) return;
     setActionBusy(true);
@@ -451,10 +525,10 @@ export function AdminOverviewClient({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Admin control</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 max-w-2xl text-base text-slate-600 dark:text-slate-400">
             Global filtered control view for departments, people, leads, invites, and activity.
           </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
             Snapshot time:{" "}
             <span className="font-medium text-slate-700 dark:text-slate-300">
               {new Date(snapshot.generatedAt).toLocaleString()}
@@ -465,7 +539,7 @@ export function AdminOverviewClient({
       </div>
 
       <section className="data-card p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
           <Filter className="h-3.5 w-3.5" />
           Global filters
         </div>
@@ -525,7 +599,7 @@ export function AdminOverviewClient({
           </Button>
         </div>
         {activePanel ? (
-          <p className="mt-2 text-xs text-sky-800 dark:text-sky-300">
+          <p className="mt-2 text-sm text-sky-800 dark:text-sky-300">
             Focused on <span className="font-semibold">{panelLabels[activePanel]}</span> only.
             Other tables are hidden until you click <span className="font-semibold">Show all sections</span>{" "}
             or the same summary card again.
@@ -535,7 +609,7 @@ export function AdminOverviewClient({
 
       {isAdmin ? (
         <section className="data-card p-4">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Quick actions
           </div>
           <div className="flex flex-wrap gap-2">
@@ -564,18 +638,112 @@ export function AdminOverviewClient({
       ) : null}
 
       {isAdmin ? (
+        <section className="data-card p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <Clock className="h-3.5 w-3.5" />
+            Office timing (attendance)
+          </div>
+          <p className="mb-3 text-base text-slate-600 dark:text-slate-400">
+            Set expected check-in, shift end, and how many minutes late are ignored
+            before late arrival is recorded.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+                Expected check-in
+              </span>
+              <input
+                type="time"
+                value={officeCheckInTime}
+                onChange={(e) => setOfficeCheckInTime(e.target.value)}
+                disabled={officeHoursLoading || officeHoursSaving}
+                className="form-input"
+              />
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                {formatOfficeTimeLabel(officeCheckInTime)}
+              </span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+                Shift end
+              </span>
+              <input
+                type="time"
+                value={officeEndTime}
+                onChange={(e) => setOfficeEndTime(e.target.value)}
+                disabled={officeHoursLoading || officeHoursSaving}
+                className="form-input"
+              />
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                {formatOfficeTimeLabel(officeEndTime)}
+                {officeShiftEndsNextDay(officeCheckInTime, officeEndTime)
+                  ? " · next day"
+                  : ""}
+              </span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+                Late grace (minutes)
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                value={officeLateGraceMinutes}
+                onChange={(e) =>
+                  setOfficeLateGraceMinutes(Math.min(120, Math.max(0, Number(e.target.value))))
+                }
+                disabled={officeHoursLoading || officeHoursSaving}
+                className="form-input"
+              />
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                Up to {officeLateGraceMinutes} min late is ignored; after that, full late
+                minutes count.
+              </span>
+            </label>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                size="sm"
+                disabled={officeHoursLoading || officeHoursSaving}
+                onClick={() => void handleSaveOfficeHours()}
+              >
+                {officeHoursSaving ? (
+                  <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                Save timing
+              </Button>
+            </div>
+          </div>
+          {officeHours?.updatedAt ? (
+            <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
+              Last updated: {new Date(officeHours.updatedAt).toLocaleString()}
+            </p>
+          ) : null}
+          {officeHoursMessage ? (
+            <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
+              {officeHoursMessage}
+            </p>
+          ) : null}
+          {officeHoursError ? (
+            <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">{officeHoursError}</p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {isAdmin ? (
         <section className="data-card overflow-hidden p-0">
           <div className="border-b border-slate-200/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               Desktop agent
             </div>
             <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
               Agent health monitor
             </h2>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-              Running vs no recent activity employee devices with latest heartbeat.
+            <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+              Running vs no recent activity on employee devices.
             </p>
-            <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+            <p className="mt-1 text-sm text-rose-700 dark:text-rose-300">
               Alert: shift open + no employee signal for 10+ minutes.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -589,7 +757,7 @@ export function AdminOverviewClient({
                       key={state}
                       type="button"
                       onClick={() => setAgentStateFilter(state)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
                         isActive
                           ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -610,19 +778,17 @@ export function AdminOverviewClient({
               </Button>
             </div>
             {agentError ? (
-              <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{agentError}</p>
+              <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">{agentError}</p>
             ) : null}
           </div>
           <div className="max-h-[min(20rem,42vh)] overflow-auto">
             <table className="w-full min-w-[56rem] text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Department</th>
                   <th className="px-3 py-2">Agent</th>
-                  <th className="px-3 py-2">Heartbeat</th>
-                  <th className="px-3 py-2">Last seen source</th>
                   <th className="px-3 py-2">Last seen</th>
                   <th className="px-3 py-2">Shift</th>
                   <th className="px-3 py-2">Attendance</th>
@@ -630,11 +796,11 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2">Reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {agentLoading ? (
-                  <EmptyRow colSpan={11} message="Loading agent health..." />
+                  <EmptyRow colSpan={9} message="Loading agent health..." />
                 ) : agentRows.length === 0 ? (
-                  <EmptyRow colSpan={11} message="No matching agent records." />
+                  <EmptyRow colSpan={9} message="No matching agent records." />
                 ) : (
                   agentRows.map((row) => (
                     <tr key={row.userId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
@@ -645,7 +811,7 @@ export function AdminOverviewClient({
                       <td className="px-3 py-2">{row.departmentName ?? "-"}</td>
                       <td className="px-3 py-2">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${agentPillTone(
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${agentPillTone(
                             row.state
                           )}`}
                         >
@@ -653,17 +819,9 @@ export function AdminOverviewClient({
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        {row.lastAgentActivityAt
-                          ? new Date(row.lastAgentActivityAt).toLocaleString(undefined, {
-                              timeZone: ATTENDANCE_TIME_ZONE
-                            })
-                          : "-"}
-                      </td>
-                      <td className="px-3 py-2">{row.lastSeenSource ?? "-"}</td>
-                      <td className="px-3 py-2">
                         {formatAge(row.lastSeenAgeSeconds)}
                         {row.needsAttention ? (
-                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-700 dark:text-rose-300">
+                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
                             Alert
                           </span>
                         ) : null}
@@ -704,9 +862,9 @@ export function AdminOverviewClient({
             aria-pressed={isFocused}
             title={isFocused ? "Click again to show all sections" : `Show only ${panelLabels[item.panel]}`}
           >
-            <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{item.label}</div>
+            <div className="text-sm font-medium uppercase text-slate-500 dark:text-slate-400">{item.label}</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{item.value}</div>
-            <div className={`mt-1 text-xs font-semibold ${item.trend.tone}`}>{item.trend.label} vs previous period</div>
+            <div className={`mt-1 text-sm font-semibold ${item.trend.tone}`}>{item.trend.label} vs previous period</div>
           </button>
         );
         })}
@@ -715,12 +873,12 @@ export function AdminOverviewClient({
       {sectionVisible("departments") ? (
         <section className="data-card overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Departments</h2>
-            <span className="text-xs text-slate-500">{sorted.departments.length} total</span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Departments</h2>
+            <span className="text-sm text-slate-500">{sorted.departments.length} total</span>
           </div>
           <div className="max-h-[min(24rem,50vh)] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-base text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-3 py-2 font-medium">
                     <SortableHead label="ID" active={sortBy.departments.key === "id"} direction={sortBy.departments.direction} onClick={() => setSort("departments", "id")} />
@@ -731,7 +889,7 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2 font-medium">Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {paged.departments.length === 0 ? (
                   <EmptyRow colSpan={3} message="No departments match current filters." />
                 ) : (
@@ -748,7 +906,7 @@ export function AdminOverviewClient({
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-slate-200/90 px-3 py-2 dark:border-slate-700">
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("departments", pages.departments - 1)}>Prev</Button>
-            <span className="text-xs text-slate-500">Page {Math.min(pages.departments, pageCounts.departments)} / {pageCounts.departments}</span>
+            <span className="text-sm text-slate-500">Page {Math.min(pages.departments, pageCounts.departments)} / {pageCounts.departments}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("departments", pages.departments + 1)}>Next</Button>
           </div>
         </section>
@@ -757,12 +915,12 @@ export function AdminOverviewClient({
       {sectionVisible("users") ? (
         <section className="data-card overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Users</h2>
-            <span className="text-xs text-slate-500">{sorted.users.length} total</span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Users</h2>
+            <span className="text-sm text-slate-500">{sorted.users.length} total</span>
           </div>
           <div className="max-h-[min(24rem,50vh)] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-base text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-3 py-2 font-medium">
                     <SortableHead label="Name" active={sortBy.users.key === "name"} direction={sortBy.users.direction} onClick={() => setSort("users", "name")} />
@@ -775,7 +933,7 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2 font-medium">Invite</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {paged.users.length === 0 ? (
                   <EmptyRow colSpan={5} message="No users match current filters." />
                 ) : (
@@ -794,7 +952,7 @@ export function AdminOverviewClient({
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-slate-200/90 px-3 py-2 dark:border-slate-700">
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("users", pages.users - 1)}>Prev</Button>
-            <span className="text-xs text-slate-500">Page {Math.min(pages.users, pageCounts.users)} / {pageCounts.users}</span>
+            <span className="text-sm text-slate-500">Page {Math.min(pages.users, pageCounts.users)} / {pageCounts.users}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("users", pages.users + 1)}>Next</Button>
           </div>
         </section>
@@ -803,12 +961,12 @@ export function AdminOverviewClient({
       {sectionVisible("invites") ? (
         <section className="data-card overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Pending invitations</h2>
-            <span className="text-xs text-slate-500">{sorted.invites.length} total</span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Pending invitations</h2>
+            <span className="text-sm text-slate-500">{sorted.invites.length} total</span>
           </div>
           <div className="max-h-[min(24rem,50vh)] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-base text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-3 py-2 font-medium">Email</th>
                   <th className="px-3 py-2 font-medium">Department</th>
@@ -817,7 +975,7 @@ export function AdminOverviewClient({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {paged.invites.length === 0 ? (
                   <EmptyRow colSpan={3} message="No pending invitations for current filters." />
                 ) : (
@@ -834,7 +992,7 @@ export function AdminOverviewClient({
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-slate-200/90 px-3 py-2 dark:border-slate-700">
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("invites", pages.invites - 1)}>Prev</Button>
-            <span className="text-xs text-slate-500">Page {Math.min(pages.invites, pageCounts.invites)} / {pageCounts.invites}</span>
+            <span className="text-sm text-slate-500">Page {Math.min(pages.invites, pageCounts.invites)} / {pageCounts.invites}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("invites", pages.invites + 1)}>Next</Button>
           </div>
         </section>
@@ -843,12 +1001,12 @@ export function AdminOverviewClient({
       {sectionVisible("leads") ? (
         <section className="data-card overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">All leads (hot & sale)</h2>
-            <span className="text-xs text-slate-500">{sorted.leads.length} total</span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">All leads (hot & sale)</h2>
+            <span className="text-sm text-slate-500">{sorted.leads.length} total</span>
           </div>
           <div className="max-h-[min(24rem,50vh)] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-base text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-3 py-2 font-medium">
                     <SortableHead label="ID" active={sortBy.leads.key === "id"} direction={sortBy.leads.direction} onClick={() => setSort("leads", "id")} />
@@ -862,7 +1020,7 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2 font-medium">Sale</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {paged.leads.length === 0 ? (
                   <EmptyRow colSpan={8} message="No leads match current filters." />
                 ) : (
@@ -884,7 +1042,7 @@ export function AdminOverviewClient({
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-slate-200/90 px-3 py-2 dark:border-slate-700">
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("leads", pages.leads - 1)}>Prev</Button>
-            <span className="text-xs text-slate-500">Page {Math.min(pages.leads, pageCounts.leads)} / {pageCounts.leads}</span>
+            <span className="text-sm text-slate-500">Page {Math.min(pages.leads, pageCounts.leads)} / {pageCounts.leads}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("leads", pages.leads + 1)}>Next</Button>
           </div>
         </section>
@@ -893,12 +1051,12 @@ export function AdminOverviewClient({
       {sectionVisible("activity") ? (
         <section className="data-card overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-slate-200/90 bg-slate-100/90 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Enhanced audit logs</h2>
-            <span className="text-xs text-slate-500">{sorted.activity.length} total</span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Enhanced audit logs</h2>
+            <span className="text-sm text-slate-500">{sorted.activity.length} total</span>
           </div>
           <div className="max-h-[min(24rem,50vh)] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-base text-slate-600 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-3 py-2 font-medium">
                     <SortableHead label="When" active={sortBy.activity.key === "createdAt"} direction={sortBy.activity.direction} onClick={() => setSort("activity", "createdAt")} />
@@ -911,7 +1069,7 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2 font-medium">Device</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800 dark:divide-slate-800 dark:text-slate-200">
                 {paged.activity.length === 0 ? (
                   <EmptyRow colSpan={7} message="No audit events match current filters." />
                 ) : (
@@ -938,7 +1096,7 @@ export function AdminOverviewClient({
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-slate-200/90 px-3 py-2 dark:border-slate-700">
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("activity", pages.activity - 1)}>Prev</Button>
-            <span className="text-xs text-slate-500">Page {Math.min(pages.activity, pageCounts.activity)} / {pageCounts.activity}</span>
+            <span className="text-sm text-slate-500">Page {Math.min(pages.activity, pageCounts.activity)} / {pageCounts.activity}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setPage("activity", pages.activity + 1)}>Next</Button>
           </div>
         </section>

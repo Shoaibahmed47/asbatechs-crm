@@ -18,6 +18,10 @@ export function isManagerRole(role: string | undefined): boolean {
   return normalizeRole(role) === "manager";
 }
 
+export function isEmployeeRole(role: string | undefined): boolean {
+  return normalizeRole(role) === "employee";
+}
+
 /** Who may open the Employee directory page (read-only for managers). */
 export function canViewEmployeeDirectory(role: string | undefined): boolean {
   return isAdminRole(role) || isManagerRole(role);

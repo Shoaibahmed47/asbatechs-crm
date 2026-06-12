@@ -232,10 +232,10 @@ export function AttendanceDateRangeCalendar({
     <>
       <div className="rounded-xl border border-sky-200/80 bg-sky-50/90 px-3 py-2.5 dark:border-sky-800/60 dark:bg-sky-950/40">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pick date range</p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-base leading-relaxed text-slate-600 dark:text-slate-400">
           {autoApply ? "1. Click start day · 2. Click end day (auto apply)" : "1. Click start day · 2. Click end day · 3. Apply range"}
         </p>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-700 dark:text-slate-300">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-base text-slate-700 dark:text-slate-300">
           <span>
             <span className="font-semibold text-slate-900 dark:text-slate-100">Start:</span>{" "}
             {draftFrom ? formatDayLabel(draftFrom) : "—"}
@@ -371,7 +371,7 @@ export function AttendanceDateRangeCalendar({
       {variant === "bar" ? (
         <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/50 sm:ml-auto sm:w-auto sm:min-w-[min(100%,22rem)]">
           <div className="min-w-0 flex-1 text-left sm:flex-initial">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               View date range
             </p>
             <p className="mt-0.5 truncate text-sm font-medium text-slate-900 dark:text-slate-100">

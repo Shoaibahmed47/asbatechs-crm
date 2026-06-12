@@ -36,15 +36,15 @@ export function ConfirmDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
       >
-        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</p>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+        <h3 className="card-title text-slate-900 dark:text-slate-100">{title}</h3>
+        <p className="mt-3 text-base leading-relaxed text-slate-600 dark:text-slate-300">{description}</p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button type="button" size="sm" disabled={confirmDisabled} onClick={onConfirm}>
+          <Button type="button" disabled={confirmDisabled} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

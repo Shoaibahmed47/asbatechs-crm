@@ -47,16 +47,16 @@ export function InviteClientButton() {
 
   return (
     <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-      <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+      <div className="text-base font-medium text-slate-800 dark:text-slate-200">
         Invite client by email
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-base text-slate-500 dark:text-slate-400">
         They receive a link to set a password. Clients use a separate login at{" "}
         <span className="font-mono text-slate-600 dark:text-slate-300">/client/login</span>.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex-1 space-y-1">
-          <label className="text-xs text-slate-500">Email</label>
+          <label className="text-sm text-slate-500">Email</label>
           <input
             type="email"
             className="form-input w-full"
@@ -74,10 +74,10 @@ export function InviteClientButton() {
         </Button>
       </div>
       {error ? (
-        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : null}
       {message ? (
-        <p className="text-xs text-emerald-600 dark:text-emerald-400">{message}</p>
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
       ) : null}
       {error?.includes("resend") ? (
         <Button

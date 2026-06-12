@@ -125,16 +125,16 @@ export function LeadEntryForm({
     <div className="data-card p-5" id={formId}>
       <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
       {description ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</p>
+        <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{description}</p>
       ) : null}
       {formHint ? (
-        <p className="mt-2 rounded-md border border-sky-200/80 bg-sky-50/80 px-2.5 py-2 text-xs text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-100">
+        <p className="mt-2 rounded-md border border-sky-200/80 bg-sky-50/80 px-2.5 py-2 text-sm text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-100">
           {formHint}
         </p>
       ) : null}
       <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
         <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Client name <span className="text-red-500">*</span>
           </label>
           <input
@@ -145,12 +145,12 @@ export function LeadEntryForm({
             required
           />
           {errorFor("clientName") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("clientName")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("clientName")}</p>
           ) : null}
         </div>
         {!isSales ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Follow-up date and time
             </label>
             <input
@@ -160,13 +160,13 @@ export function LeadEntryForm({
               onChange={(e) => onNextFollowUpAtLocalChange?.(e.target.value)}
             />
             {errorFor("nextFollowUpAtLocal") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("nextFollowUpAtLocal")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("nextFollowUpAtLocal")}</p>
             ) : null}
           </div>
         ) : null}
         {!isSales ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Follow-up timezone
             </label>
             <select
@@ -182,13 +182,13 @@ export function LeadEntryForm({
               ))}
             </select>
             {errorFor("followUpTimezone") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("followUpTimezone")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("followUpTimezone")}</p>
             ) : null}
           </div>
         ) : null}
         {!isSales && showCustomTimezoneInput ? (
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Other timezone (IANA)
             </label>
             <input
@@ -198,12 +198,12 @@ export function LeadEntryForm({
               placeholder="e.g. Europe/London"
             />
             {errorFor("customTimezone") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("customTimezone")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("customTimezone")}</p>
             ) : null}
           </div>
         ) : null}
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Phone
           </label>
           <input
@@ -213,11 +213,11 @@ export function LeadEntryForm({
             placeholder="+1 …"
           />
           {errorFor("phone") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("phone")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("phone")}</p>
           ) : null}
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Email
           </label>
           <input
@@ -228,11 +228,11 @@ export function LeadEntryForm({
             placeholder="name@company.com"
           />
           {errorFor("email") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("email")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("email")}</p>
           ) : null}
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Source
           </label>
           <input
@@ -242,13 +242,13 @@ export function LeadEntryForm({
             placeholder="Referral, website, event…"
           />
           {errorFor("source") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("source")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("source")}</p>
           ) : null}
         </div>
 
         {isSales ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Sale amount (USD)
             </label>
             <input
@@ -261,14 +261,14 @@ export function LeadEntryForm({
               placeholder="0.00"
             />
             {errorFor("saleAmount") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("saleAmount")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("saleAmount")}</p>
             ) : null}
           </div>
         ) : null}
 
         {isSales ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Service purchased
             </label>
             <ServicePurchasedTagsInput
@@ -276,18 +276,18 @@ export function LeadEntryForm({
               onChange={onServicePurchasedTagsChange ?? (() => {})}
               hasError={!!errorFor("servicePurchased")}
             />
-            <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
               Type a service name, then press Enter to add a tag. Click × to remove.
             </p>
             {errorFor("servicePurchased") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("servicePurchased")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("servicePurchased")}</p>
             ) : null}
           </div>
         ) : null}
 
         {isSales ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Sale date
             </label>
             <input
@@ -297,14 +297,14 @@ export function LeadEntryForm({
               onChange={(e) => onSaleDateChange?.(e.target.value)}
             />
             {errorFor("saleDate") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("saleDate")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("saleDate")}</p>
             ) : null}
           </div>
         ) : null}
 
         {showDepartment ? (
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
               Department (optional)
             </label>
             <select
@@ -321,12 +321,12 @@ export function LeadEntryForm({
               ))}
             </select>
             {errorFor("departmentId") ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("departmentId")}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("departmentId")}</p>
             ) : null}
           </div>
         ) : null}
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Assigned user
           </label>
           <select
@@ -342,11 +342,11 @@ export function LeadEntryForm({
             ))}
           </select>
           {errorFor("assignedUserId") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("assignedUserId")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("assignedUserId")}</p>
           ) : null}
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Stage
           </label>
           <select
@@ -361,11 +361,11 @@ export function LeadEntryForm({
             ))}
           </select>
           {errorFor("status") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("status")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("status")}</p>
           ) : null}
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+          <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
             Notes
           </label>
           <textarea
@@ -375,12 +375,12 @@ export function LeadEntryForm({
             placeholder="Context, next step, objections…"
           />
           {errorFor("notes") ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor("notes")}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor("notes")}</p>
           ) : null}
         </div>
         <div className="md:col-span-2 space-y-2">
           {submitDisabledReason ? (
-            <p className="text-right text-xs text-amber-700 dark:text-amber-300">
+            <p className="text-right text-sm text-amber-700 dark:text-amber-300">
               {submitDisabledReason}
             </p>
           ) : null}

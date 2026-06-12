@@ -39,7 +39,7 @@ export function TablePagination({
         className
       )}
     >
-      <p className="text-xs text-slate-600 dark:text-slate-400">
+      <p className="text-base text-slate-600 dark:text-slate-400">
         {hasRows ? (
           <>
             Showing{" "}
@@ -59,10 +59,10 @@ export function TablePagination({
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {onLimitChange ? (
-          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <label className="flex items-center gap-2 text-base text-slate-600 dark:text-slate-400">
             Rows
             <select
-              className="form-input h-9 py-1 text-xs"
+              className="form-input-compact w-auto min-w-[4.5rem] py-1"
               value={limit}
               disabled={loading}
               onChange={(e) => onLimitChange(Number(e.target.value))}
@@ -80,14 +80,14 @@ export function TablePagination({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 px-2"
+            className="px-2.5"
             disabled={loading || !canPrev}
             onClick={() => onPageChange(page - 1)}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[4.5rem] text-center text-xs tabular-nums text-slate-700 dark:text-slate-300">
+          <span className="min-w-[4.5rem] text-center text-sm tabular-nums text-slate-700 dark:text-slate-300">
             {hasRows && safeTotalPages > 0 ? (
               <>
                 {page} / {safeTotalPages}
@@ -100,7 +100,7 @@ export function TablePagination({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 px-2"
+            className="px-2.5"
             disabled={loading || !canNext}
             onClick={() => onPageChange(page + 1)}
             aria-label="Next page"

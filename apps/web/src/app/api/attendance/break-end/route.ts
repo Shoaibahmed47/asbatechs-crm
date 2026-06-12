@@ -2,19 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { notifyAdminsManualBreakEnded } from "@/lib/attendance-break-reason";
+import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const payload = token ? await verifyAuthToken(token) : null;
+  const payload = await resolveStaffAuth(req);
 
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const weekendBlocked = rejectAttendanceOnWeekend();
+  if (weekendBlocked) return weekendBlocked;
+
   const userId = payload.userId;
   const today = getLocalDateString();
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
 
   const [log] = await db
     .select()
@@ -57,18 +68,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const isManualBreak = openSession.breakType === "manual";
+  const rawEndNote = typeof body.endNote === "string" ? body.endNote.trim() : "";
+
+  if (isManualBreak && rawEndNote.length < 3) {
+    return NextResponse.json(
+      {
+        error:
+          "Please describe where you went / what you did before ending the break (at least 3 characters)."
+      },
+      { status: 400 }
+    );
+  }
+
   const now = new Date();
   const diffMs = now.getTime() - new Date(openSession.breakStart as Date).getTime();
-  const addedMinutes = Math.floor(diffMs / 60000);
+  const addedMinutes = Math.max(0, Math.floor(diffMs / 60000));
 
   const [sessionUpdated] = await db
     .update(schema.breakSessions)
-    .set({ breakEnd: now })
+    .set({
+      breakEnd: now,
+      endNote: isManualBreak ? rawEndNote.slice(0, 500) : openSession.endNote
+    })
     .where(eq(schema.breakSessions.id, openSession.id))
     .returning();
 
-  const newTotalBreak =
-    (log.totalBreakMinutes ?? 0) + (addedMinutes > 0 ? addedMinutes : 0);
+  const newTotalBreak = (log.totalBreakMinutes ?? 0) + addedMinutes;
 
   const [logUpdated] = await db
     .update(schema.attendanceLogs)
@@ -80,6 +106,24 @@ export async function POST(req: NextRequest) {
     })
     .where(eq(schema.attendanceLogs.id, log.id))
     .returning();
+
+  if (isManualBreak) {
+    const [employee] = await db
+      .select({ name: schema.users.name })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+
+    await notifyAdminsManualBreakEnded({
+      employeeUserId: userId,
+      employeeName: employee?.name?.trim() || "Employee",
+      breakCategory: openSession.breakCategory ?? "other",
+      startNote: openSession.startNote,
+      endNote: rawEndNote,
+      breakStart: new Date(openSession.breakStart as Date),
+      breakEnd: now,
+      durationMinutes: addedMinutes
+    });
+  }
 
   return NextResponse.json({ session: sessionUpdated, attendance: logUpdated });
 }

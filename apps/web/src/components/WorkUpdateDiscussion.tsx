@@ -160,14 +160,14 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white">Discussion</h2>
-        <span className="rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        <span className="rounded-full bg-slate-200 px-2 py-1 text-base text-slate-700 dark:bg-slate-800 dark:text-slate-300">
           Status: {status}
         </span>
       </div>
 
       {canReview ? (
         <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Client review action</p>
+          <p className="text-base font-medium text-slate-600 dark:text-slate-400">Client review action</p>
           <textarea
             className={`${fieldClass} min-h-[72px]`}
             placeholder="Add optional review comment"
@@ -191,7 +191,7 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       {loading ? (
-        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Loading comments…</p>
+        <p className="text-base font-medium text-slate-600 dark:text-slate-400">Loading comments…</p>
       ) : comments.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
           No comments yet.
@@ -233,13 +233,13 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide",
+                      "rounded-full px-2 py-0.5 text-sm font-semibold tracking-wide",
                       authorBadgeClass(c.actorType)
                     )}
                   >
                     {authorBadgeLabel(c.actorType)}
                   </span>
-                  <span className="text-xs font-medium text-slate-800 dark:text-slate-100">{displayAuthor(c)}</span>
+                  <span className="text-base font-medium text-slate-800 dark:text-slate-100">{displayAuthor(c)}</span>
                   {c.createdAt ? (
                     <>
                       <span className="hidden text-slate-400 sm:inline dark:text-slate-600" aria-hidden>
@@ -247,14 +247,14 @@ export function WorkUpdateDiscussion({ workUpdateId, canReview, initialStatus }:
                       </span>
                       <time
                         dateTime={c.createdAt}
-                        className="text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400 sm:ml-0"
+                        className="text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400 sm:ml-0"
                       >
                         {new Date(c.createdAt).toLocaleString()}
                       </time>
                     </>
                   ) : null}
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{c.body}</p>
+                <p className="mt-2 text-base leading-relaxed text-slate-700 dark:text-slate-300">{c.body}</p>
               </li>
             ))}
           </ul>

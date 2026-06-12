@@ -4,6 +4,15 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
+import {
+  computeLateMinutes,
+  getExpectedCheckInTimeForUser,
+  hasPendingLateExplanation
+} from "@/lib/attendance-late-checkin";
+import { hasPendingAbsenceExplanation } from "@/lib/attendance-absence";
+import { hasPendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave";
+import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
@@ -22,10 +31,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const weekendBlocked = rejectAttendanceOnWeekend();
+  if (weekendBlocked) return weekendBlocked;
+
   const userId = payload.userId;
   const today = getLocalDateString();
 
+  if (await hasPendingLateExplanation(userId)) {
+    return NextResponse.json(
+      {
+        error:
+          "Please submit your late arrival explanation on the Attendance page before clocking in.",
+        code: "LATE_EXPLANATION_REQUIRED"
+      },
+      { status: 403 }
+    );
+  }
+
+  if (await hasPendingEarlyLeaveExplanation(userId)) {
+    return NextResponse.json(
+      {
+        error:
+          "Please submit your early leave explanation on the Attendance page before clocking in.",
+        code: "EARLY_LEAVE_EXPLANATION_REQUIRED"
+      },
+      { status: 403 }
+    );
+  }
+
+  if (await hasPendingAbsenceExplanation(userId)) {
+    return NextResponse.json(
+      {
+        error:
+          "Please submit your absence explanation on the Attendance page before clocking in.",
+        code: "ABSENCE_EXPLANATION_REQUIRED"
+      },
+      { status: 403 }
+    );
+  }
+
   try {
+    const now = new Date();
+    const officeHours = await getAttendanceOfficeHours();
+    const expectedCheckInTime = await getExpectedCheckInTimeForUser(userId);
+    const lateMinutes = computeLateMinutes(
+      now,
+      expectedCheckInTime,
+      officeHours.lateGraceMinutes
+    );
+
     const [existing] = await db
       .select()
       .from(schema.attendanceLogs)
@@ -35,8 +89,6 @@ export async function POST(req: NextRequest) {
           eq(schema.attendanceLogs.date, today as any)
         )
       );
-
-    const now = new Date();
 
     if (existing) {
       if (existing.clockIn && !existing.clockOut) {
@@ -65,7 +117,11 @@ export async function POST(req: NextRequest) {
             totalHours: null,
             status: "active",
             lastActivityAt: now,
-            lastActivitySource: "browser"
+            lastActivitySource: "browser",
+            lateMinutes,
+            expectedCheckInTime,
+            lateReason: null,
+            lateReasonSubmittedAt: null
           })
           .where(eq(schema.attendanceLogs.id, existing.id))
           .returning();
@@ -78,7 +134,11 @@ export async function POST(req: NextRequest) {
           clockIn: now,
           status: "active",
           lastActivityAt: now,
-          lastActivitySource: "browser"
+          lastActivitySource: "browser",
+          lateMinutes,
+          expectedCheckInTime,
+          lateReason: null,
+          lateReasonSubmittedAt: null
         })
         .where(eq(schema.attendanceLogs.id, existing.id))
         .returning();
@@ -99,7 +159,9 @@ export async function POST(req: NextRequest) {
         sleepEventsCount: 0,
         status: "active",
         lastActivityAt: now,
-        lastActivitySource: "browser"
+        lastActivitySource: "browser",
+        lateMinutes,
+        expectedCheckInTime
       })
       .returning();
 

@@ -69,7 +69,7 @@ export function AttendanceDayCalendar({ selectedDate, onSelectDate }: Props) {
     <div ref={rootRef} className="relative flex justify-end">
       <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/50 sm:ml-auto sm:w-auto sm:min-w-[min(100%,22rem)]">
         <div className="min-w-0 flex-1 text-left sm:flex-initial">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             View date
           </p>
           <p className="mt-0.5 truncate text-sm font-medium text-slate-900 dark:text-slate-100">

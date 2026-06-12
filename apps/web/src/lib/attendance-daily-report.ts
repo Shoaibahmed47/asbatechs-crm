@@ -196,9 +196,15 @@ function mapRow(r: {
 }
 
 function daysInclusive(fromDate: string, toDate: string): number {
-  const start = new Date(`${fromDate}T00:00:00`);
-  const end = new Date(`${toDate}T00:00:00`);
-  const diff = end.getTime() - start.getTime();
-  if (Number.isNaN(diff) || diff < 0) return 1;
-  return Math.floor(diff / 86400000) + 1;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+    return 1;
+  }
+  const start = fromDate <= toDate ? fromDate : toDate;
+  const end = fromDate <= toDate ? toDate : fromDate;
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const startUtc = Date.UTC(sy, sm - 1, sd);
+  const endUtc = Date.UTC(ey, em - 1, ed);
+  if (endUtc < startUtc) return 1;
+  return Math.floor((endUtc - startUtc) / 86400000) + 1;
 }

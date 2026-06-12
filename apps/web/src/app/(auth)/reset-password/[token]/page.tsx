@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
+import { AuthPageShell } from "@/components/auth/AuthPageShell";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
 
 export default function ResetPasswordPage() {
@@ -19,6 +21,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -33,10 +40,10 @@ export default function ResetPasswordPage() {
     try {
       await apiFetch.post("/api/auth/reset-password", { token, password });
       router.push("/login");
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof ApiFetchError
-          ? error.message
+        err instanceof ApiFetchError
+          ? err.message
           : "Something went wrong. Please try again."
       );
       setLoading(false);
@@ -44,51 +51,51 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex h-full flex-col justify-center">
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            Set a new password
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Choose a new password for your account.
-          </p>
+    <AuthPageShell
+      title="Set a new password"
+      subtitle="Choose a strong password for your account. This link expires after one hour."
+    >
+      {error ? (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+          {error}
         </div>
-        {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-            {error}
-          </div>
-        )}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-700">
-              New password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-slate-700">
-              Confirm password
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Updating..." : "Update password"}
-          </Button>
-        </form>
-      </div>
-    </div>
+      ) : null}
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <label className="block space-y-1.5">
+          <span className="text-base font-medium text-slate-700 dark:text-slate-300">
+            New password
+          </span>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="form-input w-full"
+            minLength={8}
+            required
+            disabled={loading}
+            autoComplete="new-password"
+          />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-base font-medium text-slate-700 dark:text-slate-300">
+            Confirm password
+          </span>
+          <PasswordInput
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="form-input w-full"
+            minLength={8}
+            required
+            disabled={loading}
+            autoComplete="new-password"
+          />
+        </label>
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Updating..." : "Update password"}
+        </Button>
+      </form>
+    </AuthPageShell>
   );
 }

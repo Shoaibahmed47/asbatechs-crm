@@ -41,7 +41,7 @@ export default async function AdminClientsSettingsPage() {
   return (
     <div className="space-y-8">
       <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
           Administration
         </div>
         <h1 className="page-title mt-3">Client portal</h1>
@@ -70,7 +70,7 @@ export default async function AdminClientsSettingsPage() {
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {i.email}
                   </span>
-                  <span className="ml-2 text-xs text-slate-500">
+                  <span className="ml-2 text-sm text-slate-500">
                     {i.createdAt ? new Date(i.createdAt).toLocaleString() : ""}
                   </span>
                 </li>
@@ -88,7 +88,7 @@ export default async function AdminClientsSettingsPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
+            <thead className="bg-slate-50 text-sm font-semibold uppercase text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Email</th>
@@ -123,7 +123,7 @@ export default async function AdminClientsSettingsPage() {
                           href={`/api/admin/clients/${c.id}/portal-login`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           View as client
                         </a>

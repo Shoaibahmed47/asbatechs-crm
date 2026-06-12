@@ -20,7 +20,20 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await apiFetch.post("/api/auth/login", { email, password });
+      const data = await apiFetch.post<{ token?: string }>("/api/auth/login", {
+        email,
+        password
+      });
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("crm_auth_redirected");
+        if (data?.token) {
+          window.localStorage.setItem("crm_token", data.token);
+        } else {
+          window.localStorage.removeItem("crm_token");
+          window.localStorage.removeItem("auth_token");
+          window.localStorage.removeItem("token");
+        }
+      }
       router.push("/dashboard");
     } catch (err) {
       let msg =
@@ -49,24 +62,24 @@ export default function LoginPage() {
       <div className="surface-reveal relative grid w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.15)] sm:rounded-3xl md:grid-cols-[1.05fr_0.95fr]">
         <aside className="hidden bg-[linear-gradient(160deg,#0f172a_0%,#0b1f3a_55%,#0f3d67_100%)] p-10 text-slate-50 md:flex md:flex-col md:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.22em] text-sky-100">
               Operations platform
             </div>
             <h2 className="mt-6 font-[var(--font-display)] text-5xl font-semibold tracking-tight">AsbaTechs CRM</h2>
-            <p className="mt-5 max-w-lg text-sm leading-7 text-slate-200">
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-200">
               Centralized attendance, lead operations, and sales reporting for teams that need
               clarity, speed, and trusted operational data.
             </p>
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/90">Built for teams</div>
-              <p className="mt-3 text-sm leading-6 text-slate-100">
+              <div className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-100/90">Built for teams</div>
+              <p className="mt-3 text-base leading-relaxed text-slate-100">
                 A cleaner workspace for monitoring activity, reviewing pipeline health, and keeping
                 internal workflows aligned.
               </p>
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/95">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-300/95">
               Professional internal software for daily operations
             </p>
           </div>
@@ -74,7 +87,7 @@ export default function LoginPage() {
 
         <section className="p-5 sm:p-8 md:p-9">
           <div className="mb-6 sm:mb-8">
-            <div className="mx-auto flex w-full max-w-sm items-center gap-1 rounded-full bg-slate-100 p-1 text-[11px] font-semibold sm:gap-2 sm:text-xs">
+            <div className="mx-auto flex w-full max-w-sm items-center gap-1 rounded-full bg-slate-100 p-1 text-sm font-semibold sm:gap-2 sm:text-sm">
               <Link href="/login" className="flex-1 rounded-full bg-white px-2 py-2 text-center text-sky-700 shadow-sm sm:px-4">
                 Employee Portal
               </Link>
@@ -98,7 +111,7 @@ export default function LoginPage() {
 
           <form className="mt-5 space-y-4 sm:mt-6 sm:space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">Email address</label>
+              <label className="block text-base font-medium text-slate-700">Email address</label>
               <input
                 type="email"
                 value={email}
@@ -112,7 +125,7 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-700">Password</label>
+                <label className="block text-base font-medium text-slate-700">Password</label>
                 <Link href="/forgot-password" className="text-sm font-medium text-sky-700 hover:text-sky-800">
                   Forgot?
                 </Link>

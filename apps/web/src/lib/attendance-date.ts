@@ -1,6 +1,25 @@
 export const ATTENDANCE_TIME_ZONE =
   process.env.NEXT_PUBLIC_ATTENDANCE_TIME_ZONE || "Asia/Karachi";
 
+/** Fixed locale so employee and admin always see the same 12-hour clock (e.g. 8:00 PM). */
+export const ATTENDANCE_DISPLAY_LOCALE = "en-US";
+
+const attendanceTimeFormat: Intl.DateTimeFormatOptions = {
+  timeZone: ATTENDANCE_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true
+};
+
+const attendanceDateTimeFormat: Intl.DateTimeFormatOptions = {
+  timeZone: ATTENDANCE_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true
+};
+
 /**
  * Calendar date in the configured attendance timezone (YYYY-MM-DD).
  * Attendance is keyed by business day, not UTC (avoids wrong-day bugs near midnight).
@@ -24,22 +43,12 @@ export function getLocalDateString(d = new Date()): string {
 
 export function formatAttendanceClock(iso: string | Date | null | undefined): string {
   if (!iso) return "-";
-  return new Date(iso).toLocaleTimeString(undefined, {
-    timeZone: ATTENDANCE_TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return new Date(iso).toLocaleTimeString(ATTENDANCE_DISPLAY_LOCALE, attendanceTimeFormat);
 }
 
 export function formatAttendanceDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "-";
-  return new Date(iso).toLocaleString(undefined, {
-    timeZone: ATTENDANCE_TIME_ZONE,
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return new Date(iso).toLocaleString(ATTENDANCE_DISPLAY_LOCALE, attendanceDateTimeFormat);
 }
 
 export function formatAttendanceDateLabel(iso: string): string {
@@ -61,22 +70,30 @@ export function formatWorkDuration(minutes: number | null | undefined): string {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
-/** Inclusive list of YYYY-MM-DD strings from `from` through `to` (local calendar days). */
+function addCalendarDays(iso: string, deltaDays: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const cursor = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+  cursor.setUTCDate(cursor.getUTCDate() + deltaDays);
+  const yy = cursor.getUTCFullYear();
+  const mm = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(cursor.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+/** Inclusive list of YYYY-MM-DD strings from `from` through `to` (business calendar days). */
 export function enumerateLocalDates(from: string, to: string): string[] {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
     return [];
   }
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
 
-  const lo = start.getTime() <= end.getTime() ? start : end;
-  const hi = start.getTime() <= end.getTime() ? end : start;
+  const start = from <= to ? from : to;
+  const end = from <= to ? to : from;
   const out: string[] = [];
-  const cursor = new Date(lo);
-  while (cursor.getTime() <= hi.getTime()) {
-    out.push(getLocalDateString(cursor));
-    cursor.setDate(cursor.getDate() + 1);
+  let cursor = start;
+  while (cursor <= end) {
+    out.push(cursor);
+    if (cursor === end) break;
+    cursor = addCalendarDays(cursor, 1);
   }
   return out;
 }

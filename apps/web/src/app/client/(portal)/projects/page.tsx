@@ -84,7 +84,7 @@ export default function ClientProjectsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Projects</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-base text-slate-600 dark:text-slate-400">
           Create projects to organize your work updates.
         </p>
       </div>
@@ -102,7 +102,7 @@ export default function ClientProjectsPage() {
         <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add project</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Name</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Name</label>
             <input
               className="form-input w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={name}
@@ -112,7 +112,7 @@ export default function ClientProjectsPage() {
             />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Description (optional)</label>
+            <label className="text-base text-slate-600 dark:text-slate-400">Description (optional)</label>
             <textarea
               className="form-input min-h-[72px] w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               value={description}
@@ -127,7 +127,7 @@ export default function ClientProjectsPage() {
 
       <ul className="space-y-3">
         {projects.length === 0 ? (
-          <li className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-500">
+          <li className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-base text-slate-600 dark:border-slate-700 dark:text-slate-500">
             No projects yet. Add one above.
           </li>
         ) : (
@@ -139,12 +139,12 @@ export default function ClientProjectsPage() {
               <div>
                 <div className="font-medium text-slate-900 dark:text-white">{p.name}</div>
                 {p.description ? (
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{p.description}</p>
+                  <p className="mt-1 text-base text-slate-600 dark:text-slate-400">{p.description}</p>
                 ) : null}
               </div>
               <button
                 type="button"
-                className="inline-flex min-w-[108px] whitespace-nowrap items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                className="inline-flex min-w-[108px] whitespace-nowrap items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-700"
                 onClick={() => setDeleteTargetId(p.id)}
               >
                 <Trash2 className="h-3.5 w-3.5 text-red-300" />

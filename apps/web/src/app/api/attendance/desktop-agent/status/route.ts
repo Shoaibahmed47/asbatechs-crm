@@ -33,43 +33,43 @@ export async function GET(req: NextRequest) {
   const today = getLocalDateString();
   const appUrl = resolveAppUrl(req);
 
-  const [todayLog] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, payload.userId),
-        eq(schema.attendanceLogs.date, today as any)
+  const [[todayLog], [latestAgentHeartbeat], [latestSetupMarker]] = await Promise.all([
+    db
+      .select()
+      .from(schema.attendanceLogs)
+      .where(
+        and(
+          eq(schema.attendanceLogs.userId, payload.userId),
+          eq(schema.attendanceLogs.date, today as any)
+        )
+      ),
+    db
+      .select({ createdAt: schema.activityLogs.createdAt })
+      .from(schema.activityLogs)
+      .where(
+        and(
+          eq(schema.activityLogs.userId, payload.userId),
+          eq(schema.activityLogs.entityType, "attendance_agent"),
+          eq(schema.activityLogs.action, "agent_heartbeat"),
+          eq(schema.activityLogs.entityId, 0)
+        )
       )
-    );
-
-  const [latestAgentHeartbeat] = await db
-    .select({ createdAt: schema.activityLogs.createdAt })
-    .from(schema.activityLogs)
-    .where(
-      and(
-        eq(schema.activityLogs.userId, payload.userId),
-        eq(schema.activityLogs.entityType, "attendance_agent"),
-        eq(schema.activityLogs.action, "agent_heartbeat"),
-        eq(schema.activityLogs.entityId, 0)
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(1),
+    db
+      .select({ createdAt: schema.activityLogs.createdAt })
+      .from(schema.activityLogs)
+      .where(
+        and(
+          eq(schema.activityLogs.userId, payload.userId),
+          eq(schema.activityLogs.entityType, "attendance_agent"),
+          eq(schema.activityLogs.action, "agent_setup_prepared"),
+          eq(schema.activityLogs.entityId, 0)
+        )
       )
-    )
-    .orderBy(desc(schema.activityLogs.createdAt))
-    .limit(1);
-
-  const [latestSetupMarker] = await db
-    .select({ createdAt: schema.activityLogs.createdAt })
-    .from(schema.activityLogs)
-    .where(
-      and(
-        eq(schema.activityLogs.userId, payload.userId),
-        eq(schema.activityLogs.entityType, "attendance_agent"),
-        eq(schema.activityLogs.action, "agent_setup_prepared"),
-        eq(schema.activityLogs.entityId, 0)
-      )
-    )
-    .orderBy(desc(schema.activityLogs.createdAt))
-    .limit(1);
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(1)
+  ]);
 
   const openShift = Boolean(todayLog?.clockIn && !todayLog?.clockOut);
   const latestLogActivityAt =

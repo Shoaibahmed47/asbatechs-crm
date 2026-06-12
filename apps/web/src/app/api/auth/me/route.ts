@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { eq } from "drizzle-orm";
+import { resolveStaffAuth } from "@/lib/staff-auth-request";
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
-    return NextResponse.json({ user: null }, { status: 200 });
-  }
-
-  const payload = await verifyAuthToken(token);
+  const payload = await resolveStaffAuth(req);
   if (!payload) {
     return NextResponse.json({ user: null }, { status: 200 });
   }

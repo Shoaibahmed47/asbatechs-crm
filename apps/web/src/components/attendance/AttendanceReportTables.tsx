@@ -6,8 +6,26 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
 import type { AttendanceDailyRow, AttendanceRangeRow } from "@/lib/attendance-daily-report";
-import { ATTENDANCE_TIME_ZONE } from "@/lib/attendance-date";
+import { formatAttendanceDateLabel } from "@/lib/attendance-date";
 import { AttendanceReportEmployeeDetailPanel } from "./AttendanceReportEmployeeDetailPanel";
+import {
+  AttendanceEmployeeScheduleModal,
+  type ScheduleAnchorRect
+} from "./AttendanceEmployeeScheduleModal";
+import {
+  AttendanceEarlyLeaveDetailModal,
+  type AdminEarlyLeaveDetail
+} from "./AttendanceEarlyLeaveDetailModal";
+import {
+  AttendanceLateDetailModal,
+  type AdminLateDetail
+} from "./AttendanceLateDetailModal";
+import {
+  AttendanceAbsenceDetailModal,
+  type AdminAbsenceDetail
+} from "./AttendanceAbsenceDetailModal";
+import { anchorRectFromElement } from "@/lib/anchored-popover";
+import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 import { toast } from "sonner";
 
 type Props = {
@@ -23,17 +41,6 @@ type Props = {
   rangeRows: AttendanceRangeRow[];
   basePath?: string;
 };
-
-function formatClock(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    timeZone: ATTENDANCE_TIME_ZONE,
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
 
 function formatMinutes(m: number | null | undefined): string {
   if (m == null || Number.isNaN(m)) return "—";
@@ -108,47 +115,40 @@ export function AttendanceReportTables({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [issuingForUserId, setIssuingForUserId] = useState<number | null>(null);
+  const [scheduleModalUser, setScheduleModalUser] = useState<{
+    userId: number;
+    userName: string;
+    anchorRect: ScheduleAnchorRect;
+  } | null>(null);
+  const [lateDetail, setLateDetail] = useState<AdminLateDetail | null>(null);
+  const [earlyLeaveDetail, setEarlyLeaveDetail] = useState<AdminEarlyLeaveDetail | null>(null);
+  const [absenceDetail, setAbsenceDetail] = useState<{
+    detail: AdminAbsenceDetail;
+    anchorRect: ReturnType<typeof anchorRectFromElement>;
+  } | null>(null);
+  const [detailUser, setDetailUser] = useState<{ userId: number; userName: string } | null>(null);
   const filterBasePath = basePath ?? pathname;
 
-  const selectedUserId = useMemo(() => {
+  // Legacy links may still carry ?employee= — strip on load so the modal cannot stick open.
+  useEffect(() => {
     const raw = searchParams.get("employee");
-    if (!raw || !/^\d+$/.test(raw)) return null;
-    return Number(raw);
-  }, [searchParams]);
-
-  const selectedUserName = useMemo(() => {
-    if (selectedUserId == null) return "";
-    const fromAgent = agentHealth?.rows.find((r) => r.userId === selectedUserId)?.userName;
-    if (fromAgent) return fromAgent;
-    const fromDaily = dailyRows.find((r) => r.userId === selectedUserId)?.userName;
-    if (fromDaily) return fromDaily;
-    return rangeRows.find((r) => r.userId === selectedUserId)?.userName ?? "Employee";
-  }, [selectedUserId, agentHealth?.rows, dailyRows, rangeRows]);
-
-  const openDetail = useCallback(
-    (userId: number, _userName: string) => {
-      const next = new URLSearchParams(searchParams.toString());
-      next.set("employee", String(userId));
-      router.push(`${pathname}?${next.toString()}`, { scroll: false });
-    },
-    [pathname, router, searchParams]
-  );
-
-  const closeDetail = useCallback(() => {
-    document.body.style.removeProperty("pointer-events");
-    document.documentElement.style.removeProperty("pointer-events");
-    document.body.style.removeProperty("overflow");
+    if (!raw || !/^\d+$/.test(raw)) return;
     const next = new URLSearchParams(searchParams.toString());
     next.delete("employee");
     const q = next.toString();
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    clearInteractionLocks();
   }, [pathname, router, searchParams]);
 
-  useEffect(() => {
-    if (selectedUserId == null) return;
-    document.body.style.removeProperty("pointer-events");
-    document.documentElement.style.removeProperty("pointer-events");
-  }, [selectedUserId]);
+  const openDetail = useCallback((userId: number, userName: string) => {
+    clearInteractionLocks();
+    setDetailUser({ userId, userName });
+  }, []);
+
+  const closeDetail = useCallback(() => {
+    clearInteractionLocks();
+    setDetailUser(null);
+  }, []);
 
   const issueInstallCommand = useCallback(async (userId: number) => {
     try {
@@ -190,13 +190,13 @@ export function AttendanceReportTables({
       {showAgentHealth && agentHealth ? (
         <section className="data-card overflow-hidden p-0">
           <div className="border-b border-slate-200/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               Desktop agent
             </div>
             <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
               Agent health (all employees)
             </h2>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
               Shows which employee machines are running the attendance agent and who has no recent activity.
               Click any employee row for full attendance reasons.
             </p>
@@ -212,7 +212,7 @@ export function AttendanceReportTables({
                     <Link
                       key={state}
                       href={queryWithAgentState(agentFilterQueryBase, state, filterBasePath)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
                         isActive
                           ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -227,14 +227,16 @@ export function AttendanceReportTables({
           </div>
           <div className="max-h-[min(40vh,22rem)] overflow-auto">
             <table className="w-full min-w-[62rem] text-left text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Check-in time</th>
                   <th className="px-4 py-3">Agent state</th>
-                  <th className="px-4 py-3">Last heartbeat</th>
-                  <th className="px-4 py-3">Last seen source</th>
+                  <th className="px-4 py-3">Late</th>
+                  <th className="px-4 py-3">Early leave</th>
+                  <th className="px-4 py-3">Absence</th>
                   <th className="px-4 py-3">Last seen</th>
                   <th className="px-4 py-3">Shift</th>
                   <th className="px-4 py-3">Attendance</th>
@@ -251,7 +253,7 @@ export function AttendanceReportTables({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {agentHealth.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={14} className="px-4 py-10 text-center text-slate-500">
                       No matching employees for current agent filters.
                     </td>
                   </tr>
@@ -261,10 +263,10 @@ export function AttendanceReportTables({
                       key={row.userId}
                       role="button"
                       tabIndex={0}
-                      aria-label={`Open attendance details for ${row.userName}`}
-                      onClick={() => openDetail(row.userId, row.userName)}
+                      aria-label={`Double-click for attendance details — ${row.userName}`}
+                      onDoubleClick={() => openDetail(row.userId, row.userName)}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
+                        if (event.key === "Enter") {
                           event.preventDefault();
                           openDetail(row.userId, row.userName);
                         }
@@ -280,9 +282,43 @@ export function AttendanceReportTables({
                       <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
                         {row.departmentName ?? "-"}
                       </td>
+                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {row.effectiveExpectedCheckInLabel}
+                            {row.usesOfficeDefault ? (
+                              <span className="text-slate-500"> (office)</span>
+                            ) : null}
+                          </span>
+                          <button
+                            type="button"
+                            className="rounded-md border border-slate-300 px-2 py-0.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (detailUser != null) closeDetail();
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              setScheduleModalUser({
+                                userId: row.userId,
+                                userName: row.userName,
+                                anchorRect: {
+                                  top: rect.top,
+                                  left: rect.left,
+                                  bottom: rect.bottom,
+                                  right: rect.right,
+                                  width: rect.width,
+                                  height: rect.height
+                                }
+                              });
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-4 py-2.5">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${toneForAgentState(
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${toneForAgentState(
                             row.state
                           )}`}
                         >
@@ -290,15 +326,109 @@ export function AttendanceReportTables({
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.lastAgentActivityAt ? formatClock(row.lastAgentActivityAt) : "-"}
+                        {row.lateMinutes > 0 ? (
+                          <button
+                            type="button"
+                            className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-sm font-semibold text-amber-900 hover:bg-amber-500/25 dark:text-amber-200"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setLateDetail({
+                                userName: row.userName,
+                                date: detailDate,
+                                dateLabel: row.lateDateLabel ?? detailDate,
+                                expectedCheckInLabel:
+                                  row.expectedCheckInLabel ?? row.effectiveExpectedCheckInLabel,
+                                clockInLabel: row.clockInLabel ?? "—",
+                                lateMinutes: row.lateMinutes,
+                                lateReason: row.lateReason,
+                                lateReasonSubmittedAt: row.lateReasonSubmittedAt
+                              });
+                            }}
+                          >
+                            {row.lateMinutes}m late · View
+                          </button>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.lastSeenSource ?? "-"}
+                        {row.earlyLeaveMinutes > 0 ? (
+                          <button
+                            type="button"
+                            className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEarlyLeaveDetail({
+                                userName: row.userName,
+                                dateLabel: formatAttendanceDateLabel(detailDate),
+                                expectedShiftEndLabel:
+                                  row.expectedShiftEndLabel ?? "—",
+                                clockOutLabel: row.clockOutLabel ?? "—",
+                                earlyLeaveMinutes: row.earlyLeaveMinutes,
+                                earlyLeaveReason: row.earlyLeaveReason,
+                                earlyLeaveReasonSubmittedAt: row.earlyLeaveReasonSubmittedAt
+                              });
+                            }}
+                          >
+                            {row.earlyLeaveMinutes}m early · View
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
+                        {row.pendingAbsenceDateLabel ? (
+                          <button
+                            type="button"
+                            className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-sm font-semibold text-rose-900 hover:bg-rose-500/25 dark:text-rose-200"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setAbsenceDetail({
+                                detail: {
+                                  userName: row.userName,
+                                  dateLabel: row.pendingAbsenceDateLabel!,
+                                  absenceReason: null,
+                                  absenceReasonSubmittedAt: null
+                                },
+                                anchorRect: anchorRectFromElement(event.currentTarget)
+                              });
+                            }}
+                          >
+                            {row.pendingAbsenceDateLabel} · reason pending
+                          </button>
+                        ) : row.viewDateAbsentWithoutClockIn ? (
+                          row.viewDateAbsenceReason ? (
+                            <button
+                              type="button"
+                              className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-sm font-semibold text-rose-900 hover:bg-rose-500/25 dark:text-rose-200"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setAbsenceDetail({
+                                  detail: {
+                                    userName: row.userName,
+                                    dateLabel: formatAttendanceDateLabel(detailDate),
+                                    absenceReason: row.viewDateAbsenceReason,
+                                    absenceReasonSubmittedAt: row.viewDateAbsenceReasonSubmittedAt
+                                  },
+                                  anchorRect: anchorRectFromElement(event.currentTarget)
+                                });
+                              }}
+                            >
+                              Absent · View reason
+                            </button>
+                          ) : (
+                            <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                              Absent · no reason
+                            </span>
+                          )
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
                         {formatAge(row.lastSeenAgeSeconds)}
                         {row.needsAttention ? (
-                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-700 dark:text-rose-300">
+                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
                             Alert
                           </span>
                         ) : null}
@@ -318,7 +448,7 @@ export function AttendanceReportTables({
                       <td className="px-4 py-2.5 text-right">
                         <button
                           type="button"
-                          className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                          className="rounded-md border border-slate-300 px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                           onClick={(event) => {
                             event.stopPropagation();
                             void issueInstallCommand(row.userId);
@@ -337,10 +467,39 @@ export function AttendanceReportTables({
         </section>
       ) : null}
 
-      {selectedUserId != null ? (
+      {scheduleModalUser ? (
+        <AttendanceEmployeeScheduleModal
+          userId={scheduleModalUser.userId}
+          userName={scheduleModalUser.userName}
+          anchorRect={scheduleModalUser.anchorRect}
+          onClose={() => setScheduleModalUser(null)}
+          onSaved={() => router.refresh()}
+        />
+      ) : null}
+
+      {lateDetail ? (
+        <AttendanceLateDetailModal detail={lateDetail} onClose={() => setLateDetail(null)} />
+      ) : null}
+
+      {earlyLeaveDetail ? (
+        <AttendanceEarlyLeaveDetailModal
+          detail={earlyLeaveDetail}
+          onClose={() => setEarlyLeaveDetail(null)}
+        />
+      ) : null}
+
+      {absenceDetail ? (
+        <AttendanceAbsenceDetailModal
+          detail={absenceDetail.detail}
+          anchorRect={absenceDetail.anchorRect}
+          onClose={() => setAbsenceDetail(null)}
+        />
+      ) : null}
+
+      {detailUser != null ? (
         <AttendanceReportEmployeeDetailPanel
-          userId={selectedUserId}
-          userName={selectedUserName}
+          userId={detailUser.userId}
+          userName={detailUser.userName}
           date={detailDate}
           onClose={closeDetail}
         />

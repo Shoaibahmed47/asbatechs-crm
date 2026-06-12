@@ -50,7 +50,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
       className="absolute inset-0 z-10 flex items-center justify-center bg-black/30"
       aria-label={`Open preview for ${item.fileName}`}
     >
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/70 px-3 py-1.5 text-sm font-medium text-white">
         <Eye className="h-3.5 w-3.5" />
         Preview
       </span>
@@ -123,7 +123,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
                     />
                     {isVideoLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-black/65 px-3 py-1.5 text-xs font-medium text-white">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-black/65 px-3 py-1.5 text-sm font-medium text-white">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           Video is loading...
                         </span>
@@ -153,7 +153,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
     return (
       <>
         <div className="w-[220px] overflow-hidden rounded-xl border border-slate-700 bg-[#111827]">
-          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-[10px] text-slate-300">
+          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-base text-slate-300">
             {item.fileName}
           </div>
           <div className="relative p-2">
@@ -174,7 +174,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
     return (
       <>
         <div className="w-[220px] overflow-hidden rounded-xl border border-slate-700 bg-[#111827]">
-          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-[10px] text-slate-300">
+          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-base text-slate-300">
             {item.fileName}
           </div>
           <div className="relative p-2">
@@ -197,7 +197,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
     return (
       <>
         <div className="w-[220px] overflow-hidden rounded-xl border border-slate-700 bg-[#111827]">
-          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-[10px] text-slate-300">
+          <div className="truncate border-b border-slate-700/80 px-2 py-1.5 text-base text-slate-300">
             {item.fileName}
           </div>
           <button
@@ -206,7 +206,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
             className="relative flex h-[166px] w-full items-center justify-center bg-black/30"
             aria-label={`Open preview for ${item.fileName}`}
           >
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/70 px-3 py-1.5 text-sm font-medium text-white">
               <Eye className="h-3.5 w-3.5" />
               Preview
             </span>
@@ -220,11 +220,11 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
   return (
     <>
       <div className="w-[220px] rounded-xl border border-slate-700 bg-[#111827] p-3">
-        <p className="truncate text-xs text-slate-200">{item.fileName}</p>
+        <p className="truncate text-sm text-slate-200">{item.fileName}</p>
         <button
           type="button"
           onClick={openPreview}
-          className="mt-2 inline-block text-xs font-medium text-sky-300 hover:underline"
+          className="mt-2 inline-block text-sm font-medium text-sky-300 hover:underline"
         >
           Preview
         </button>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
-import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { computeLiveShiftMinutes } from "@/lib/attendance-shift-minutes";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
@@ -13,8 +13,7 @@ function toDateParam(date?: string | null): string {
 }
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const payload = token ? await verifyAuthToken(token) : null;
+  const payload = await resolveStaffAuth(req);
 
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

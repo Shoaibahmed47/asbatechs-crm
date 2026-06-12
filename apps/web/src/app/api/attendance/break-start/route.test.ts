@@ -35,9 +35,10 @@ beforeEach(() => {
 });
 
 describe("attendance break-start route", () => {
-  const req = () =>
+  const req = (body?: Record<string, unknown>) =>
     ({
-      cookies: { get: () => ({ value: "token" }) }
+      cookies: { get: () => ({ value: "token" }) },
+      json: async () => body ?? { category: "lunch", note: "lunch break" }
     }) as any;
 
   it("requires clock-in before break start", async () => {

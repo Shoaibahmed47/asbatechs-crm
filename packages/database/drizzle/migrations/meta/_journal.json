@@ -155,6 +155,62 @@
       "when": 1779200000000,
       "tag": "0021_attendance_away_compliance",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0022_attendance_office_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0023_attendance_late_checkin",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0024_user_expected_check_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0025_attendance_early_leave",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0026_attendance_early_leave_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0027_attendance_late_grace_minutes",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0028_attendance_absence_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0029_break_session_notes",
+      "breakpoints": true
     }
   ]
 }

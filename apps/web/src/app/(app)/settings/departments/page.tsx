@@ -77,7 +77,7 @@ export default async function DepartmentsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Departments
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
           Manage brands and departments used for leads, users, and reports.
         </p>
       </div>
@@ -88,7 +88,7 @@ export default async function DepartmentsPage() {
           </div>
           <div className="space-y-3">
             {departments.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              <div className="py-4 text-center text-base text-slate-500 dark:text-slate-400">
                 No departments yet. Create your first one on the right.
               </div>
             ) : (
@@ -109,7 +109,7 @@ export default async function DepartmentsPage() {
                     name="description"
                     defaultValue={dept.description ?? ""}
                     rows={2}
-                    className="form-input resize-none py-2 text-xs"
+                    className="form-input resize-none py-2 text-sm"
                     placeholder="Add description"
                   />
                   <div className="flex items-center justify-end gap-2">
@@ -119,7 +119,7 @@ export default async function DepartmentsPage() {
                     <button
                       type="submit"
                       formAction={deleteDepartment}
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
                     >
                       Delete
                     </button>
@@ -135,7 +135,7 @@ export default async function DepartmentsPage() {
           </div>
           <form action={createDepartment} className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                 Name
               </label>
               <input
@@ -146,7 +146,7 @@ export default async function DepartmentsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-200">
                 Description
               </label>
               <textarea

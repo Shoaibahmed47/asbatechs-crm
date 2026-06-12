@@ -42,14 +42,14 @@ export async function sendEmployeeInvite({
   resend?: boolean;
   invitationToken?: string;
 }) {
-  const admin = createSupabaseAdminClient();
   const normalizedMetadata = normalizeEmployeeInviteMetadata(metadata);
   const isLocalRedirect =
     redirectTo.includes("localhost") || redirectTo.includes("127.0.0.1");
+  const isDevEnvironment = process.env.NODE_ENV !== "production";
 
-  // For local development, always use generated-link + SMTP flow so the
-  // email consistently carries your local redirect target.
-  if (isLocalRedirect && invitationToken) {
+  // Local dev: always use CRM invitation token + SMTP so invite works on
+  // localhost, 127.0.0.1, or LAN IP (e.g. 192.168.x.x) without Supabase redirect rules.
+  if (invitationToken && (isLocalRedirect || isDevEnvironment)) {
     const normalizedBase = redirectTo.endsWith("/")
       ? redirectTo.slice(0, -1)
       : redirectTo;
@@ -57,8 +57,9 @@ export async function sendEmployeeInvite({
     return { delivery: "smtp" as const };
   }
 
-  // For local development without a legacy token, fallback to generated-link.
-  if (!resend && !isLocalRedirect) {
+  const admin = createSupabaseAdminClient();
+
+  if (!resend && !isLocalRedirect && !isDevEnvironment) {
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: normalizedMetadata,
       redirectTo

@@ -35,6 +35,16 @@ export type EmployeeInviteRow = {
 
 export type EmployeeDirectoryRow = EmployeeUserRow | EmployeeInviteRow;
 
+type DirectoryActionConfirm = {
+  path: string;
+  body: Record<string, string>;
+  successMessage: string;
+  fallbackError: string;
+  title: string;
+  description: string;
+  confirmLabel: string;
+};
+
 export function EmployeeDirectoryTable({
   rows,
   allowAdminActions = true,
@@ -63,39 +73,30 @@ export function EmployeeDirectoryTable({
 }) {
   const [busy, setBusy] = useState(false);
   const [deleteTargetRow, setDeleteTargetRow] = useState<EmployeeDirectoryRow | null>(null);
+  const [actionConfirm, setActionConfirm] = useState<DirectoryActionConfirm | null>(null);
   const [selectedByUser, setSelectedByUser] = useState<Record<number, number[]>>({});
   const [savingAssignByUser, setSavingAssignByUser] = useState<Record<number, boolean>>({});
   const [savingDeptByUser, setSavingDeptByUser] = useState<Record<number, boolean>>({});
 
-  const runAction = useCallback(
-    async (
-      path: string,
-      body: Record<string, string>,
-      successMessage: string,
-      fallbackError: string
-    ) => {
-      if (
-        !window.confirm(
-          path.includes("resend-invite")
-            ? `Resend the invitation email to ${body.email}?`
-            : `Send a password reset link to ${body.email}?`
-        )
-      ) {
-        return;
-      }
+  const requestActionConfirm = useCallback((action: DirectoryActionConfirm) => {
+    setActionConfirm(action);
+  }, []);
 
-      setBusy(true);
-      try {
-        await apiFetch.post(path, body);
-        toast.success(successMessage, { description: body.email });
-      } catch (error) {
-        toast.error(error instanceof ApiFetchError ? error.message : fallbackError);
-      } finally {
-        setBusy(false);
-      }
-    },
-    []
-  );
+  const confirmDirectoryAction = useCallback(async () => {
+    const action = actionConfirm;
+    if (!action) return;
+
+    setBusy(true);
+    try {
+      await apiFetch.post(action.path, action.body);
+      toast.success(action.successMessage, { description: action.body.email });
+      setActionConfirm(null);
+    } catch (error) {
+      toast.error(error instanceof ApiFetchError ? error.message : action.fallbackError);
+    } finally {
+      setBusy(false);
+    }
+  }, [actionConfirm]);
 
   const runDeleteRow = useCallback(
     async (row: EmployeeDirectoryRow) => {
@@ -226,8 +227,8 @@ export function EmployeeDirectoryTable({
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {row.kind === "user" ? row.name : "Pending invitation"}
                   </div>
-                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">{email}</div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-base text-slate-600 dark:text-slate-300">{email}</div>
+                  <div className="mt-1 text-base text-slate-500 dark:text-slate-400">
                     {role} · {row.department || "Unassigned"}
                   </div>
                   <div className="mt-3 flex flex-col gap-2">
@@ -238,12 +239,15 @@ export function EmployeeDirectoryTable({
                         className="w-full justify-center gap-2"
                         disabled={busy}
                         onClick={() =>
-                          runAction(
-                            "/api/users/resend-invite",
-                            { email },
-                            "Invitation sent again",
-                            "Could not resend invitation."
-                          )
+                          requestActionConfirm({
+                            path: "/api/users/resend-invite",
+                            body: { email },
+                            successMessage: "Invitation sent again",
+                            fallbackError: "Could not resend invitation.",
+                            title: "Resend invitation?",
+                            description: `Send another invitation email to ${email}?`,
+                            confirmLabel: "Resend invite"
+                          })
                         }
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -258,12 +262,15 @@ export function EmployeeDirectoryTable({
                         className="w-full justify-center gap-2"
                         disabled={busy}
                         onClick={() =>
-                          runAction(
-                            "/api/users/reset-password",
-                            { email },
-                            "Password reset link sent",
-                            "Could not send reset link."
-                          )
+                          requestActionConfirm({
+                            path: "/api/users/reset-password",
+                            body: { email },
+                            successMessage: "Password reset link sent",
+                            fallbackError: "Could not send reset link.",
+                            title: "Reset password?",
+                            description: `Send a password reset link to ${email}? They will receive an email with instructions.`,
+                            confirmLabel: "Send reset link"
+                          })
                         }
                       >
                         <Lock className="h-4 w-4" />
@@ -284,7 +291,7 @@ export function EmployeeDirectoryTable({
                       </Button>
                     ) : null}
                     {!showResend && !showReset && !showRemove ? (
-                      <span className="text-center text-xs text-slate-400 dark:text-slate-500">—</span>
+                      <span className="text-center text-base text-slate-400 dark:text-slate-500">—</span>
                     ) : null}
                   </div>
                 </article>
@@ -297,7 +304,7 @@ export function EmployeeDirectoryTable({
       <div className={`overflow-x-auto ${mobileView === "table" ? "block" : "hidden md:block"}`}>
         <table className="min-w-[64rem] table-fixed text-left text-sm lg:min-w-full">
           <thead className="bg-slate-50/90 dark:bg-slate-900/70">
-            <tr className="border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <tr className="border-b border-slate-200/80 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
               <th className="w-[17rem] px-4 py-2.5">Name</th>
               <th className="hidden w-[17rem] px-4 py-2.5 md:table-cell">Email</th>
               <th className="hidden w-[7rem] px-4 py-2.5 md:table-cell">Role</th>
@@ -344,10 +351,10 @@ export function EmployeeDirectoryTable({
                   >
                     <td className="px-4 py-3 align-middle">
                       <div className="font-medium text-slate-950 dark:text-white">{name}</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 text-base text-slate-500 dark:text-slate-400">
                         {row.kind === "user" ? "Active employee record" : "Awaiting acceptance"}
                       </div>
-                      <div className="mt-1 space-y-0.5 text-xs text-slate-500 dark:text-slate-400 md:hidden">
+                      <div className="mt-1 space-y-0.5 text-base text-slate-500 dark:text-slate-400 md:hidden">
                         <div>{email}</div>
                         <div className="capitalize">{role}</div>
                         <div>{row.department || "Unassigned"}</div>
@@ -359,7 +366,7 @@ export function EmployeeDirectoryTable({
                       </span>
                     </td>
                     <td className="hidden px-4 py-3 align-middle md:table-cell">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-medium capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {role}
                       </span>
                     </td>
@@ -382,7 +389,7 @@ export function EmployeeDirectoryTable({
                             ))}
                           </select>
                           {savingDeptByUser[row.id] ? (
-                            <span className="text-xs text-slate-400">Saving...</span>
+                            <span className="text-base text-slate-400">Saving...</span>
                           ) : null}
                         </div>
                       ) : (
@@ -400,7 +407,7 @@ export function EmployeeDirectoryTable({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-7 w-full max-w-[12rem] justify-between gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2 text-xs font-normal shadow-none dark:border-slate-700 dark:bg-slate-900"
+                              className="h-7 w-full max-w-[12rem] justify-between gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2 text-sm font-normal shadow-none dark:border-slate-700 dark:bg-slate-900"
                             >
                               <span className="truncate text-left">
                                 {(() => {
@@ -416,7 +423,7 @@ export function EmployeeDirectoryTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-[20rem] p-2">
-                            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            <div className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
                               Assigned projects {savingAssignByUser[row.id] ? "• Saving..." : ""}
                             </div>
                             <div className="max-h-56 space-y-1 overflow-y-auto">
@@ -433,7 +440,7 @@ export function EmployeeDirectoryTable({
                                       onChange={() => toggleSelectedProject(row, opt.projectId)}
                                       className="mt-0.5 h-4 w-4 rounded border-slate-400 bg-transparent"
                                     />
-                                    <span className="text-xs text-slate-700 dark:text-slate-200">
+                                    <span className="text-base text-slate-700 dark:text-slate-200">
                                       {opt.label}
                                     </span>
                                   </label>
@@ -443,7 +450,7 @@ export function EmployeeDirectoryTable({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (
-                        <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
+                        <span className="block truncate text-base text-slate-400 dark:text-slate-500">
                           {row.kind === "user"
                             ? row.assignedClientProjects?.map((p) => p.label).join(", ") || "Unassigned"
                             : "—"}
@@ -456,15 +463,18 @@ export function EmployeeDirectoryTable({
                           <Button
                             type="button"
                             size="sm"
-                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-xs"
+                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-sm"
                             disabled={busy}
                             onClick={() =>
-                              runAction(
-                                "/api/users/resend-invite",
-                                { email },
-                                "Invitation sent again",
-                                "Could not resend invitation."
-                              )
+                              requestActionConfirm({
+                                path: "/api/users/resend-invite",
+                                body: { email },
+                                successMessage: "Invitation sent again",
+                                fallbackError: "Could not resend invitation.",
+                                title: "Resend invitation?",
+                                description: `Send another invitation email to ${email}?`,
+                                confirmLabel: "Resend invite"
+                              })
                             }
                           >
                             <RefreshCw className="h-3.5 w-3.5" />
@@ -477,15 +487,18 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-xs"
+                            className="h-8 justify-center gap-1.5 rounded-lg px-2.5 text-sm"
                             disabled={busy}
                             onClick={() =>
-                              runAction(
-                                "/api/users/reset-password",
-                                { email },
-                                "Password reset link sent",
-                                "Could not send reset link."
-                              )
+                              requestActionConfirm({
+                                path: "/api/users/reset-password",
+                                body: { email },
+                                successMessage: "Password reset link sent",
+                                fallbackError: "Could not send reset link.",
+                                title: "Reset password?",
+                                description: `Send a password reset link to ${email}? They will receive an email with instructions.`,
+                                confirmLabel: "Send reset link"
+                              })
                             }
                           >
                             <Lock className="h-3.5 w-3.5" />
@@ -498,7 +511,7 @@ export function EmployeeDirectoryTable({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 justify-center gap-1.5 rounded-lg border-red-900/60 px-2.5 text-xs text-red-500 hover:bg-red-950/20 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                            className="h-8 justify-center gap-1.5 rounded-lg border-red-900/60 px-2.5 text-sm text-red-500 hover:bg-red-950/20 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
                             disabled={busy}
                             onClick={() => void runDeleteRow(row)}
                           >
@@ -508,7 +521,7 @@ export function EmployeeDirectoryTable({
                         ) : null}
 
                         {!showResend && !showReset && !showRemove ? (
-                          <span className="px-0.5 text-xs text-slate-400 dark:text-slate-500">—</span>
+                          <span className="px-0.5 text-base text-slate-400 dark:text-slate-500">—</span>
                         ) : null}
                       </div>
                     </td>
@@ -519,6 +532,18 @@ export function EmployeeDirectoryTable({
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={!!actionConfirm}
+        title={actionConfirm?.title ?? ""}
+        description={actionConfirm?.description ?? ""}
+        confirmLabel={busy ? "Sending..." : actionConfirm?.confirmLabel ?? "Confirm"}
+        confirmDisabled={busy}
+        onCancel={() => {
+          if (busy) return;
+          setActionConfirm(null);
+        }}
+        onConfirm={() => void confirmDirectoryAction()}
+      />
       <ConfirmDialog
         open={!!deleteTargetRow}
         title="Remove employee?"

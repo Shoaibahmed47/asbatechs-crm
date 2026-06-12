@@ -2,6 +2,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
+import { formatAttendanceClock } from "@/lib/attendance-date";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 
 export type LiveAttendanceStatus = "active" | "break" | "idle" | "offline";
@@ -42,11 +43,7 @@ function toIso(d: Date | null): string | null {
 }
 
 function toShortClock(d: Date | null): string {
-  if (!d) return "-";
-  return new Date(d as Date).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return formatAttendanceClock(d);
 }
 
 type BreakRow = typeof schema.breakSessions.$inferSelect;

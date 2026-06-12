@@ -90,14 +90,14 @@ function getFollowUpBadge(lead: HotLead) {
 
   if (diffMs < 0) {
     return (
-      <span className="ml-2 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:bg-red-900/40 dark:text-red-200">
+      <span className="ml-2 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-sm font-semibold uppercase tracking-wide text-red-700 dark:bg-red-900/40 dark:text-red-200">
         Overdue
       </span>
     );
   }
   if (diffMs <= oneHourMs) {
     return (
-      <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+      <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-sm font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
         Due soon
       </span>
     );
@@ -574,16 +574,16 @@ export default function HotLeadsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Hot leads
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
           Potential clients (type: <span className="font-medium">hot</span>).
-          Rows live in the unified <code className="text-xs">leads</code> table
-          with <code className="text-xs">type = hot</code>.
+          Rows live in the unified <code className="text-sm">leads</code> table
+          with <code className="text-sm">type = hot</code>.
         </p>
       </div>
 
       {error && (
         <div
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300"
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300"
           role="alert"
         >
           {error}
@@ -591,7 +591,7 @@ export default function HotLeadsPage() {
       )}
 
       {editingLeadId ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
           <span>Editing lead #{editingLeadId}. Update fields and save.</span>
         </div>
       ) : null}
@@ -683,7 +683,7 @@ export default function HotLeadsPage() {
           </h2>
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Search
               </label>
               <input
@@ -694,7 +694,7 @@ export default function HotLeadsPage() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Department
               </label>
               <select
@@ -711,7 +711,7 @@ export default function HotLeadsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Assigned
               </label>
               <select
@@ -728,7 +728,7 @@ export default function HotLeadsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Stage
               </label>
               <select
@@ -745,7 +745,7 @@ export default function HotLeadsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Created from
               </label>
               <input
@@ -756,7 +756,7 @@ export default function HotLeadsPage() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Created to
               </label>
               <input
@@ -767,7 +767,7 @@ export default function HotLeadsPage() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Follow-up from
               </label>
               <input
@@ -778,7 +778,7 @@ export default function HotLeadsPage() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium uppercase text-slate-500 dark:text-slate-400">
+              <label className="block text-base font-medium uppercase text-slate-500 dark:text-slate-400">
                 Follow-up to
               </label>
               <input
@@ -803,7 +803,7 @@ export default function HotLeadsPage() {
         <div className="max-h-[min(65vh,560px)] overflow-auto rounded-lg border border-slate-200/40 dark:border-slate-700/40">
           <table className="w-full min-w-[720px] table-auto text-sm">
             <thead>
-              <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-xs uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.3)]">
+              <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-sm uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.3)]">
                 {sortHead("client_name", "Client")}
                 <th className="pb-2 text-left font-medium">Phone</th>
                 <th className="pb-2 text-left font-medium">Email</th>
@@ -894,25 +894,25 @@ export default function HotLeadsPage() {
                         {getFollowUpBadge(lead)}
                       </div>
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.phone || "—"}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.email || "—"}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.source || "—"}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-700 dark:text-slate-300">
                       {deptName(lead.departmentId)}
                     </td>
-                    <td className="py-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <td className="py-2.5 text-base text-slate-700 dark:text-slate-300">
                       {userName(lead.assignedUserId)}
                     </td>
-                    <td className="py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                    <td className="py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200">
                       {lead.status}
                     </td>
-                    <td className="whitespace-nowrap py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="whitespace-nowrap py-2.5 text-base text-slate-600 dark:text-slate-300">
                       {lead.nextFollowUpAt
                         ? formatFollowUpDateTime(
                             lead.nextFollowUpAt,
@@ -921,12 +921,12 @@ export default function HotLeadsPage() {
                         : "—"}
                     </td>
                     <td
-                      className="max-w-[140px] truncate py-2.5 text-xs text-slate-600 dark:text-slate-300"
+                      className="max-w-[140px] truncate py-2.5 text-base text-slate-600 dark:text-slate-300"
                       title={lead.notes ?? ""}
                     >
                       {lead.notes || "—"}
                     </td>
-                    <td className="whitespace-nowrap py-2.5 text-xs text-slate-500 dark:text-slate-400">
+                    <td className="whitespace-nowrap py-2.5 text-base text-slate-500 dark:text-slate-400">
                       {lead.createdAt
                         ? new Date(lead.createdAt).toLocaleString()
                         : "—"}

@@ -125,6 +125,7 @@ function Write-AgentConfigFile {
     "`$env:ATT_AGENT_ACTIVITY_PING_SECONDS = '$ActivityPingSeconds'"
     "`$env:ATT_AGENT_POLL_SECONDS = '$PollSeconds'"
     "`$env:ATT_AGENT_TOKEN_REFRESH_LEAD_MINUTES = '$TokenRefreshLeadMinutes'"
+    "`$env:ATT_AGENT_CURSOR_IDLE_ENABLED = 'false'"
   )
 
   if (-not [string]::IsNullOrWhiteSpace($Token)) {
