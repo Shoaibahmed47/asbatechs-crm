@@ -12,8 +12,8 @@ export const ATTENDANCE_AGENT_ALERT_STALE_MINUTES = 10;
  * browser, API, and desktop-agent defaults read from these values.
  */
 /**
- * Temporarily disable mouse/keyboard idle tracking (browser + agent).
- * Set to `true` to re-enable cursor idle away sessions and admin alerts.
+ * FUTURE: mouse/keyboard idle tracking.
+ * Disabled for now — set to `true` and uncomment client blocks in AttendancePageClient.
  */
 export const ATTENDANCE_CURSOR_IDLE_ENABLED = false;
 

@@ -7,6 +7,7 @@ import { getLocalDateString } from "@/lib/attendance-date";
 import { computeEarlyLeaveForClockOut } from "@/lib/attendance-early-leave";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
+import { buildClockOutFeedbackMessage } from "@/lib/attendance-clock-feedback";
 
 export async function POST(req: NextRequest) {
   const payload = await resolveStaffAuth(req);
@@ -124,5 +125,11 @@ export async function POST(req: NextRequest) {
       .returning();
   });
 
-  return NextResponse.json({ attendance: updated });
+  return NextResponse.json({
+    attendance: updated,
+    feedback: {
+      workMinutes: totalWorkMinutes,
+      message: buildClockOutFeedbackMessage(totalWorkMinutes)
+    }
+  });
 }

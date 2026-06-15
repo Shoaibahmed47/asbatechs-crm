@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
   const isManualBreak = openSession.breakType === "manual";
   const rawEndNote = typeof body.endNote === "string" ? body.endNote.trim() : "";
 
+  /* FUTURE: end-break popup — return note was required here when popup was enabled
   if (isManualBreak && rawEndNote.length < 3) {
     return NextResponse.json(
       {
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  */
 
   const now = new Date();
   const diffMs = now.getTime() - new Date(openSession.breakStart as Date).getTime();
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
     .update(schema.breakSessions)
     .set({
       breakEnd: now,
-      endNote: isManualBreak ? rawEndNote.slice(0, 500) : openSession.endNote
+      endNote: rawEndNote ? rawEndNote.slice(0, 500) : openSession.endNote
     })
     .where(eq(schema.breakSessions.id, openSession.id))
     .returning();
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
       employeeName: employee?.name?.trim() || "Employee",
       breakCategory: openSession.breakCategory ?? "other",
       startNote: openSession.startNote,
-      endNote: rawEndNote,
+      endNote: rawEndNote || null,
       breakStart: new Date(openSession.breakStart as Date),
       breakEnd: now,
       durationMinutes: addedMinutes

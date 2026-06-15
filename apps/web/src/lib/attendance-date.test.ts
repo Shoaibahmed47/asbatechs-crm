@@ -2,6 +2,7 @@ import {
   enumerateLocalDates,
   formatAttendanceClock,
   formatAttendanceDateTime,
+  formatAttendanceDurationReadable,
   getLocalDateString
 } from "./attendance-date";
 
@@ -34,5 +35,12 @@ describe("attendance-date", () => {
   it("keys today by attendance timezone", () => {
     const instant = new Date("2026-06-12T20:30:00.000Z"); // 1:30 AM PKT on Jun 13
     expect(getLocalDateString(instant)).toBe("2026-06-13");
+  });
+
+  it("formats readable durations for late/early badges", () => {
+    expect(formatAttendanceDurationReadable(19)).toBe("19 min");
+    expect(formatAttendanceDurationReadable(79)).toBe("1 hour 19 min");
+    expect(formatAttendanceDurationReadable(60)).toBe("1 hour");
+    expect(formatAttendanceDurationReadable(120)).toBe("2 hours");
   });
 });

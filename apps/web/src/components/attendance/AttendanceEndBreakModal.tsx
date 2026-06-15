@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatAttendanceClock } from "@/lib/attendance-date";
@@ -24,9 +25,14 @@ export function AttendanceEndBreakModal({
   onSubmit
 }: Props) {
   const [endNote, setEndNote] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const panel = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]" aria-hidden />
       <div
         role="dialog"
@@ -100,4 +106,7 @@ export function AttendanceEndBreakModal({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(panel, document.body);
 }

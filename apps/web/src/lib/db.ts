@@ -1,4 +1,13 @@
 import { createDb } from "@asbatechs-crm/database";
+import path from "path";
+import dotenv from "dotenv";
+
+if (!process.env.DATABASE_URL) {
+  dotenv.config({ path: path.join(process.cwd(), ".env") });
+  dotenv.config({ path: path.join(process.cwd(), ".env.local"), override: true });
+  dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
+  dotenv.config({ path: path.resolve(process.cwd(), "../../.env.local"), override: true });
+}
 
 const databaseUrl =
   process.env.DATABASE_URL ??

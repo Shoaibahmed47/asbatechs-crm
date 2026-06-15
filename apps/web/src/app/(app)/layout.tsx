@@ -7,12 +7,20 @@ import { AppMobileNav } from "@/components/AppMobileNav";
 import { AppSidebarNav } from "@/components/AppSidebarNav";
 import { BodyPointerEventsGuard } from "@/components/BodyPointerEventsGuard";
 import { DailyFocusCard } from "@/components/DailyFocusCard";
+import {
+  WorkspaceWelcomeBanner
+} from "@/components/WorkspaceWelcomeBanner";
+import { WorkspaceMainWelcome } from "@/components/WorkspaceMainWelcome";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { getWorkspaceWelcomeProfile } from "@/lib/workspace-welcome";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   const session = token ? await verifyAuthToken(token) : null;
+  const welcomeProfile = session
+    ? await getWorkspaceWelcomeProfile(session.userId)
+    : null;
 
   return (
     <div className="app-shell overflow-x-hidden">
@@ -44,20 +52,27 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-h-screen min-w-0 flex-col xl:ml-[280px] 2xl:ml-[304px]">
         <header className="sticky top-0 z-10 px-4 pb-3 pt-4 sm:px-5 xl:px-6 2xl:px-8">
-          <div className="app-panel surface-reveal flex flex-col gap-4 rounded-[24px] px-4 py-4 sm:flex-row sm:items-center sm:justify-between 2xl:px-5">
-            <div>
-              <div className="mb-3 lg:hidden">
+          <div className="app-panel surface-reveal flex flex-col gap-4 rounded-[24px] px-4 py-5 sm:flex-row sm:items-start sm:justify-between 2xl:px-6 2xl:py-6">
+            <div className="min-w-0 flex-1">
+              <div className="mb-4 lg:hidden">
                 <AppMobileNav userRole={session?.role} />
               </div>
-              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Internal operations command center
-              </div>
-              <div className="mt-2 font-[var(--font-display)] text-xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-                Professional team workflow management
-              </div>
-              <p className="mt-1.5 text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                Clear sales visibility, attendance tracking, and admin oversight from one focused workspace.
-              </p>
+              {welcomeProfile && session ? (
+                <WorkspaceWelcomeBanner
+                  profile={welcomeProfile}
+                  role={session.role}
+                  variant="header"
+                />
+              ) : (
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    AsbaTechs CRM
+                  </div>
+                  <div className="mt-2 font-[var(--font-display)] text-xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+                    Internal workspace
+                  </div>
+                </div>
+              )}
             </div>
             <AppHeaderUser />
           </div>
@@ -66,6 +81,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 px-4 pb-6 text-base leading-relaxed sm:px-5 xl:px-6 2xl:px-8">
           <div className="surface-reveal min-w-0">
             <AppBreadcrumbs />
+            {welcomeProfile && session ? (
+              <WorkspaceMainWelcome profile={welcomeProfile} role={session.role} />
+            ) : null}
             {children}
           </div>
         </main>

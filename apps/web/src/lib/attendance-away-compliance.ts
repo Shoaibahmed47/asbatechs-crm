@@ -1,9 +1,10 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { formatAttendanceClock } from "@/lib/attendance-date";
+import { formatAttendanceClock, formatAttendanceDurationReadable } from "@/lib/attendance-date";
 import { schema } from "@asbatechs-crm/database";
 import {
+  ATTENDANCE_CURSOR_IDLE_ENABLED,
   ATTENDANCE_CURSOR_IDLE_AWAY_MS,
   ATTENDANCE_LAPTOP_SLEEP_AWAY_MS,
   ATTENDANCE_TAB_CLOSE_AWAY_MS
@@ -34,17 +35,16 @@ export function awayCauseLabel(cause: ComplianceAwayCause): string {
 export function buildAutoAwayReason(
   cause: ComplianceAwayCause,
   awaySeconds: number,
-  source: "browser" | "agent" | "system" = "system"
+  _source: "browser" | "agent" | "system" = "system"
 ): string {
   const duration = formatAwayDuration(awaySeconds);
-  const via = source === "agent" ? "desktop agent" : source === "browser" ? "browser" : "system";
   if (cause === UNSCHEDULED_CAUSE.TAB_CLOSE) {
-    return `Attendance browser tab was closed for ${duration} (auto-detected via ${via}).`;
+    return `Attendance tab closed for ${duration}.`;
   }
   if (cause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
-    return `No mouse or keyboard activity for ${duration} (auto-detected via ${via}).`;
+    return `No mouse or keyboard for ${duration}.`;
   }
-  return `Laptop was locked or asleep for ${duration} (auto-detected via ${via}).`;
+  return `Laptop locked or asleep for ${duration}.`;
 }
 
 function isComplianceAwayCause(value: string | null | undefined): value is ComplianceAwayCause {
@@ -60,10 +60,16 @@ function minutesBetween(start: Date, end: Date): number {
 }
 
 function formatAwayDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const mins = Math.floor(seconds / 60);
-  const rem = seconds % 60;
-  return rem > 0 ? `${mins}m ${rem}s` : `${mins}m`;
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  if (safeSeconds < 60) {
+    return safeSeconds === 1 ? "1 second" : `${safeSeconds} seconds`;
+  }
+  const minutes = Math.floor(safeSeconds / 60);
+  const rem = safeSeconds % 60;
+  const minutePart = formatAttendanceDurationReadable(minutes);
+  if (rem === 0) return minutePart;
+  const secondPart = rem === 1 ? "1 second" : `${rem} seconds`;
+  return `${minutePart} ${secondPart}`;
 }
 
 async function notifyAdminsAwayAlert(params: {
@@ -137,7 +143,7 @@ async function notifyAdminsTabBrowserClosed(params: {
   if (existing) return;
 
   const closedLabel = formatAttendanceClock(closedAt);
-  const message = `${employeeName} closed the Attendance browser tab at ${closedLabel}. They can use other tabs or sites; only closing this CRM tab is reported.`;
+  const message = `${employeeName} closed the attendance tab at ${closedLabel}.`;
 
   const admins = await db
     .select({ id: schema.users.id })
@@ -184,7 +190,7 @@ async function notifyAdminsTabBrowserReturned(params: {
   if (existing) return;
 
   const duration = formatAwayDuration(awaySeconds);
-  const message = `${employeeName} is active again — Attendance tab reopened after ${duration} away.`;
+  const message = `${employeeName} returned to the attendance tab after ${duration}.`;
 
   const admins = await db
     .select({ id: schema.users.id })
@@ -255,6 +261,11 @@ export async function startComplianceAway(params: {
   employeeUserId?: number;
   employeeName?: string;
 }): Promise<{ started: boolean; sessionId?: number }> {
+  /* FUTURE: mouse/keyboard idle — remove this guard when ATTENDANCE_CURSOR_IDLE_ENABLED is true */
+  if (!ATTENDANCE_CURSOR_IDLE_ENABLED && params.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
+    return { started: false };
+  }
+
   if (params.hasOpenManualBreak) {
     return { started: false };
   }
@@ -348,6 +359,11 @@ export async function endComplianceAway(params: {
   addedMinutes?: number;
   autoReason?: string;
 }> {
+  /* FUTURE: mouse/keyboard idle — remove this guard when ATTENDANCE_CURSOR_IDLE_ENABLED is true */
+  if (!ATTENDANCE_CURSOR_IDLE_ENABLED && params.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
+    return { ok: true, addedMinutes: 0 };
+  }
+
   const [openSession] = await db
     .select()
     .from(schema.breakSessions)

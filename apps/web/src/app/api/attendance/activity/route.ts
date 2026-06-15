@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
   );
 
   if (
+    /* FUTURE: mouse/keyboard idle — enforced via ATTENDANCE_CURSOR_IDLE_ENABLED */
     !ATTENDANCE_CURSOR_IDLE_ENABLED &&
     awayCause === UNSCHEDULED_CAUSE.CURSOR_IDLE &&
     (eventType === "away_start" || eventType === "away_end")

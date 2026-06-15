@@ -2,7 +2,7 @@
 
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatAttendanceDateTime } from "@/lib/attendance-date";
+import { formatAttendanceDateTime, formatAttendanceDurationReadable } from "@/lib/attendance-date";
 
 export type AdminEarlyLeaveDetail = {
   userName: string;
@@ -18,14 +18,6 @@ type Props = {
   detail: AdminEarlyLeaveDetail;
   onClose: () => void;
 };
-
-function formatEarlyDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  if (rem === 0) return `${hours} hour${hours === 1 ? "" : "s"}`;
-  return `${hours}h ${rem}m`;
-}
 
 export function AttendanceEarlyLeaveDetailModal({ detail, onClose }: Props) {
   return (
@@ -71,7 +63,7 @@ export function AttendanceEarlyLeaveDetailModal({ detail, onClose }: Props) {
           <div className="flex justify-between gap-3">
             <dt className="text-slate-500 dark:text-slate-400">Left early by</dt>
             <dd className="font-semibold text-sky-800 dark:text-sky-300">
-              {formatEarlyDuration(detail.earlyLeaveMinutes)}
+              {formatAttendanceDurationReadable(detail.earlyLeaveMinutes)}
             </dd>
           </div>
         </dl>

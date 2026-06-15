@@ -89,12 +89,10 @@ export function buildAttendanceReason(params: {
       [ATTENDANCE_REASON_CODE.IDLE_SLEEP]: "Laptop lock/sleep detected during duty.",
       [ATTENDANCE_REASON_CODE.IDLE_AGENT]: "No activity detected by desktop agent.",
       [ATTENDANCE_REASON_CODE.IDLE_BROWSER]: "No activity detected in attendance page.",
-      [ATTENDANCE_REASON_CODE.AWAY_TAB_CLOSE]:
-        "Attendance browser tab was closed (switching to other tabs is allowed).",
-      [ATTENDANCE_REASON_CODE.AWAY_CURSOR_IDLE]:
-        "No cursor movement longer than allowed.",
-      [ATTENDANCE_REASON_CODE.AWAY_LAPTOP_SLEEP]:
-        "Laptop sleep/lock longer than allowed.",
+      [ATTENDANCE_REASON_CODE.AWAY_TAB_CLOSE]: "Attendance tab closed.",
+      // FUTURE: only used if mouse/keyboard idle is re-enabled or legacy rows exist
+      [ATTENDANCE_REASON_CODE.AWAY_CURSOR_IDLE]: "No mouse or keyboard activity.",
+      [ATTENDANCE_REASON_CODE.AWAY_LAPTOP_SLEEP]: "Laptop locked or asleep.",
       [ATTENDANCE_REASON_CODE.ACTIVE_DEFAULT]: "Working."
     };
 

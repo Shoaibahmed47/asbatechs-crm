@@ -103,26 +103,63 @@ export default async function DashboardPage({
   /** Org-wide live attendance (table + aggregated counts): administrators only. */
   const isAdminViewer = isAdminRole(session?.role);
 
-  const [hotCount] = await db
-    .select({ value: count() })
-    .from(schema.leads)
-    .where(and(eq(schema.leads.type, "hot"), eq(schema.leads.isDeleted, false)));
-  const [saleCount] = await db
-    .select({ value: count() })
-    .from(schema.leads)
-    .where(and(eq(schema.leads.type, "sale"), eq(schema.leads.isDeleted, false)));
-  const [totalSales] = await db
-    .select({ value: sum(schema.leads.saleAmount) })
-    .from(schema.leads)
-    .where(
-      and(
-        eq(schema.leads.type, "sale"),
-        isNotNull(schema.leads.saleAmount),
-        eq(schema.leads.isDeleted, false)
-      )
-    );
+  const [hotResult, saleResult, totalSalesResult, userCountResult, todaysLogsResult] =
+    await Promise.allSettled([
+      db
+        .select({ value: count() })
+        .from(schema.leads)
+        .where(and(eq(schema.leads.type, "hot"), eq(schema.leads.isDeleted, false))),
+      db
+        .select({ value: count() })
+        .from(schema.leads)
+        .where(and(eq(schema.leads.type, "sale"), eq(schema.leads.isDeleted, false))),
+      db
+        .select({ value: sum(schema.leads.saleAmount) })
+        .from(schema.leads)
+        .where(
+          and(
+            eq(schema.leads.type, "sale"),
+            isNotNull(schema.leads.saleAmount),
+            eq(schema.leads.isDeleted, false)
+          )
+        ),
+      db.select({ value: count() }).from(schema.users),
+      db
+        .select()
+        .from(schema.attendanceLogs)
+        .where(eq(schema.attendanceLogs.date, getLocalDateString() as any))
+    ]);
 
-  const [userCount] = await db.select({ value: count() }).from(schema.users);
+  const dashboardLoadErrors: string[] = [];
+  const hotCount =
+    hotResult.status === "fulfilled" ? hotResult.value[0] : undefined;
+  const saleCount =
+    saleResult.status === "fulfilled" ? saleResult.value[0] : undefined;
+  const totalSales =
+    totalSalesResult.status === "fulfilled" ? totalSalesResult.value[0] : undefined;
+  const userCount =
+    userCountResult.status === "fulfilled" ? userCountResult.value[0] : undefined;
+  const todaysLogs =
+    todaysLogsResult.status === "fulfilled" ? todaysLogsResult.value : [];
+
+  if (hotResult.status === "rejected") {
+    console.error("[dashboard] hot leads count", hotResult.reason);
+    dashboardLoadErrors.push("Lead counts could not be loaded.");
+  }
+  if (saleResult.status === "rejected" || totalSalesResult.status === "rejected") {
+    console.error("[dashboard] sales stats", saleResult.reason ?? totalSalesResult.reason);
+    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
+      dashboardLoadErrors.push("Sales summary could not be loaded.");
+    }
+  }
+  if (userCountResult.status === "rejected") {
+    console.error("[dashboard] user count", userCountResult.reason);
+    dashboardLoadErrors.push("Team member count could not be loaded.");
+  }
+  if (todaysLogsResult.status === "rejected") {
+    console.error("[dashboard] today attendance logs", todaysLogsResult.reason);
+    dashboardLoadErrors.push("Today’s attendance snapshot could not be loaded.");
+  }
 
   const totalLeads = Number(hotCount?.value ?? 0) + Number(saleCount?.value ?? 0);
   const totalSalesAmount = Number(totalSales?.value ?? 0);
@@ -171,15 +208,18 @@ export default async function DashboardPage({
   const normalizedFrom = fromDate <= toDate ? fromDate : toDate;
   const normalizedTo = fromDate <= toDate ? toDate : fromDate;
 
-  const todaysLogs = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(eq(schema.attendanceLogs.date, today as any));
   const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
 
-  const liveAttendanceToday = isAdminViewer
-    ? await getAttendanceStatusForDate(today)
-    : null;
+  let liveAttendanceToday: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
+  if (isAdminViewer) {
+    const liveResult = await Promise.allSettled([getAttendanceStatusForDate(today)]);
+    if (liveResult[0].status === "fulfilled") {
+      liveAttendanceToday = liveResult[0].value;
+    } else {
+      console.error("[dashboard] live attendance", liveResult[0].reason);
+      dashboardLoadErrors.push("Live attendance status could not be loaded.");
+    }
+  }
 
   let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
   let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
@@ -343,17 +383,33 @@ export default async function DashboardPage({
   const attendanceDetailDate = reportMode === "daily" ? reportDate : normalizedTo;
   const attendanceLoadError =
     attendanceLoadErrors.length > 0 ? attendanceLoadErrors.join(" ") : null;
+  const dashboardLoadError =
+    dashboardLoadErrors.length > 0 ? dashboardLoadErrors.join(" ") : null;
 
   return (
     <div className="space-y-8">
+      {dashboardLoadError ? (
+        <div
+          className="rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-4 text-base leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+          role="alert"
+        >
+          <p className="font-semibold">Some dashboard data could not be loaded</p>
+          <p className="mt-1">{dashboardLoadError}</p>
+          <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/90">
+            This is usually a temporary database connection issue. Check your internet, confirm
+            Supabase is active, then refresh. If it keeps happening, verify{" "}
+            <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">DATABASE_URL</code>{" "}
+            in <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">apps/web/.env</code>.
+          </p>
+        </div>
+      ) : null}
       <section className="app-panel rounded-[24px] px-4 py-5 sm:rounded-[28px] sm:px-8 sm:py-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="glass-chip inline-flex text-sky-700 dark:text-sky-200">
               Executive overview
             </div>
-            <h1 className="page-title mt-4">CRM dashboard</h1>
-            <p className="page-subtitle">
+            <p className="page-subtitle mt-4">
               Track lead pipeline health, revenue momentum
               {isAdminViewer ? ", and live team attendance " : " "}
               from one professional operations view.

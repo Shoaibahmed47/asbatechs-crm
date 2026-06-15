@@ -14,10 +14,10 @@ export type BreakSessionForLabel = {
 export function breakSessionReasonLabel(session: BreakSessionForLabel): string {
   if (session.breakType === "manual") {
     const category = formatBreakCategoryLabel(session.breakCategory);
-    const start = session.startNote?.trim();
-    const end = session.endNote?.trim();
+    const where = session.startNote?.trim();
     const parts = [category];
-    if (start) parts.push(`start: ${start}`);
+    if (where) parts.push(`where: ${where}`);
+    const end = session.endNote?.trim();
     if (end) parts.push(`return: ${end}`);
     return parts.join(" · ");
   }

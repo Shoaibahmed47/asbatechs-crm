@@ -70,6 +70,17 @@ export function formatWorkDuration(minutes: number | null | undefined): string {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
+/** Human-readable duration for late/early badges and modals (e.g. "1 hour 19 min"). */
+export function formatAttendanceDurationReadable(minutes: number): string {
+  const safeMinutes = Math.max(0, Math.floor(minutes));
+  if (safeMinutes < 60) return `${safeMinutes} min`;
+  const hours = Math.floor(safeMinutes / 60);
+  const rem = safeMinutes % 60;
+  const hourLabel = hours === 1 ? "hour" : "hours";
+  if (rem === 0) return `${hours} ${hourLabel}`;
+  return `${hours} ${hourLabel} ${rem} min`;
+}
+
 function addCalendarDays(iso: string, deltaDays: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const cursor = new Date(Date.UTC(y, (m || 1) - 1, d || 1));

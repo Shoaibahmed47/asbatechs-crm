@@ -58,7 +58,7 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
   try {
     const { payload } = await jwtVerify<AuthTokenPayload>(token, JWT_SECRET);
     return {
-      userId: payload.userId,
+      userId: Number(payload.userId),
       role: payload.role,
       departmentId:
         typeof payload.departmentId === "number" ? payload.departmentId : null

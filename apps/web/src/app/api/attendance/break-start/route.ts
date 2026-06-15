@@ -84,9 +84,12 @@ export async function POST(req: NextRequest) {
   }
 
   const rawNote = typeof body.note === "string" ? body.note.trim() : "";
-  if (category === "other" && rawNote.length < 3) {
+  if (rawNote.length < 3) {
     return NextResponse.json(
-      { error: "Please describe your break when type is Other (at least 3 characters)." },
+      {
+        error:
+          "Please say where you are going before starting break (at least 3 characters)."
+      },
       { status: 400 }
     );
   }

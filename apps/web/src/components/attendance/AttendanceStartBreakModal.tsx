@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +25,14 @@ export function AttendanceStartBreakModal({
 }: Props) {
   const [category, setCategory] = useState<BreakCategory>("lunch");
   const [note, setNote] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const panel = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
@@ -47,8 +53,12 @@ export function AttendanceStartBreakModal({
               Start break
             </h2>
             <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-              Choose break type and add a short note. Your manager will see this when you
-              end the break.
+              Tell your manager where you are going now. Start time, end time, and total
+              break duration are recorded automatically when you click{" "}
+              <strong className="font-semibold text-slate-800 dark:text-slate-200">
+                End break
+              </strong>
+              — no second popup.
             </p>
           </div>
         </div>
@@ -73,17 +83,22 @@ export function AttendanceStartBreakModal({
 
         <label className="mt-3 block space-y-1.5">
           <span className="text-base font-medium text-slate-700 dark:text-slate-300">
-            Note (optional)
+            Where are you going / what will you do?
           </span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            rows={3}
+            rows={4}
             maxLength={240}
             disabled={submitting}
-            placeholder="Example: lunch at home, mosque nearby…"
-            className="form-input min-h-[4.5rem] w-full resize-y py-2 text-sm"
+            placeholder="Example: tea in kitchen, lunch at home, prayer at mosque…"
+            className="form-input min-h-[5.5rem] w-full resize-y py-2 text-sm"
+            required
           />
+          <span className="text-base text-slate-500 dark:text-slate-400">
+            Required — your manager sees this on the break report with start, end, and
+            duration.
+          </span>
         </label>
 
         {error ? <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">{error}</p> : null}
@@ -95,19 +110,16 @@ export function AttendanceStartBreakModal({
           <Button
             type="button"
             size="sm"
-            disabled={submitting || (category === "other" && note.trim().length < 3)}
+            disabled={submitting || note.trim().length < 3}
             onClick={() => onSubmit({ category, note: note.trim() })}
           >
             {submitting ? "Starting…" : "Start break"}
           </Button>
         </div>
-
-        {category === "other" ? (
-          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-            For &quot;Other&quot;, please write at least 3 characters in the note.
-          </p>
-        ) : null}
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(panel, document.body);
 }

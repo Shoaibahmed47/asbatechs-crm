@@ -520,6 +520,15 @@ export function AdminOverviewClient({
   const cardClass =
     "data-card px-4 py-3 text-left transition hover:border-sky-300 hover:bg-sky-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:border-sky-700 dark:hover:bg-sky-950/20";
 
+  const adminPanelSectionClass =
+    "rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/85 via-white to-cyan-50/35 p-5 shadow-sm dark:border-sky-800/55 dark:from-sky-950/30 dark:via-slate-950 dark:to-cyan-950/15 sm:p-6";
+
+  const adminPanelLabelClass =
+    "mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300";
+
+  const adminPanelLinkClass =
+    "inline-flex items-center rounded-xl border border-sky-200/90 bg-white/95 px-4 py-2.5 text-sm font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 dark:border-sky-800/60 dark:bg-slate-900/85 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/40";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -538,9 +547,9 @@ export function AdminOverviewClient({
         {isAdmin ? <AdminExportControls snapshot={snapshot} /> : null}
       </div>
 
-      <section className="data-card p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-          <Filter className="h-3.5 w-3.5" />
+      <section className={adminPanelSectionClass}>
+        <div className={adminPanelLabelClass}>
+          <Filter className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
           Global filters
         </div>
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -579,14 +588,13 @@ export function AdminOverviewClient({
             ))}
           </select>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={clearFilters}>
             Reset filters
           </Button>
           <Button
             type="button"
             variant={activePanel ? "default" : "outline"}
-            size="sm"
             onClick={showAllSections}
             disabled={!activePanel}
             title={
@@ -599,7 +607,7 @@ export function AdminOverviewClient({
           </Button>
         </div>
         {activePanel ? (
-          <p className="mt-2 text-sm text-sky-800 dark:text-sky-300">
+          <p className="mt-3 rounded-xl border border-sky-200/80 bg-sky-50/70 px-3 py-2 text-sm text-sky-900 dark:border-sky-800/50 dark:bg-sky-950/35 dark:text-sky-200">
             Focused on <span className="font-semibold">{panelLabels[activePanel]}</span> only.
             Other tables are hidden until you click <span className="font-semibold">Show all sections</span>{" "}
             or the same summary card again.
@@ -608,26 +616,24 @@ export function AdminOverviewClient({
       </section>
 
       {isAdmin ? (
-        <section className="data-card p-4">
-          <div className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Quick actions
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/users" className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm">
+        <section className={adminPanelSectionClass}>
+          <div className={adminPanelLabelClass}>Quick actions</div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/users" className={adminPanelLinkClass}>
               Invite user
             </Link>
-            <Link href="/settings/departments" className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm">
+            <Link href="/settings/departments" className={adminPanelLinkClass}>
               Create department
             </Link>
-            <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:min-w-[20rem]">
               <input
                 value={resendEmail}
                 onChange={(e) => setResendEmail(e.target.value)}
                 placeholder="email@example.com"
-                className="form-input w-full min-w-[14rem] flex-1"
+                className="form-input min-w-[14rem] flex-1"
               />
-              <Button type="button" size="sm" disabled={actionBusy} onClick={handleResendInvite}>
-                {actionBusy ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              <Button type="button" disabled={actionBusy} onClick={handleResendInvite}>
+                {actionBusy ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Resend invite
               </Button>
             </div>
@@ -638,18 +644,18 @@ export function AdminOverviewClient({
       ) : null}
 
       {isAdmin ? (
-        <section className="data-card p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            <Clock className="h-3.5 w-3.5" />
+        <section className={adminPanelSectionClass}>
+          <div className={adminPanelLabelClass}>
+            <Clock className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
             Office timing (attendance)
           </div>
-          <p className="mb-3 text-base text-slate-600 dark:text-slate-400">
+          <p className="mb-4 text-base leading-relaxed text-slate-600 dark:text-slate-400">
             Set expected check-in, shift end, and how many minutes late are ignored
             before late arrival is recorded.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+              <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Expected check-in
               </span>
               <input
@@ -663,8 +669,8 @@ export function AdminOverviewClient({
                 {formatOfficeTimeLabel(officeCheckInTime)}
               </span>
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+              <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Shift end
               </span>
               <input
@@ -681,8 +687,8 @@ export function AdminOverviewClient({
                   : ""}
               </span>
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-base font-medium text-slate-600 dark:text-slate-400">
+            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+              <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Late grace (minutes)
               </span>
               <input
@@ -704,12 +710,11 @@ export function AdminOverviewClient({
             <div className="flex items-end">
               <Button
                 type="button"
-                size="sm"
                 disabled={officeHoursLoading || officeHoursSaving}
                 onClick={() => void handleSaveOfficeHours()}
               >
                 {officeHoursSaving ? (
-                  <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Save timing
               </Button>

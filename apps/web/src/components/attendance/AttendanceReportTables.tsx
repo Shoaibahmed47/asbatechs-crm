@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
 import type { AttendanceDailyRow, AttendanceRangeRow } from "@/lib/attendance-daily-report";
-import { formatAttendanceDateLabel } from "@/lib/attendance-date";
+import { formatAttendanceDateLabel, formatAttendanceDurationReadable } from "@/lib/attendance-date";
 import { AttendanceReportEmployeeDetailPanel } from "./AttendanceReportEmployeeDetailPanel";
 import {
   AttendanceEmployeeScheduleModal,
@@ -329,7 +329,7 @@ export function AttendanceReportTables({
                         {row.lateMinutes > 0 ? (
                           <button
                             type="button"
-                            className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-sm font-semibold text-amber-900 hover:bg-amber-500/25 dark:text-amber-200"
+                            className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
                             onClick={(event) => {
                               event.stopPropagation();
                               setLateDetail({
@@ -345,7 +345,7 @@ export function AttendanceReportTables({
                               });
                             }}
                           >
-                            {row.lateMinutes}m late · View
+                            {formatAttendanceDurationReadable(row.lateMinutes)} late · View
                           </button>
                         ) : (
                           "—"
@@ -370,7 +370,7 @@ export function AttendanceReportTables({
                               });
                             }}
                           >
-                            {row.earlyLeaveMinutes}m early · View
+                            {formatAttendanceDurationReadable(row.earlyLeaveMinutes)} early · View
                           </button>
                         ) : (
                           "—"

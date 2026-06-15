@@ -12,7 +12,7 @@ export async function notifyAdminsManualBreakEnded(params: {
   employeeName: string;
   breakCategory: string;
   startNote: string | null;
-  endNote: string;
+  endNote: string | null;
   breakStart: Date;
   breakEnd: Date;
   durationMinutes: number;
@@ -21,8 +21,11 @@ export async function notifyAdminsManualBreakEnded(params: {
   const startLabel = formatAttendanceClock(params.breakStart);
   const endLabel = formatAttendanceClock(params.breakEnd);
   const durationLabel = formatBreakDurationMinutes(params.durationMinutes);
-  const startDetail = params.startNote?.trim() ? ` — ${params.startNote.trim()}` : "";
-  const message = `${params.employeeName} ended break (${categoryLabel}${startDetail}). Started ${startLabel}, ended ${endLabel} (${durationLabel}). Return note: ${params.endNote.trim().slice(0, 200)}`;
+  const startDetail = params.startNote?.trim() || "No location note";
+  const returnDetail = params.endNote?.trim();
+  const message = returnDetail
+    ? `${params.employeeName} ended break (${categoryLabel} — ${startDetail}). Started ${startLabel}, ended ${endLabel} (${durationLabel}). Return note: ${returnDetail.slice(0, 200)}`
+    : `${params.employeeName} ended break (${categoryLabel} — ${startDetail}). Started ${startLabel}, ended ${endLabel} (${durationLabel}).`;
 
   const admins = await db
     .select({ id: schema.users.id })

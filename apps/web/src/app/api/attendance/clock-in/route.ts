@@ -7,9 +7,14 @@ import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
 import {
   computeLateMinutes,
+  computeRawLateMinutes,
   getExpectedCheckInTimeForUser,
   hasPendingLateExplanation
 } from "@/lib/attendance-late-checkin";
+import {
+  buildClockInFeedbackMessage,
+  classifyClockInFeedback
+} from "@/lib/attendance-clock-feedback";
 import { hasPendingAbsenceExplanation } from "@/lib/attendance-absence";
 import { hasPendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
@@ -21,6 +26,28 @@ function getBearerToken(req: NextRequest): string | null {
   if (!scheme || !token) return null;
   if (scheme.toLowerCase() !== "bearer") return null;
   return token.trim() || null;
+}
+
+function clockInJson(
+  attendance: Record<string, unknown>,
+  now: Date,
+  expectedCheckInTime: string,
+  lateMinutes: number,
+  status = 200
+) {
+  const rawLateMinutes = computeRawLateMinutes(now, expectedCheckInTime);
+  const kind = classifyClockInFeedback(rawLateMinutes, lateMinutes);
+  return NextResponse.json(
+    {
+      attendance,
+      feedback: {
+        kind,
+        lateMinutes,
+        message: buildClockInFeedbackMessage(kind, lateMinutes)
+      }
+    },
+    { status }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -125,7 +152,7 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(schema.attendanceLogs.id, existing.id))
           .returning();
-        return NextResponse.json({ attendance: updated });
+        return clockInJson(updated, now, expectedCheckInTime, lateMinutes);
       }
 
       const [updated] = await db
@@ -142,7 +169,7 @@ export async function POST(req: NextRequest) {
         })
         .where(eq(schema.attendanceLogs.id, existing.id))
         .returning();
-      return NextResponse.json({ attendance: updated });
+      return clockInJson(updated, now, expectedCheckInTime, lateMinutes);
     }
 
     const [inserted] = await db
@@ -165,7 +192,7 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ attendance: inserted }, { status: 201 });
+    return clockInJson(inserted, now, expectedCheckInTime, lateMinutes, 201);
   } catch (error) {
     console.error("[attendance/clock-in]", error);
     return NextResponse.json(

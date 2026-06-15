@@ -7,7 +7,6 @@ import {
   HelpCircle,
   Info,
   Laptop,
-  MousePointer2,
   PanelTop
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,9 +16,12 @@ import {
   formatAttendanceRangeLabel
 } from "@/components/attendance/AttendanceDateRangeCalendar";
 import { AttendanceAbsenceExplanationModal } from "@/components/attendance/AttendanceAbsenceExplanationModal";
-import { AttendanceEndBreakModal } from "@/components/attendance/AttendanceEndBreakModal";
 import { AttendanceEarlyLeaveExplanationModal } from "@/components/attendance/AttendanceEarlyLeaveExplanationModal";
 import { AttendanceLateExplanationModal } from "@/components/attendance/AttendanceLateExplanationModal";
+/* FUTURE: end-break popup
+import { AttendanceEndBreakModal } from "@/components/attendance/AttendanceEndBreakModal";
+*/
+import { AttendancePunctualityCard } from "@/components/attendance/AttendancePunctualityCard";
 import { AttendanceStartBreakModal } from "@/components/attendance/AttendanceStartBreakModal";
 import { TablePagination } from "@/components/TablePagination";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
@@ -36,6 +38,7 @@ import { ATTENDANCE_ACTIVITY_PING_MS, ATTENDANCE_AWAY_POLICY } from "@/lib/atten
 import type { PendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave-types";
 import type { PendingAbsenceExplanation } from "@/lib/attendance-absence-types";
 import type { PendingLateExplanation } from "@/lib/attendance-late-types";
+import type { EmployeePunctualityStats } from "@/lib/attendance-punctuality-shared";
 import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 import {
@@ -114,24 +117,25 @@ type AwayNoticeState =
   | { type: "away"; cause: AwayCause }
   | { type: "tab_returned"; closedAt: string; awaySeconds: number };
 
-/** On-page away prompts (cursor idle / sleep). Tab close uses TAB_CLOSE_RETURNED_NOTICE. */
-const AWAY_EMPLOYEE_NOTICE: Record<
-  typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP,
-  string
-> = {
-  [UNSCHEDULED_CAUSE.CURSOR_IDLE]:
-    "No mouse or keyboard activity was detected. Move your cursor or click anywhere to continue.",
+/** On-page away prompts (sleep). Tab close uses TAB_CLOSE_RETURNED_NOTICE. */
+const AWAY_EMPLOYEE_NOTICE: Record<typeof UNSCHEDULED_CAUSE.SLEEP, string> = {
   [UNSCHEDULED_CAUSE.SLEEP]:
     "Your laptop was locked or went to sleep. Wake your laptop, then move your mouse or click anywhere to continue."
 };
 
-const AWAY_NOTICE_META: Record<
-  typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP,
-  { label: string; icon: typeof MousePointer2 | typeof Laptop }
-> = {
-  [UNSCHEDULED_CAUSE.CURSOR_IDLE]: { label: "Inactivity", icon: MousePointer2 },
+/* FUTURE: mouse/keyboard idle — re-enable with ATTENDANCE_CURSOR_IDLE_ENABLED
+const AWAY_EMPLOYEE_NOTICE_CURSOR_IDLE =
+  "No mouse or keyboard activity was detected. Move your cursor or click anywhere to continue.";
+*/
+
+const AWAY_NOTICE_META: Record<typeof UNSCHEDULED_CAUSE.SLEEP, { label: string; icon: typeof Laptop }> = {
   [UNSCHEDULED_CAUSE.SLEEP]: { label: "Sleep / lock", icon: Laptop }
 };
+
+/* FUTURE: mouse/keyboard idle notice meta
+import { MousePointer2 } from "lucide-react";
+const AWAY_NOTICE_META_CURSOR_IDLE = { label: "Inactivity", icon: MousePointer2 };
+*/
 
 function formatAwaySecondsLabel(seconds: number): string {
   if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"}`;
@@ -184,7 +188,7 @@ function AttendanceTabCloseReturnedNotice({
 function AttendanceAwayNotice({
   cause
 }: {
-  cause: typeof UNSCHEDULED_CAUSE.CURSOR_IDLE | typeof UNSCHEDULED_CAUSE.SLEEP;
+  cause: typeof UNSCHEDULED_CAUSE.SLEEP;
 }) {
   const meta = AWAY_NOTICE_META[cause];
   const Icon = meta.icon;
@@ -219,7 +223,7 @@ function AttendanceAwayNotice({
   );
 }
 
-const BREAK_MINUTES_HINT = `Total time today when you were not counted as working while clocked in. Includes official breaks and auto-detected away time (no mouse/keyboard, closing this Attendance tab, or laptop sleep) once each lasts about ${ATTENDANCE_AWAY_POLICY.cursorIdleAwaySeconds} seconds or longer. Switching to other browser tabs or sites does not count. Work hours = time since clock in minus break minutes.`;
+const BREAK_MINUTES_HINT = `Total time today when you were not counted as working while clocked in. Includes official breaks and auto-detected away time (closing this Attendance tab or laptop sleep) once each lasts about ${ATTENDANCE_AWAY_POLICY.tabCloseAwaySeconds} seconds or longer. Switching to other browser tabs or sites does not count. Work hours = time since clock in minus break minutes.`;
 
 function AttendanceStatTile({
   label,
@@ -356,6 +360,10 @@ export default function AttendancePageClient({
   const [absenceExplanationSubmitting, setAbsenceExplanationSubmitting] =
     useState(false);
   const [absenceExplanationError, setAbsenceExplanationError] = useState<string | null>(null);
+  const [punctualityStats, setPunctualityStats] = useState<EmployeePunctualityStats | null>(
+    null
+  );
+  const [punctualityLoading, setPunctualityLoading] = useState(false);
 
   const lastPingAtRef = useRef<number>(0);
   const agentHealthRef = useRef<AgentHealth | null>(null);
@@ -368,7 +376,9 @@ export default function AttendancePageClient({
     laptopSleepMs: 10_000,
     cursorIdleEnabled: false
   });
+  /* FUTURE: mouse/keyboard idle tracking ref
   const cursorAwayActiveRef = useRef(false);
+  */
   const tabCloseReturnHandledRef = useRef<number | null>(null);
   const lastCursorAtRef = useRef(Date.now());
 
@@ -669,31 +679,47 @@ export default function AttendancePageClient({
   const isWeekendToday = isAttendanceWeekendToday();
   const isMultiDayRange = dateFrom !== dateTo;
 
+  const loadPunctuality = useCallback(async () => {
+    if (!isEmployeeViewer) return;
+    setPunctualityLoading(true);
+    try {
+      const data = await apiFetch<{ stats: EmployeePunctualityStats }>(
+        "/api/attendance/punctuality",
+        { timeoutMs: 30_000 }
+      );
+      setPunctualityStats(data.stats);
+    } catch {
+      setPunctualityStats(null);
+    } finally {
+      setPunctualityLoading(false);
+    }
+  }, [isEmployeeViewer]);
+
+  useEffect(() => {
+    void loadPunctuality();
+  }, [loadPunctuality]);
+
   useEffect(() => {
     if (!isEmployeeViewer || !attendance?.breakSessions) return;
     const openAway = attendance.breakSessions.find(
-      (session) =>
-        !session.breakEnd &&
-        (session.unscheduledCause === "cursor_idle" ||
-          session.unscheduledCause === "sleep")
+      (session) => !session.breakEnd && session.unscheduledCause === "sleep"
     );
     if (!openAway?.unscheduledCause) {
       sleepAwayPendingRef.current = false;
       return;
     }
-    const cause = openAway.unscheduledCause as AwayCause;
-    if (cause === UNSCHEDULED_CAUSE.SLEEP) {
-      sleepAwayPendingRef.current = true;
-    }
-    if (cause === UNSCHEDULED_CAUSE.SLEEP) {
+  /* FUTURE: mouse/keyboard idle open-away notice
+    const openAway = attendance.breakSessions.find(
+      (session) =>
+        !session.breakEnd &&
+        (session.unscheduledCause === "cursor_idle" || session.unscheduledCause === "sleep")
+    );
+    if (cause === UNSCHEDULED_CAUSE.CURSOR_IDLE && awayPolicyRef.current.cursorIdleEnabled) {
       setAwayNotice({ type: "away", cause });
     }
-    if (
-      cause === UNSCHEDULED_CAUSE.CURSOR_IDLE &&
-      awayPolicyRef.current.cursorIdleEnabled
-    ) {
-      setAwayNotice({ type: "away", cause });
-    }
+  */
+    sleepAwayPendingRef.current = true;
+    setAwayNotice({ type: "away", cause: UNSCHEDULED_CAUSE.SLEEP });
   }, [attendance?.breakSessions, isEmployeeViewer]);
 
   useEffect(() => {
@@ -823,37 +849,48 @@ export default function AttendancePageClient({
     if (!isEmployeeViewer || !isViewingToday) return;
     const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
     if (!shiftOpen) {
-      cursorAwayActiveRef.current = false;
       sleepAwayPendingRef.current = false;
+      /* FUTURE: cursorAwayActiveRef.current = false; */
       return;
     }
 
+    /* FUTURE: mouse/keyboard idle — enable when ATTENDANCE_CURSOR_IDLE_ENABLED is true
     const cursorIdleEnabled = awayPolicyRef.current.cursorIdleEnabled;
+    */
 
     const endAway = async (cause: AwayCause) => {
+      /* FUTURE: cursor idle
       if (cause === "cursor_idle" && !cursorIdleEnabled) return;
       if (cause === "cursor_idle" && !cursorAwayActiveRef.current) return;
+      */
       if (cause === UNSCHEDULED_CAUSE.SLEEP && !sleepAwayPendingRef.current) return;
       if (cause !== UNSCHEDULED_CAUSE.TAB_CLOSE) {
         setAwayNotice(null);
       }
       await postActivityEvent("away_end", { awayCause: cause });
-      if (cause === "cursor_idle") cursorAwayActiveRef.current = false;
+      /* FUTURE: if (cause === "cursor_idle") cursorAwayActiveRef.current = false; */
       if (cause === UNSCHEDULED_CAUSE.SLEEP) sleepAwayPendingRef.current = false;
       void refresh();
     };
 
+    /* FUTURE: mouse/keyboard idle startAway
     const startAway = async (cause: AwayCause) => {
       if (cause === UNSCHEDULED_CAUSE.TAB_CLOSE) return;
       if (cause === "cursor_idle" && !cursorIdleEnabled) return;
       await postActivityEvent("away_start", { awayCause: cause });
       if (cause === "cursor_idle") cursorAwayActiveRef.current = true;
     };
+    */
 
     const resumeFromAway = () => {
+      /* FUTURE: cursor idle
       if (cursorIdleEnabled && cursorAwayActiveRef.current) {
         void endAway("cursor_idle");
       } else if (sleepAwayPendingRef.current) {
+        void endAway(UNSCHEDULED_CAUSE.SLEEP);
+      }
+      */
+      if (sleepAwayPendingRef.current) {
         void endAway(UNSCHEDULED_CAUSE.SLEEP);
       }
     };
@@ -861,9 +898,10 @@ export default function AttendancePageClient({
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
       lastCursorAtRef.current = Date.now();
-      if (cursorAwayActiveRef.current || sleepAwayPendingRef.current) {
+      if (sleepAwayPendingRef.current) {
         resumeFromAway();
       }
+      /* FUTURE: if (cursorAwayActiveRef.current) resumeFromAway(); */
     };
 
     const onPageHide = () => {
@@ -884,9 +922,10 @@ export default function AttendancePageClient({
 
     const markCursor = () => {
       lastCursorAtRef.current = Date.now();
-      if (cursorAwayActiveRef.current || sleepAwayPendingRef.current) {
+      if (sleepAwayPendingRef.current) {
         resumeFromAway();
       }
+      /* FUTURE: if (cursorAwayActiveRef.current) resumeFromAway(); */
     };
 
     const cursorEvents: Array<keyof WindowEventMap> = [
@@ -904,6 +943,7 @@ export default function AttendancePageClient({
 
     const complianceTick = window.setInterval(() => {
       const now = Date.now();
+      /* FUTURE: mouse/keyboard idle compliance tick
       if (cursorIdleEnabled) {
         const cursorIdleElapsed = now - lastCursorAtRef.current;
         const cursorThreshold = awayPolicyRef.current.cursorIdleMs;
@@ -919,7 +959,9 @@ export default function AttendancePageClient({
           lastPingAtRef.current = now;
           void postActivityEvent("activity");
         }
-      } else if (now - lastPingAtRef.current >= ATTENDANCE_ACTIVITY_PING_MS) {
+      } else if ...
+      */
+      if (now - lastPingAtRef.current >= ATTENDANCE_ACTIVITY_PING_MS) {
         lastPingAtRef.current = now;
         void postActivityEvent("activity");
       }
@@ -946,28 +988,32 @@ export default function AttendancePageClient({
     setLoading(true);
     setError(null);
     try {
-      const result = await apiFetch.post<{ attendance?: Attendance | null }>(
-        path,
-        body ?? {},
-        { timeoutMs: 45_000 }
-      );
+      const result = await apiFetch.post<{
+        attendance?: Attendance | null;
+        feedback?: { message?: string };
+      }>(path, body ?? {}, { timeoutMs: 45_000 });
       if (result?.attendance) {
         setAttendance(result.attendance);
       }
       await refresh();
       if (path.includes("clock-in") || path.includes("clock-out")) {
         void loadPendingExplanations();
+        void loadPunctuality();
       }
-      const label = path.includes("clock-in")
-        ? "Clocked in"
-        : path.includes("clock-out")
-          ? "Clocked out"
-          : path.includes("break-start")
-            ? "Break started"
-            : path.includes("break-end")
-              ? "Break ended"
+      if (result?.feedback?.message) {
+        toast.success(result.feedback.message);
+      } else {
+        const label = path.includes("break-start")
+          ? "Break started"
+          : path.includes("break-end")
+            ? "Break ended"
+            : path.includes("clock-in") || path.includes("clock-out")
+              ? "Saved"
               : "Saved";
-      toast.success(label);
+        if (!path.includes("clock-in") && !path.includes("clock-out")) {
+          toast.success(label);
+        }
+      }
     } catch (error) {
       if (error instanceof ApiFetchError) {
         if (error.status !== 401) setError(error.message);
@@ -1176,14 +1222,18 @@ export default function AttendancePageClient({
   }
 
   function endBreakAction() {
+    void action("/api/attendance/break-end");
+    /* FUTURE: end-break popup — note collected at start only
     if (isManualBreakOpen) {
       setEndBreakError(null);
       setShowEndBreakModal(true);
       return;
     }
     void action("/api/attendance/break-end");
+    */
   }
 
+  /* FUTURE: end-break popup submit — kept when End break modal is re-enabled
   async function submitEndBreak(endNote: string) {
     setEndBreakSubmitting(true);
     setEndBreakError(null);
@@ -1200,6 +1250,7 @@ export default function AttendancePageClient({
       setEndBreakSubmitting(false);
     }
   }
+  */
 
   async function submitExtraBreak() {
     if (!ATTENDANCE_EXTRA_BREAK_ENABLED) return;
@@ -1233,7 +1284,6 @@ export default function AttendancePageClient({
       return;
     }
 
-    toast.success("Agent setup already done.");
     await action("/api/attendance/clock-in");
   }
 
@@ -1314,6 +1364,10 @@ export default function AttendancePageClient({
         </div>
       ) : null}
 
+      {isEmployeeViewer ? (
+        <AttendancePunctualityCard stats={punctualityStats} loading={punctualityLoading} />
+      ) : null}
+
       {pendingLateExplanation ? (
         <AttendanceLateExplanationModal
           pending={pendingLateExplanation}
@@ -1343,8 +1397,7 @@ export default function AttendancePageClient({
             closedAt={awayNotice.closedAt}
             awaySeconds={awayNotice.awaySeconds}
           />
-        ) : awayNotice.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE ||
-          awayNotice.cause === UNSCHEDULED_CAUSE.SLEEP ? (
+        ) : awayNotice.cause === UNSCHEDULED_CAUSE.SLEEP ? (
           <AttendanceAwayNotice cause={awayNotice.cause} />
         ) : null
       ) : null}
@@ -1360,6 +1413,7 @@ export default function AttendancePageClient({
         />
       ) : null}
 
+      {/* FUTURE: end-break popup — employee note is collected at Start break only
       {showEndBreakModal && isManualBreakOpen ? (
         <AttendanceEndBreakModal
           breakStart={openBreakSession?.breakStart ?? null}
@@ -1370,6 +1424,7 @@ export default function AttendancePageClient({
           onSubmit={(endNote) => void submitEndBreak(endNote)}
         />
       ) : null}
+      */}
 
       {ATTENDANCE_EXTRA_BREAK_ENABLED && showExtraBreakModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
