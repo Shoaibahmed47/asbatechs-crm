@@ -12,3 +12,4 @@ export function rejectAttendanceOnWeekend(): NextResponse | null {
   }
   return null;
 }
+//update
