@@ -12,13 +12,12 @@ import { isExplanationPromptDue } from "@/lib/attendance-working-days";
 import type { PendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave-types";
 
 export type { PendingEarlyLeaveExplanation };
-import { getExpectedCheckInTimeForEmployee } from "@/lib/attendance-employee-schedule";
+import { getExpectedCheckInTimeForEmployee, getExpectedShiftEndTimeForEmployee } from "@/lib/attendance-employee-schedule";
 import {
   isValidOfficeTime,
   officeShiftEndsNextDay,
   formatOfficeTimeLabel
 } from "@/lib/attendance-office-hours";
-import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
 import { buildFollowUpUtcIso } from "@/lib/follow-up-time";
 
 function addCalendarDays(dateStr: string, days: number): string {
@@ -65,9 +64,8 @@ export async function computeEarlyLeaveForClockOut(params: {
   clockIn: Date;
   clockOut: Date;
 }): Promise<{ earlyLeaveMinutes: number; expectedShiftEndTime: string }> {
-  const office = await getAttendanceOfficeHours();
   const expectedCheckInTime = await getExpectedCheckInTimeForEmployee(params.userId);
-  const shiftEndTime = office.shiftEndTime;
+  const shiftEndTime = await getExpectedShiftEndTimeForEmployee(params.userId);
   const expectedEnd = resolveExpectedShiftEndInstant(
     params.logDate,
     expectedCheckInTime,

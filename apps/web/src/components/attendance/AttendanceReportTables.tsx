@@ -232,7 +232,7 @@ export function AttendanceReportTables({
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Check-in time</th>
+                  <th className="px-4 py-3">Work schedule</th>
                   <th className="px-4 py-3">Agent state</th>
                   <th className="px-4 py-3">Late</th>
                   <th className="px-4 py-3">Early leave</th>
@@ -286,6 +286,11 @@ export function AttendanceReportTables({
                         <div className="flex items-center gap-2">
                           <span>
                             {row.effectiveExpectedCheckInLabel}
+                            <span className="text-slate-500"> → </span>
+                            {row.effectiveExpectedShiftEndLabel}
+                            {row.scheduleEndsNextDay ? (
+                              <span className="text-slate-500"> (next day)</span>
+                            ) : null}
                             {row.usesOfficeDefault ? (
                               <span className="text-slate-500"> (office)</span>
                             ) : null}

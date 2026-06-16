@@ -22,6 +22,7 @@ export function clearInteractionLocks() {
     if (!coversViewport) return;
     const hasDialog =
       node.getAttribute("role") === "dialog" ||
+      node.id === "attendance-employee-schedule-dialog" ||
       node.id === "attendance-employee-schedule-popover" ||
       node.id === "attendance-absence-detail-popover" ||
       node.querySelector("[role='dialog']") != null;

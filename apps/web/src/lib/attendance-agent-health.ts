@@ -11,7 +11,11 @@ import {
 } from "@/lib/attendance-agent-health-state";
 import { buildAttendanceReason } from "@/lib/attendance-reason";
 import { ATTENDANCE_AGENT_ALERT_STALE_MINUTES } from "@/lib/attendance-policy";
-import { formatOfficeTimeLabel } from "@/lib/attendance-office-hours";
+import {
+  formatOfficeTimeLabel,
+  isValidOfficeTime,
+  officeShiftEndsNextDay
+} from "@/lib/attendance-office-hours";
 import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
 import { formatShiftEndLabel } from "@/lib/attendance-early-leave";
 import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
@@ -40,8 +44,12 @@ export type AttendanceAgentHealthRow = {
   state: AgentHealthState;
   needsAttention: boolean;
   employeeExpectedCheckInTime: string | null;
+  employeeExpectedShiftEndTime: string | null;
   effectiveExpectedCheckInTime: string;
   effectiveExpectedCheckInLabel: string;
+  effectiveExpectedShiftEndTime: string;
+  effectiveExpectedShiftEndLabel: string;
+  scheduleEndsNextDay: boolean;
   usesOfficeDefault: boolean;
   clockIn: string | null;
   clockOut: string | null;
@@ -92,7 +100,8 @@ export async function getAttendanceAgentHealth(params: {
       email: schema.users.email,
       departmentId: schema.users.departmentId,
       departmentName: schema.departments.name,
-      employeeExpectedCheckInTime: schema.users.expectedCheckInTime
+      employeeExpectedCheckInTime: schema.users.expectedCheckInTime,
+      employeeExpectedShiftEndTime: schema.users.expectedShiftEndTime
     })
     .from(schema.users)
     .leftJoin(schema.departments, eq(schema.users.departmentId, schema.departments.id))
@@ -340,11 +349,23 @@ export async function getAttendanceAgentHealth(params: {
         lastSeenAgeSeconds != null &&
         lastSeenAgeSeconds >= ATTENDANCE_AGENT_ALERT_STALE_MINUTES * 60;
 
-      const employeeOverride = user.employeeExpectedCheckInTime?.trim() ?? "";
-      const usesOfficeDefault = !employeeOverride;
-      const effectiveExpectedCheckInTime = usesOfficeDefault
+      const employeeCheckInOverride = user.employeeExpectedCheckInTime?.trim() ?? "";
+      const employeeShiftEndOverride = user.employeeExpectedShiftEndTime?.trim() ?? "";
+      const usesCheckInOfficeDefault =
+        !employeeCheckInOverride || !isValidOfficeTime(employeeCheckInOverride);
+      const usesShiftEndOfficeDefault =
+        !employeeShiftEndOverride || !isValidOfficeTime(employeeShiftEndOverride);
+      const usesOfficeDefault = usesCheckInOfficeDefault && usesShiftEndOfficeDefault;
+      const effectiveExpectedCheckInTime = usesCheckInOfficeDefault
         ? officeHours.expectedCheckInTime
-        : employeeOverride;
+        : employeeCheckInOverride;
+      const effectiveExpectedShiftEndTime = usesShiftEndOfficeDefault
+        ? officeHours.shiftEndTime
+        : employeeShiftEndOverride;
+      const scheduleEndsNextDay = officeShiftEndsNextDay(
+        effectiveExpectedCheckInTime,
+        effectiveExpectedShiftEndTime
+      );
       const lateMinutes = todayLog?.lateMinutes ?? 0;
       const logDate = todayLog?.logDate ? String(todayLog.logDate) : date;
       const snapshotExpected = todayLog?.logExpectedCheckInTime?.trim() ?? "";
@@ -368,9 +389,13 @@ export async function getAttendanceAgentHealth(params: {
         lastSeenAgeSeconds,
         state,
         needsAttention,
-        employeeExpectedCheckInTime: usesOfficeDefault ? null : employeeOverride,
+        employeeExpectedCheckInTime: usesCheckInOfficeDefault ? null : employeeCheckInOverride,
+        employeeExpectedShiftEndTime: usesShiftEndOfficeDefault ? null : employeeShiftEndOverride,
         effectiveExpectedCheckInTime,
         effectiveExpectedCheckInLabel: formatOfficeTimeLabel(effectiveExpectedCheckInTime),
+        effectiveExpectedShiftEndTime,
+        effectiveExpectedShiftEndLabel: formatOfficeTimeLabel(effectiveExpectedShiftEndTime),
+        scheduleEndsNextDay,
         usesOfficeDefault,
         clockIn: todayLog?.clockIn
           ? new Date(todayLog.clockIn as Date).toISOString()
@@ -394,7 +419,7 @@ export async function getAttendanceAgentHealth(params: {
         expectedShiftEndLabel:
           (todayLog?.earlyLeaveMinutes ?? 0) > 0
             ? formatShiftEndLabel(
-                todayLog?.logExpectedShiftEndTime?.trim() || officeHours.shiftEndTime
+                todayLog?.logExpectedShiftEndTime?.trim() || effectiveExpectedShiftEndTime
               )
             : null,
         clockOutLabel:

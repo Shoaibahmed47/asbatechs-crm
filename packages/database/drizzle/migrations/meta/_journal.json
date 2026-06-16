@@ -211,6 +211,13 @@
       "when": 1780000000000,
       "tag": "0029_break_session_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0030_user_expected_shift_end",
+      "breakpoints": true
     }
   ]
 }

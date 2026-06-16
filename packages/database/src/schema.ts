@@ -43,6 +43,8 @@ export const users = pgTable("users", {
   resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
   /** Per-employee expected check-in (HH:mm). Null = use company office default. */
   expectedCheckInTime: text("expected_check_in_time"),
+  /** Per-employee expected shift end / check-out (HH:mm). Null = use office default. */
+  expectedShiftEndTime: text("expected_shift_end_time"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });

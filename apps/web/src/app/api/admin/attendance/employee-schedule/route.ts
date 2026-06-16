@@ -7,12 +7,13 @@ import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { normalizeRole } from "@/lib/rbac";
 import {
   getEmployeeScheduleSummary,
-  updateEmployeeExpectedCheckInTime
+  updateEmployeeSchedule
 } from "@/lib/attendance-employee-schedule";
 
 const updateSchema = z.object({
   userId: z.number().int().positive(),
-  expectedCheckInTime: z.string().trim().nullable()
+  expectedCheckInTime: z.string().trim().nullable(),
+  expectedShiftEndTime: z.string().trim().nullable()
 });
 
 async function authorizeManagerScope(
@@ -95,9 +96,10 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const schedule = await updateEmployeeExpectedCheckInTime({
+    const schedule = await updateEmployeeSchedule({
       userId: parsed.data.userId,
-      expectedCheckInTime: parsed.data.expectedCheckInTime
+      expectedCheckInTime: parsed.data.expectedCheckInTime,
+      expectedShiftEndTime: parsed.data.expectedShiftEndTime
     });
     return NextResponse.json({ schedule });
   } catch (error) {
