@@ -146,8 +146,14 @@ export default async function DashboardPage({
     console.error("[dashboard] hot leads count", hotResult.reason);
     dashboardLoadErrors.push("Lead counts could not be loaded.");
   }
-  if (saleResult.status === "rejected" || totalSalesResult.status === "rejected") {
-    console.error("[dashboard] sales stats", saleResult.reason ?? totalSalesResult.reason);
+  if (saleResult.status === "rejected") {
+    console.error("[dashboard] sales stats", saleResult.reason);
+    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
+      dashboardLoadErrors.push("Sales summary could not be loaded.");
+    }
+  }
+  if (totalSalesResult.status === "rejected") {
+    console.error("[dashboard] total sales", totalSalesResult.reason);
     if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
       dashboardLoadErrors.push("Sales summary could not be loaded.");
     }
