@@ -7,7 +7,7 @@ import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
-import { DashboardCharts } from "@/components/DashboardCharts";
+import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
 import { and, asc, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 import {
   getAttendanceDailyReport,
@@ -18,7 +18,7 @@ import {
   type AgentHealthState
 } from "@/lib/attendance-agent-health";
 import { AttendanceReportFilters } from "@/app/(app)/attendance/report/AttendanceReportFilters";
-import { AttendanceReportTables } from "@/components/attendance/AttendanceReportTables";
+import { AttendanceReportTablesLazy } from "@/components/attendance/AttendanceReportTablesLazy";
 
 function monthKeysLast(n: number): string[] {
   const out: string[] = [];
@@ -103,74 +103,6 @@ export default async function DashboardPage({
   /** Org-wide live attendance (table + aggregated counts): administrators only. */
   const isAdminViewer = isAdminRole(session?.role);
 
-  const [hotResult, saleResult, totalSalesResult, userCountResult, todaysLogsResult] =
-    await Promise.allSettled([
-      db
-        .select({ value: count() })
-        .from(schema.leads)
-        .where(and(eq(schema.leads.type, "hot"), eq(schema.leads.isDeleted, false))),
-      db
-        .select({ value: count() })
-        .from(schema.leads)
-        .where(and(eq(schema.leads.type, "sale"), eq(schema.leads.isDeleted, false))),
-      db
-        .select({ value: sum(schema.leads.saleAmount) })
-        .from(schema.leads)
-        .where(
-          and(
-            eq(schema.leads.type, "sale"),
-            isNotNull(schema.leads.saleAmount),
-            eq(schema.leads.isDeleted, false)
-          )
-        ),
-      db.select({ value: count() }).from(schema.users),
-      db
-        .select()
-        .from(schema.attendanceLogs)
-        .where(eq(schema.attendanceLogs.date, getLocalDateString() as any))
-    ]);
-
-  const dashboardLoadErrors: string[] = [];
-  const hotCount =
-    hotResult.status === "fulfilled" ? hotResult.value[0] : undefined;
-  const saleCount =
-    saleResult.status === "fulfilled" ? saleResult.value[0] : undefined;
-  const totalSales =
-    totalSalesResult.status === "fulfilled" ? totalSalesResult.value[0] : undefined;
-  const userCount =
-    userCountResult.status === "fulfilled" ? userCountResult.value[0] : undefined;
-  const todaysLogs =
-    todaysLogsResult.status === "fulfilled" ? todaysLogsResult.value : [];
-
-  if (hotResult.status === "rejected") {
-    console.error("[dashboard] hot leads count", hotResult.reason);
-    dashboardLoadErrors.push("Lead counts could not be loaded.");
-  }
-  if (saleResult.status === "rejected") {
-    console.error("[dashboard] sales stats", saleResult.reason);
-    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
-      dashboardLoadErrors.push("Sales summary could not be loaded.");
-    }
-  }
-  if (totalSalesResult.status === "rejected") {
-    console.error("[dashboard] total sales", totalSalesResult.reason);
-    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
-      dashboardLoadErrors.push("Sales summary could not be loaded.");
-    }
-  }
-  if (userCountResult.status === "rejected") {
-    console.error("[dashboard] user count", userCountResult.reason);
-    dashboardLoadErrors.push("Team member count could not be loaded.");
-  }
-  if (todaysLogsResult.status === "rejected") {
-    console.error("[dashboard] today attendance logs", todaysLogsResult.reason);
-    dashboardLoadErrors.push("Today’s attendance snapshot could not be loaded.");
-  }
-
-  const totalLeads = Number(hotCount?.value ?? 0) + Number(saleCount?.value ?? 0);
-  const totalSalesAmount = Number(totalSales?.value ?? 0);
-  const totalUsers = Number(userCount?.value ?? 0);
-
   const today = getLocalDateString();
   const sp = (await Promise.resolve(searchParams)) ?? {};
   const dateRaw = pickDateParam(sp.date);
@@ -214,78 +146,74 @@ export default async function DashboardPage({
   const normalizedFrom = fromDate <= toDate ? fromDate : toDate;
   const normalizedTo = fromDate <= toDate ? toDate : fromDate;
 
-  const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
+  const months = monthKeysLast(6);
+  const saleFrom = startOfRollingMonthsAgo(5);
+  const saleMonthExpr = sql<string>`to_char(${schema.leads.saleDate}, 'YYYY-MM')`;
+  const leadCreatedFrom = startOfRollingMonthsAgo(5);
+  const createdMonthExpr = sql<string>`to_char(${schema.leads.createdAt}, 'YYYY-MM')`;
+  const adminScope = { role: "admin" as const, departmentId: null };
 
-  let liveAttendanceToday: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
-  if (isAdminViewer) {
-    const liveResult = await Promise.allSettled([getAttendanceStatusForDate(today)]);
-    if (liveResult[0].status === "fulfilled") {
-      liveAttendanceToday = liveResult[0].value;
-    } else {
-      console.error("[dashboard] live attendance", liveResult[0].reason);
-      dashboardLoadErrors.push("Live attendance status could not be loaded.");
-    }
-  }
-
-  let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
-  let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
-  let attendanceDepartments: { id: number; name: string }[] = [];
-  let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
-  const attendanceLoadErrors: string[] = [];
-
-  if (isAdminViewer) {
-    const scope = { role: "admin" as const, departmentId: null };
-    const [reportResult, departmentsResult, agentHealthResult] = await Promise.allSettled([
-      reportMode === "range"
-        ? getAttendanceRangeReport(normalizedFrom, normalizedTo, scope)
-        : getAttendanceDailyReport(reportDate, scope),
-      db
-        .select({ id: schema.departments.id, name: schema.departments.name })
-        .from(schema.departments)
-        .orderBy(asc(schema.departments.name)),
-      getAttendanceAgentHealth({
-        date: reportDate,
-        scope,
-        search: reportSearch,
-        departmentFilter,
-        stateFilter: agentStateFilter,
-        alertsOnly
-      })
-    ]);
-
-    if (reportResult.status === "fulfilled") {
-      if (reportMode === "range") {
-        attendanceRangeRows = reportResult.value as Awaited<
-          ReturnType<typeof getAttendanceRangeReport>
-        >;
-      } else {
-        attendanceRows = reportResult.value as Awaited<
-          ReturnType<typeof getAttendanceDailyReport>
-        >;
-      }
-    } else {
-      console.error("[dashboard/attendance-report] report", reportResult.reason);
-      attendanceLoadErrors.push("Attendance data could not be loaded.");
-    }
-
-    if (departmentsResult.status === "fulfilled") {
-      attendanceDepartments = departmentsResult.value;
-    } else {
-      console.error("[dashboard/attendance-report] departments", departmentsResult.reason);
-      attendanceLoadErrors.push("Department filter could not be loaded.");
-    }
-
-    if (agentHealthResult.status === "fulfilled") {
-      attendanceAgentHealth = agentHealthResult.value;
-    } else {
-      console.error("[dashboard/attendance-report] agent health", agentHealthResult.reason);
-      attendanceLoadErrors.push("Agent health table could not be loaded.");
-    }
-  }
-
-  const assignedClientProjects =
+  const [
+    hotResult,
+    saleResult,
+    totalSalesResult,
+    userCountResult,
+    todaysLogsResult,
+    liveAttendanceResult,
+    reportResult,
+    departmentsResult,
+    agentHealthResult,
+    assignedClientProjectsResult,
+    monthlySalesResult,
+    monthlyNewLeadsResult
+  ] = await Promise.allSettled([
+    db
+      .select({ value: count() })
+      .from(schema.leads)
+      .where(and(eq(schema.leads.type, "hot"), eq(schema.leads.isDeleted, false))),
+    db
+      .select({ value: count() })
+      .from(schema.leads)
+      .where(and(eq(schema.leads.type, "sale"), eq(schema.leads.isDeleted, false))),
+    db
+      .select({ value: sum(schema.leads.saleAmount) })
+      .from(schema.leads)
+      .where(
+        and(
+          eq(schema.leads.type, "sale"),
+          isNotNull(schema.leads.saleAmount),
+          eq(schema.leads.isDeleted, false)
+        )
+      ),
+    db.select({ value: count() }).from(schema.users),
+    db
+      .select()
+      .from(schema.attendanceLogs)
+      .where(eq(schema.attendanceLogs.date, today as any)),
+    isAdminViewer ? getAttendanceStatusForDate(today) : Promise.resolve(null),
+    isAdminViewer
+      ? reportMode === "range"
+        ? getAttendanceRangeReport(normalizedFrom, normalizedTo, adminScope)
+        : getAttendanceDailyReport(reportDate, adminScope)
+      : Promise.resolve([]),
+    isAdminViewer
+      ? db
+          .select({ id: schema.departments.id, name: schema.departments.name })
+          .from(schema.departments)
+          .orderBy(asc(schema.departments.name))
+      : Promise.resolve([]),
+    isAdminViewer
+      ? getAttendanceAgentHealth({
+          date: reportDate,
+          scope: adminScope,
+          search: reportSearch,
+          departmentFilter,
+          stateFilter: agentStateFilter,
+          alertsOnly
+        })
+      : Promise.resolve(null),
     session?.role === "employee"
-      ? await db
+      ? db
           .select({
             assignmentId: schema.employeeClientProjectAssignments.id,
             clientName: schema.clients.name,
@@ -303,28 +231,127 @@ export default async function DashboardPage({
           )
           .where(eq(schema.employeeClientProjectAssignments.userId, session.userId))
           .orderBy(desc(schema.employeeClientProjectAssignments.createdAt))
+      : Promise.resolve([]),
+    db
+      .select({
+        month: saleMonthExpr,
+        total: sum(schema.leads.saleAmount)
+      })
+      .from(schema.leads)
+      .where(
+        and(
+          eq(schema.leads.type, "sale"),
+          isNotNull(schema.leads.saleDate),
+          eq(schema.leads.isDeleted, false),
+          gte(schema.leads.saleDate, saleFrom.toISOString().slice(0, 10) as any)
+        )
+      )
+      .groupBy(saleMonthExpr)
+      .orderBy(saleMonthExpr),
+    db
+      .select({
+        month: createdMonthExpr,
+        c: count()
+      })
+      .from(schema.leads)
+      .where(and(eq(schema.leads.isDeleted, false), gte(schema.leads.createdAt, leadCreatedFrom)))
+      .groupBy(createdMonthExpr)
+      .orderBy(createdMonthExpr)
+  ]);
+
+  const dashboardLoadErrors: string[] = [];
+  const attendanceLoadErrors: string[] = [];
+  const hotCount =
+    hotResult.status === "fulfilled" ? hotResult.value[0] : undefined;
+  const saleCount =
+    saleResult.status === "fulfilled" ? saleResult.value[0] : undefined;
+  const totalSales =
+    totalSalesResult.status === "fulfilled" ? totalSalesResult.value[0] : undefined;
+  const userCount =
+    userCountResult.status === "fulfilled" ? userCountResult.value[0] : undefined;
+  const todaysLogs =
+    todaysLogsResult.status === "fulfilled" ? todaysLogsResult.value : [];
+
+  if (hotResult.status === "rejected") {
+    console.error("[dashboard] hot leads count", hotResult.reason);
+    dashboardLoadErrors.push("Lead counts could not be loaded.");
+  }
+  if (saleResult.status === "rejected") {
+    console.error("[dashboard] sales stats", saleResult.reason);
+    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
+      dashboardLoadErrors.push("Sales summary could not be loaded.");
+    }
+  }
+  if (totalSalesResult.status === "rejected") {
+    console.error("[dashboard] total sales", totalSalesResult.reason);
+    if (!dashboardLoadErrors.includes("Lead counts could not be loaded.")) {
+      dashboardLoadErrors.push("Sales summary could not be loaded.");
+    }
+  }
+  if (userCountResult.status === "rejected") {
+    console.error("[dashboard] user count", userCountResult.reason);
+    dashboardLoadErrors.push("Team member count could not be loaded.");
+  }
+  if (todaysLogsResult.status === "rejected") {
+    console.error("[dashboard] today attendance logs", todaysLogsResult.reason);
+    dashboardLoadErrors.push("Today’s attendance snapshot could not be loaded.");
+  }
+
+  const totalLeads = Number(hotCount?.value ?? 0) + Number(saleCount?.value ?? 0);
+  const totalSalesAmount = Number(totalSales?.value ?? 0);
+  const totalUsers = Number(userCount?.value ?? 0);
+
+  const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
+
+  let liveAttendanceToday: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
+  if (liveAttendanceResult.status === "fulfilled") {
+    liveAttendanceToday = liveAttendanceResult.value;
+  } else if (isAdminViewer && liveAttendanceResult.status === "rejected") {
+    console.error("[dashboard] live attendance", liveAttendanceResult.reason);
+    dashboardLoadErrors.push("Live attendance status could not be loaded.");
+  }
+
+  let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
+  let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
+  let attendanceDepartments: { id: number; name: string }[] = [];
+  let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
+
+  if (reportResult.status === "fulfilled") {
+    if (reportMode === "range") {
+      attendanceRangeRows = reportResult.value as Awaited<
+        ReturnType<typeof getAttendanceRangeReport>
+      >;
+    } else {
+      attendanceRows = reportResult.value as Awaited<
+        ReturnType<typeof getAttendanceDailyReport>
+      >;
+    }
+  } else if (isAdminViewer && reportResult.status === "rejected") {
+    console.error("[dashboard/attendance-report] report", reportResult.reason);
+    attendanceLoadErrors.push("Attendance data could not be loaded.");
+  }
+
+  if (departmentsResult.status === "fulfilled") {
+    attendanceDepartments = departmentsResult.value;
+  } else if (isAdminViewer && departmentsResult.status === "rejected") {
+    console.error("[dashboard/attendance-report] departments", departmentsResult.reason);
+    attendanceLoadErrors.push("Department filter could not be loaded.");
+  }
+
+  if (agentHealthResult.status === "fulfilled") {
+    attendanceAgentHealth = agentHealthResult.value;
+  } else if (isAdminViewer && agentHealthResult.status === "rejected") {
+    console.error("[dashboard/attendance-report] agent health", agentHealthResult.reason);
+    attendanceLoadErrors.push("Agent health table could not be loaded.");
+  }
+
+  const assignedClientProjects =
+    assignedClientProjectsResult.status === "fulfilled"
+      ? assignedClientProjectsResult.value
       : [];
 
-  const months = monthKeysLast(6);
-  const saleFrom = startOfRollingMonthsAgo(5);
-  const saleMonthExpr = sql<string>`to_char(${schema.leads.saleDate}, 'YYYY-MM')`;
-  const monthlySalesRows = await db
-    .select({
-      month: saleMonthExpr,
-      total: sum(schema.leads.saleAmount)
-    })
-    .from(schema.leads)
-    .where(
-      and(
-        eq(schema.leads.type, "sale"),
-        isNotNull(schema.leads.saleDate),
-        eq(schema.leads.isDeleted, false),
-        gte(schema.leads.saleDate, saleFrom.toISOString().slice(0, 10) as any)
-      )
-    )
-    .groupBy(saleMonthExpr)
-    .orderBy(saleMonthExpr);
-
+  const monthlySalesRows =
+    monthlySalesResult.status === "fulfilled" ? monthlySalesResult.value : [];
   const salesByMonth = new Map(monthlySalesRows.map((r) => [r.month, Number(r.total ?? 0)]));
   const monthlySales = months.map((m) => ({
     month: m,
@@ -332,18 +359,8 @@ export default async function DashboardPage({
     amount: salesByMonth.get(m) ?? 0
   }));
 
-  const leadCreatedFrom = startOfRollingMonthsAgo(5);
-  const createdMonthExpr = sql<string>`to_char(${schema.leads.createdAt}, 'YYYY-MM')`;
-  const monthlyNewRows = await db
-    .select({
-      month: createdMonthExpr,
-      c: count()
-    })
-    .from(schema.leads)
-    .where(and(eq(schema.leads.isDeleted, false), gte(schema.leads.createdAt, leadCreatedFrom)))
-    .groupBy(createdMonthExpr)
-    .orderBy(createdMonthExpr);
-
+  const monthlyNewRows =
+    monthlyNewLeadsResult.status === "fulfilled" ? monthlyNewLeadsResult.value : [];
   const newByMonth = new Map(monthlyNewRows.map((r) => [r.month, Number(r.c ?? 0)]));
   const monthlyNewLeads = months.map((m) => ({
     month: m,
@@ -617,7 +634,7 @@ export default async function DashboardPage({
               </div>
             }
           >
-            <AttendanceReportTables
+            <AttendanceReportTablesLazy
               detailDate={attendanceDetailDate}
               showAgentHealth={Boolean(attendanceAgentHealth)}
               agentHealth={attendanceAgentHealth}
@@ -719,7 +736,7 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <DashboardCharts
+      <DashboardChartsLazy
         showTeamAttendanceOverview={isAdminViewer}
         data={{
           hotLeads: Number(hotCount?.value ?? 0),

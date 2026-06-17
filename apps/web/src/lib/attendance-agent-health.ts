@@ -22,6 +22,7 @@ import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
 import { formatAttendanceClock, formatAttendanceDateLabel } from "@/lib/attendance-date";
 import { findPendingAbsenceExplanation } from "@/lib/attendance-absence";
 import { isAttendanceWorkingDay } from "@/lib/attendance-working-days";
+import { isAdminRole } from "@/lib/rbac";
 
 export type { AgentHealthState };
 
@@ -69,6 +70,8 @@ export type AttendanceAgentHealthRow = {
   viewDateAbsenceReason: string | null;
   viewDateAbsenceReasonSubmittedAt: string | null;
   viewDateAbsentWithoutClockIn: boolean;
+  /** CRM admins are not tracked for attendance or desktop agent. */
+  attendanceExempt: boolean;
 };
 
 export async function getAttendanceAgentHealth(params: {
@@ -98,6 +101,7 @@ export async function getAttendanceAgentHealth(params: {
       id: schema.users.id,
       name: schema.users.name,
       email: schema.users.email,
+      role: schema.users.role,
       departmentId: schema.users.departmentId,
       departmentName: schema.departments.name,
       employeeExpectedCheckInTime: schema.users.expectedCheckInTime,
@@ -290,6 +294,8 @@ export async function getAttendanceAgentHealth(params: {
     ])
   );
 
+  const roleByUserId = new Map(scopedUsers.map((user) => [user.id, user.role]));
+
   const rows = scopedUsers
     .map((user) => {
       const todayLog = todayByUser.get(user.id);
@@ -377,6 +383,7 @@ export async function getAttendanceAgentHealth(params: {
         userEmail: user.email,
         departmentId: user.departmentId,
         departmentName: user.departmentName ?? null,
+        attendanceExempt: isAdminRole(user.role),
         openShift,
         attendanceStatus,
         attendanceReason,
@@ -451,6 +458,12 @@ export async function getAttendanceAgentHealth(params: {
       const matchesState = stateFilter === "all" || row.state === stateFilter;
       const matchesAlerts = !alertsOnly || row.needsAttention;
       return matchesSearch && matchesDepartment && matchesState && matchesAlerts;
+    })
+    .sort((a, b) => {
+      const aAdmin = isAdminRole(roleByUserId.get(a.userId)) ? 0 : 1;
+      const bAdmin = isAdminRole(roleByUserId.get(b.userId)) ? 0 : 1;
+      if (aAdmin !== bAdmin) return aAdmin - bAdmin;
+      return a.userName.localeCompare(b.userName, undefined, { sensitivity: "base" });
     });
 
   const counts: Record<AgentHealthState, number> = {

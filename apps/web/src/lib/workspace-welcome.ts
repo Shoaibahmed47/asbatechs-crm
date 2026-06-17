@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
@@ -24,6 +25,16 @@ export function toWelcomeFirstName(name: string | null | undefined, email: strin
 }
 
 export async function getWorkspaceWelcomeProfile(
+  userId: number
+): Promise<WorkspaceWelcomeProfile> {
+  return unstable_cache(
+    () => fetchWorkspaceWelcomeProfile(userId),
+    ["workspace-welcome-profile", String(userId)],
+    { revalidate: 120 }
+  )();
+}
+
+async function fetchWorkspaceWelcomeProfile(
   userId: number
 ): Promise<WorkspaceWelcomeProfile> {
   try {

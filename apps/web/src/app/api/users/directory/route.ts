@@ -151,13 +151,17 @@ export async function GET(req: NextRequest) {
 
   const dir = order === "asc" ? asc : desc;
 
+  const userAdminFirst = asc(
+    sql`CASE WHEN ${schema.users.role} = 'admin' THEN 0 ELSE 1 END`
+  );
+
   const orderUser = (() => {
-    if (sort === "email") return [dir(schema.users.email), dir(schema.users.id)];
-    if (sort === "name") return [dir(schema.users.name), dir(schema.users.id)];
-    if (sort === "role") return [dir(schema.users.role), dir(schema.users.id)];
+    if (sort === "email") return [userAdminFirst, dir(schema.users.email), dir(schema.users.id)];
+    if (sort === "name") return [userAdminFirst, dir(schema.users.name), dir(schema.users.id)];
+    if (sort === "role") return [userAdminFirst, dir(schema.users.role), dir(schema.users.id)];
     if (sort === "department_id")
-      return [dir(schema.users.departmentId), dir(schema.users.id)];
-    return [dir(schema.users.createdAt), dir(schema.users.id)];
+      return [userAdminFirst, dir(schema.users.departmentId), dir(schema.users.id)];
+    return [userAdminFirst, dir(schema.users.createdAt), dir(schema.users.id)];
   })();
 
   const orderInvite = (() => {
@@ -168,14 +172,6 @@ export async function GET(req: NextRequest) {
     if (sort === "department_id")
       return [dir(schema.invitations.departmentId), dir(schema.invitations.id)];
     return [dir(schema.invitations.createdAt), dir(schema.invitations.id)];
-  })();
-
-  const orderUnion = (() => {
-    if (sort === "email") return [dir(sql`email`), dir(sql`id`)];
-    if (sort === "name") return [dir(sql`name`), dir(sql`id`)];
-    if (sort === "role") return [dir(sql`role`), dir(sql`id`)];
-    if (sort === "department_id") return [dir(sql`department_id`), dir(sql`id`)];
-    return [dir(sql`created_at`), dir(sql`id`)];
   })();
 
   let total = 0;
@@ -277,11 +273,29 @@ export async function GET(req: NextRequest) {
       );
     };
 
-    const [pc] = await db.select({ n: count() }).from(buildUnion().as("directory_union"));
+    const directoryUnion = buildUnion().as("directory_union");
+    const unionAdminFirst = asc(
+      sql`CASE WHEN ${directoryUnion.role} = 'admin' THEN 0 ELSE 1 END`
+    );
+    const unionOrder = (() => {
+      if (sort === "email")
+        return [unionAdminFirst, dir(directoryUnion.email), dir(directoryUnion.id)];
+      if (sort === "name")
+        return [unionAdminFirst, dir(directoryUnion.name), dir(directoryUnion.id)];
+      if (sort === "role")
+        return [unionAdminFirst, dir(directoryUnion.role), dir(directoryUnion.id)];
+      if (sort === "department_id")
+        return [unionAdminFirst, dir(directoryUnion.departmentId), dir(directoryUnion.id)];
+      return [unionAdminFirst, dir(directoryUnion.createdAt), dir(directoryUnion.id)];
+    })();
+
+    const [pc] = await db.select({ n: count() }).from(directoryUnion);
     total = Number(pc?.n ?? 0);
 
-    const unionRows = await buildUnion()
-      .orderBy(...orderUnion)
+    const unionRows = await db
+      .select()
+      .from(directoryUnion)
+      .orderBy(...unionOrder)
       .limit(limit)
       .offset(offset);
     rows = unionRows.map((r) => ({

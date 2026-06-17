@@ -189,7 +189,7 @@ export function AttendanceReportTables({
     <>
       {showAgentHealth && agentHealth ? (
         <section className="data-card overflow-hidden p-0">
-          <div className="border-b border-slate-200/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
+          <div className="border-b border-slate-600/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
             <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               Desktop agent
             </div>
@@ -225,29 +225,29 @@ export function AttendanceReportTables({
               )}
             </div>
           </div>
-          <div className="max-h-[min(40vh,22rem)] overflow-auto">
+          <div className="max-h-[min(72vh,40rem)] overflow-auto">
             <table className="w-full min-w-[62rem] text-left text-sm">
               <thead className="sticky top-0 z-[1] bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Work schedule</th>
-                  <th className="px-4 py-3">Agent state</th>
-                  <th className="px-4 py-3">Late</th>
-                  <th className="px-4 py-3">Early leave</th>
-                  <th className="px-4 py-3">Absence</th>
-                  <th className="px-4 py-3">Last seen</th>
-                  <th className="px-4 py-3">Shift</th>
-                  <th className="px-4 py-3">Attendance</th>
+                  <th className="px-2 py-2">Name</th>
+                  <th className="px-2 py-2">Email</th>
+                  <th className="px-2 py-2">Department</th>
+                  <th className="px-2 py-2">Schedule</th>
+                  <th className="px-2 py-2">Agent state</th>
+                  <th className="px-2 py-2">Late</th>
+                  <th className="px-2 py-2">Early leave</th>
+                  <th className="px-2 py-2">Absence</th>
+                  <th className="px-2 py-2">Last seen</th>
+                  <th className="px-2 py-2">Shift</th>
+                  <th className="px-2 py-2">Attendance</th>
                   <th
-                    className="px-4 py-3 text-right"
+                    className="px-2 py-2 text-right"
                     title="Sleep minutes count only when laptop lock/sleep is detected during an open shift."
                   >
                     Sleep
                   </th>
-                  <th className="px-4 py-3">Reason</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-2 py-2">Reason</th>
+                  <th className="px-2 py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -258,43 +258,48 @@ export function AttendanceReportTables({
                     </td>
                   </tr>
                 ) : (
-                  agentHealth.rows.map((row) => (
+                  agentHealth.rows.map((row) => {
+                    const attendanceExempt = row.attendanceExempt;
+                    return (
                     <tr
                       key={row.userId}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Double-click for attendance details — ${row.userName}`}
-                      onDoubleClick={() => openDetail(row.userId, row.userName)}
+                      role={attendanceExempt ? undefined : "button"}
+                      tabIndex={attendanceExempt ? undefined : 0}
+                      aria-label={
+                        attendanceExempt
+                          ? undefined
+                          : `Double-click for attendance details — ${row.userName}`
+                      }
+                      onDoubleClick={() => {
+                        if (attendanceExempt) return;
+                        openDetail(row.userId, row.userName);
+                      }}
                       onKeyDown={(event) => {
+                        if (attendanceExempt) return;
                         if (event.key === "Enter") {
                           event.preventDefault();
                           openDetail(row.userId, row.userName);
                         }
                       }}
-                      className="cursor-pointer hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:bg-slate-800/40"
+                      className={
+                        attendanceExempt
+                          ? "text-slate-600 dark:text-slate-400"
+                          : "cursor-pointer hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:bg-slate-800/40"
+                      }
                     >
-                      <td className="whitespace-nowrap px-4 py-2.5">
+                      <td className="whitespace-nowrap px-2 py-2">
                         <EmployeeNameCell userName={row.userName} />
                       </td>
-                      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-600 dark:text-slate-400">
                         {row.userEmail}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-600 dark:text-slate-400">
                         {row.departmentName ?? "-"}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        <div className="flex items-center gap-2">
-                          <span>
-                            {row.effectiveExpectedCheckInLabel}
-                            <span className="text-slate-500"> → </span>
-                            {row.effectiveExpectedShiftEndLabel}
-                            {row.scheduleEndsNextDay ? (
-                              <span className="text-slate-500"> (next day)</span>
-                            ) : null}
-                            {row.usesOfficeDefault ? (
-                              <span className="text-slate-500"> (office)</span>
-                            ) : null}
-                          </span>
+                      <td className="whitespace-nowrap px-2 py-2">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : (
                           <button
                             type="button"
                             className="rounded-md border border-slate-300 px-2 py-0.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -319,9 +324,12 @@ export function AttendanceReportTables({
                           >
                             Edit
                           </button>
-                        </div>
+                        )}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="whitespace-nowrap px-2 py-2">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : (
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${toneForAgentState(
                             row.state
@@ -329,9 +337,12 @@ export function AttendanceReportTables({
                         >
                           {labelForAgentState(row.state)}
                         </span>
+                        )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.lateMinutes > 0 ? (
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : row.lateMinutes > 0 ? (
                           <button
                             type="button"
                             className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
@@ -356,8 +367,10 @@ export function AttendanceReportTables({
                           "—"
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.earlyLeaveMinutes > 0 ? (
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : row.earlyLeaveMinutes > 0 ? (
                           <button
                             type="button"
                             className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
@@ -381,8 +394,10 @@ export function AttendanceReportTables({
                           "—"
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.pendingAbsenceDateLabel ? (
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : row.pendingAbsenceDateLabel ? (
                           <button
                             type="button"
                             className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-sm font-semibold text-rose-900 hover:bg-rose-500/25 dark:text-rose-200"
@@ -430,27 +445,38 @@ export function AttendanceReportTables({
                           "—"
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {formatAge(row.lastSeenAgeSeconds)}
-                        {row.needsAttention ? (
-                          <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
-                            Alert
-                          </span>
-                        ) : null}
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : (
+                          <>
+                            {formatAge(row.lastSeenAgeSeconds)}
+                            {row.needsAttention ? (
+                              <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
+                                Alert
+                              </span>
+                            ) : null}
+                          </>
+                        )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.openShift ? "Open" : "Closed"}
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? "—" : row.openShift ? "Open" : "Closed"}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {labelForAttendanceStatus(row.attendanceStatus)}
+                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt
+                          ? "—"
+                          : labelForAttendanceStatus(row.attendanceStatus)}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                        {formatMinutes(row.sleepMinutes)}
+                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? "—" : formatMinutes(row.sleepMinutes)}
                       </td>
-                      <td className="max-w-[24rem] px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {row.attendanceReason}
+                      <td className="max-w-[24rem] px-2 py-2 text-slate-700 dark:text-slate-300">
+                        {attendanceExempt ? "—" : row.attendanceReason}
                       </td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="whitespace-nowrap px-2 py-2 text-right">
+                        {attendanceExempt ? (
+                          "—"
+                        ) : (
                         <button
                           type="button"
                           className="rounded-md border border-slate-300 px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -462,9 +488,11 @@ export function AttendanceReportTables({
                         >
                           {issuingForUserId === row.userId ? "Issuing..." : "Re-issue install"}
                         </button>
+                        )}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

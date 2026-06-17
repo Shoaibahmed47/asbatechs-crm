@@ -10,7 +10,6 @@ import { DailyFocusCard } from "@/components/DailyFocusCard";
 import {
   WorkspaceWelcomeBanner
 } from "@/components/WorkspaceWelcomeBanner";
-import { WorkspaceMainWelcome } from "@/components/WorkspaceMainWelcome";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { getWorkspaceWelcomeProfile } from "@/lib/workspace-welcome";
 
@@ -81,9 +80,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 px-4 pb-6 text-base leading-relaxed sm:px-5 xl:px-6 2xl:px-8">
           <div className="surface-reveal min-w-0">
             <AppBreadcrumbs />
-            {welcomeProfile && session ? (
-              <WorkspaceMainWelcome profile={welcomeProfile} role={session.role} />
-            ) : null}
             {children}
           </div>
         </main>

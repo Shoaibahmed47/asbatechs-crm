@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
-import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
 import { normalizeBreakCategory } from "@/lib/attendance-break-shared";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
@@ -90,24 +89,6 @@ export async function POST(req: NextRequest) {
         error:
           "Please say where you are going before starting break (at least 3 characters)."
       },
-      { status: 400 }
-    );
-  }
-
-  const manualSessionsToday = await db
-    .select({ id: schema.breakSessions.id })
-    .from(schema.breakSessions)
-    .where(
-      and(
-        eq(schema.breakSessions.attendanceLogId, log.id),
-        eq(schema.breakSessions.breakType, "manual")
-      )
-    );
-  const hasUsedOfficialBreak = manualSessionsToday.length >= 1;
-
-  if (hasUsedOfficialBreak && !ATTENDANCE_EXTRA_BREAK_ENABLED) {
-    return NextResponse.json(
-      { error: "You already used your break for today. Contact your manager if you need another." },
       { status: 400 }
     );
   }

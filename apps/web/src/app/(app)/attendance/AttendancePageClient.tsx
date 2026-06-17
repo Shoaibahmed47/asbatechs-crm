@@ -1097,17 +1097,10 @@ export default function AttendancePageClient({
     !pendingAbsenceExplanation &&
     (!attendance || !attendance.clockIn || Boolean(attendance.clockOut));
   const canClockOut = canEditShift && shiftOpen;
-  const hasUsedOfficialBreak = (attendance?.breakSessions ?? []).some(
-    (session) => session.breakType === "manual"
-  );
   const openBreakSession = attendance?.breakSessions?.find((session) => !session.breakEnd);
   const isManualBreakOpen = openBreakSession?.breakType === "manual";
 
-  const canStartBreak =
-    isViewingToday &&
-    shiftOpen &&
-    status === "active" &&
-    (ATTENDANCE_EXTRA_BREAK_ENABLED || !hasUsedOfficialBreak);
+  const canStartBreak = isViewingToday && shiftOpen && status === "active";
   const canEndBreak = isViewingToday && status === "break";
 
   async function prepareInstallCommand() {
@@ -1193,10 +1186,6 @@ export default function AttendancePageClient({
   }
 
   function startBreakAction() {
-    if (!ATTENDANCE_EXTRA_BREAK_ENABLED && hasUsedOfficialBreak) {
-      toast.error("Break already used for today.");
-      return;
-    }
     setStartBreakError(null);
     setShowStartBreakModal(true);
   }
@@ -1708,11 +1697,9 @@ export default function AttendancePageClient({
               title={
                 !canStartBreak
                   ? shiftOpen
-                    ? hasUsedOfficialBreak && !ATTENDANCE_EXTRA_BREAK_ENABLED
-                      ? "Official break already used for today."
-                      : status === "idle"
-                        ? "Return to active status first; inactive time is auto-classified."
-                        : "End your current break before starting another."
+                    ? status === "idle"
+                      ? "Return to active status first; inactive time is auto-classified."
+                      : "End your current break before starting another."
                     : "Clock in to start a break."
                   : undefined
               }

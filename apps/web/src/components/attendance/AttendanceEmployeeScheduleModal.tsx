@@ -190,6 +190,30 @@ export function AttendanceEmployeeScheduleModal({
           <p className="mt-4 text-sm text-slate-500">Loading…</p>
         ) : (
           <div className="mt-4 space-y-3">
+            {schedule ? (
+              <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Current schedule
+                </p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-sky-800 dark:text-sky-300">
+                  {schedule.effectiveExpectedCheckInLabel}
+                  <span className="text-slate-500 dark:text-slate-400"> → </span>
+                  {schedule.effectiveExpectedShiftEndLabel}
+                  {schedule.shiftEndsNextDay ? (
+                    <span className="text-base font-medium text-slate-500 dark:text-slate-400">
+                      {" "}
+                      (next day)
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
+                  {schedule.usesOfficeDefault
+                    ? "Using office default times."
+                    : "Custom times for this employee."}
+                </p>
+              </div>
+            ) : null}
+
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
                 useOfficeDefault
