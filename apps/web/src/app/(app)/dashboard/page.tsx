@@ -15,8 +15,8 @@ import {
 } from "@/lib/attendance-daily-report";
 import {
   getAttendanceAgentHealth,
-  type AgentHealthState
 } from "@/lib/attendance-agent-health";
+import { normalizeAgentHealthFilter } from "@/lib/attendance-agent-health-display";
 import { AttendanceReportFilters } from "@/app/(app)/attendance/report/AttendanceReportFilters";
 import { AttendanceReportTablesLazy } from "@/components/attendance/AttendanceReportTablesLazy";
 
@@ -118,13 +118,7 @@ export default async function DashboardPage({
       : "all";
   const agentStateRaw = (pickDateParam(sp.agentState) ?? "").toLowerCase();
   const alertsOnly = pickDateParam(sp.alerts) === "1";
-  const agentStateFilter: AgentHealthState | "all" =
-    agentStateRaw === "running" ||
-    agentStateRaw === "installed" ||
-    agentStateRaw === "stale" ||
-    agentStateRaw === "not_installed"
-      ? (agentStateRaw as AgentHealthState)
-      : "all";
+  const agentStateFilter = normalizeAgentHealthFilter(agentStateRaw || null);
   const departmentFilter =
     departmentRaw && /^\d+$/.test(departmentRaw) ? Number(departmentRaw) : null;
   const reportDate =

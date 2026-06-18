@@ -13,11 +13,18 @@ import {
   officeShiftEndsNextDay,
   type AttendanceOfficeHours
 } from "@/lib/attendance-office-hours";
+import type { AgentHealthState } from "@/lib/attendance-agent-health-state";
+import {
+  AGENT_HEALTH_FILTER_OPTIONS,
+  displayAgentHealthCounts,
+  labelForDisplayAgentState,
+  toneForDisplayAgentState,
+  type AgentHealthFilterState
+} from "@/lib/attendance-agent-health-display";
 
 type Role = "admin" | "manager";
 type SortDirection = "asc" | "desc";
 type PanelKey = "departments" | "users" | "leads" | "invites" | "activity";
-type AgentHealthState = "all" | "running" | "installed" | "stale" | "not_installed";
 
 type AgentHealthRow = {
   userId: number;
@@ -35,7 +42,7 @@ type AgentHealthRow = {
   lastSeenAt: string | null;
   lastSeenSource: string | null;
   lastSeenAgeSeconds: number | null;
-  state: Exclude<AgentHealthState, "all">;
+  state: AgentHealthState;
   needsAttention: boolean;
 };
 
@@ -123,18 +130,13 @@ function formatAge(seconds: number | null): string {
   return `${days}d ago`;
 }
 
-function agentLabel(state: Exclude<AgentHealthState, "all">): string {
-  if (state === "running") return "Running";
-  if (state === "installed") return "Installed";
-  if (state === "stale") return "No recent activity";
-  return "Not installed";
+function agentLabel(state: AgentHealthFilterState | AgentHealthState): string {
+  if (state === "all") return "All";
+  return labelForDisplayAgentState(state);
 }
 
-function agentPillTone(state: Exclude<AgentHealthState, "all">): string {
-  if (state === "running") return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300";
-  if (state === "installed") return "bg-sky-500/15 text-sky-800 dark:text-sky-300";
-  if (state === "stale") return "bg-amber-500/15 text-amber-900 dark:text-amber-300";
-  return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+function agentPillTone(state: AgentHealthState): string {
+  return toneForDisplayAgentState(state);
 }
 
 function SortableHead({
@@ -215,15 +217,13 @@ export function AdminOverviewClient({
   const [officeHoursMessage, setOfficeHoursMessage] = useState<string | null>(null);
   const [officeHoursError, setOfficeHoursError] = useState<string | null>(null);
   const [agentRows, setAgentRows] = useState<AgentHealthRow[]>([]);
-  const [agentCounts, setAgentCounts] = useState<
-    Record<Exclude<AgentHealthState, "all">, number>
-  >({
-    running: 0,
+  const [agentCounts, setAgentCounts] = useState(displayAgentHealthCounts({
+    not_installed: 0,
     installed: 0,
-    stale: 0,
-    not_installed: 0
-  });
-  const [agentStateFilter, setAgentStateFilter] = useState<AgentHealthState>("all");
+    running: 0,
+    stale: 0
+  }));
+  const [agentStateFilter, setAgentStateFilter] = useState<AgentHealthFilterState>("all");
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
 
@@ -246,16 +246,18 @@ export function AdminOverviewClient({
         if (agentStateFilter !== "all") query.set("state", agentStateFilter);
         const data = await apiFetch<{
           rows: AgentHealthRow[];
-          counts: Partial<Record<Exclude<AgentHealthState, "all">, number>>;
+          counts: Partial<Record<AgentHealthState, number>>;
         }>(`/api/admin/agent-health?${query.toString()}`);
         if (cancelled) return;
         setAgentRows(data.rows ?? []);
-        setAgentCounts({
-          running: data.counts?.running ?? 0,
-          installed: data.counts?.installed ?? 0,
-          stale: data.counts?.stale ?? 0,
-          not_installed: data.counts?.not_installed ?? 0
-        });
+        setAgentCounts(
+          displayAgentHealthCounts({
+            running: data.counts?.running ?? 0,
+            installed: data.counts?.installed ?? 0,
+            stale: data.counts?.stale ?? 0,
+            not_installed: data.counts?.not_installed ?? 0
+          })
+        );
       } catch (error) {
         if (cancelled) return;
         setAgentError(
@@ -746,17 +748,12 @@ export function AdminOverviewClient({
               Agent health monitor
             </h2>
             <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-              Running vs no recent activity on employee devices.
-            </p>
-            <p className="mt-1 text-sm text-rose-700 dark:text-rose-300">
-              Alert: shift open + no employee signal for 10+ minutes.
+              Installed vs running desktop agents, with live attendance status.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              {(["all", "running", "installed", "stale", "not_installed"] as const).map(
-                (state) => {
+              {(["all", ...AGENT_HEALTH_FILTER_OPTIONS] as const).map((state) => {
                   const isActive = agentStateFilter === state;
-                  const count =
-                    state === "all" ? agentRows.length : agentCounts[state] ?? 0;
+                  const count = agentCounts[state];
                   return (
                     <button
                       key={state}

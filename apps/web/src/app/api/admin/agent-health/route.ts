@@ -5,18 +5,11 @@ import {
   getAttendanceAgentHealth,
   type AgentHealthState
 } from "@/lib/attendance-agent-health";
+import { normalizeAgentHealthFilter } from "@/lib/attendance-agent-health-display";
 
 function parseAgentState(value: string | null): AgentHealthState | "all" {
-  const v = (value ?? "").toLowerCase();
-  if (
-    v === "running" ||
-    v === "installed" ||
-    v === "stale" ||
-    v === "not_installed"
-  ) {
-    return v as AgentHealthState;
-  }
-  return "all";
+  const filter = normalizeAgentHealthFilter(value);
+  return filter === "all" ? "all" : filter;
 }
 
 export async function GET(req: NextRequest) {

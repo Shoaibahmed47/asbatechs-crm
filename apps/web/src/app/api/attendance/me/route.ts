@@ -3,6 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
+import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { computeLiveShiftMinutes } from "@/lib/attendance-shift-minutes";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
@@ -22,6 +23,8 @@ export async function GET(req: NextRequest) {
   const userId = payload.userId;
   const { searchParams } = new URL(req.url);
   const dateParam = toDateParam(searchParams.get("date"));
+
+  await autoClockOutDueOpenShifts({ userId });
 
   const [log] = await db
     .select()

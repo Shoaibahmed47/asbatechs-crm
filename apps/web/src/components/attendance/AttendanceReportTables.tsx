@@ -26,6 +26,13 @@ import {
 } from "./AttendanceAbsenceDetailModal";
 import { anchorRectFromElement } from "@/lib/anchored-popover";
 import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
+import {
+  AGENT_HEALTH_FILTER_OPTIONS,
+  displayAgentHealthCounts,
+  labelForDisplayAgentState,
+  toneForDisplayAgentState,
+  type AgentHealthFilterState
+} from "@/lib/attendance-agent-health-display";
 import { toast } from "sonner";
 
 type Props = {
@@ -35,7 +42,7 @@ type Props = {
     rows: AttendanceAgentHealthRow[];
     counts: Record<AgentHealthState, number>;
   } | null;
-  agentStateFilter: AgentHealthState | "all";
+  agentStateFilter: AgentHealthFilterState;
   agentFilterQueryBase: string;
   dailyRows: AttendanceDailyRow[];
   rangeRows: AttendanceRangeRow[];
@@ -59,13 +66,6 @@ function formatAge(seconds: number | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function labelForAgentState(state: AgentHealthState): string {
-  if (state === "running") return "Running";
-  if (state === "installed") return "Installed";
-  if (state === "stale") return "No recent activity";
-  return "Not installed";
-}
-
 function labelForAttendanceStatus(status: string): string {
   if (status === "active") return "Active";
   if (status === "break") return "Break";
@@ -73,16 +73,9 @@ function labelForAttendanceStatus(status: string): string {
   return "Offline";
 }
 
-function toneForAgentState(state: AgentHealthState): string {
-  if (state === "running") return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300";
-  if (state === "installed") return "bg-sky-500/15 text-sky-800 dark:text-sky-300";
-  if (state === "stale") return "bg-amber-500/15 text-amber-900 dark:text-amber-300";
-  return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
-}
-
 function queryWithAgentState(
   baseQuery: string,
-  state: AgentHealthState | "all",
+  state: AgentHealthFilterState,
   basePath: string
 ): string {
   const next = new URLSearchParams(baseQuery);
@@ -128,6 +121,7 @@ export function AttendanceReportTables({
   } | null>(null);
   const [detailUser, setDetailUser] = useState<{ userId: number; userName: string } | null>(null);
   const filterBasePath = basePath ?? pathname;
+  const displayCounts = agentHealth ? displayAgentHealthCounts(agentHealth.counts) : null;
 
   // Legacy links may still carry ?employee= — strip on load so the modal cannot stick open.
   useEffect(() => {
@@ -197,17 +191,16 @@ export function AttendanceReportTables({
               Agent health (all employees)
             </h2>
             <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-              Shows which employee machines are running the attendance agent and who has no recent activity.
+              Shows whether the desktop agent is installed or running, plus live attendance status.
               Click any employee row for full attendance reasons.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(["all", "running", "installed", "stale", "not_installed"] as const).map(
-                (state) => {
+              {(["all", ...AGENT_HEALTH_FILTER_OPTIONS] as const).map((state) => {
                   const isActive = agentStateFilter === state;
                   const count =
                     state === "all"
-                      ? agentHealth.rows.length
-                      : agentHealth.counts[state as AgentHealthState];
+                      ? displayCounts?.all ?? agentHealth.rows.length
+                      : displayCounts?.[state] ?? 0;
                   return (
                     <Link
                       key={state}
@@ -218,7 +211,7 @@ export function AttendanceReportTables({
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                       }`}
                     >
-                      {state === "all" ? "All" : labelForAgentState(state)} ({count})
+                      {state === "all" ? "All" : labelForDisplayAgentState(state)} ({count})
                     </Link>
                   );
                 }
@@ -331,11 +324,11 @@ export function AttendanceReportTables({
                           "—"
                         ) : (
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${toneForAgentState(
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${toneForDisplayAgentState(
                             row.state
                           )}`}
                         >
-                          {labelForAgentState(row.state)}
+                          {labelForDisplayAgentState(row.state)}
                         </span>
                         )}
                       </td>

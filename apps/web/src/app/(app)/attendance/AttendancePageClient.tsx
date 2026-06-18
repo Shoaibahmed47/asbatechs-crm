@@ -42,6 +42,11 @@ import type { EmployeePunctualityStats } from "@/lib/attendance-punctuality-shar
 import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 import {
+  agentStateHintForDisplay,
+  employeeAgentBadgeClass,
+  labelForDisplayAgentState
+} from "@/lib/attendance-agent-health-display";
+import {
   isAdminRole,
   isEmployeeRole,
   isManagerRole,
@@ -288,20 +293,6 @@ function formatTimeAgo(seconds: number | null): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
-}
-
-function statusBadgeClass(state: AgentHealthState): string {
-  if (state === "running") return "bg-emerald-100 text-emerald-800";
-  if (state === "installed") return "bg-sky-100 text-sky-800";
-  if (state === "stale") return "bg-amber-100 text-amber-800";
-  return "bg-slate-200 text-slate-700";
-}
-
-function agentStateHint(state: AgentHealthState): string {
-  if (state === "running") return "Live monitoring is active.";
-  if (state === "installed") return "Setup done, waiting for fresh signal.";
-  if (state === "stale") return "No recent activity signal from agent.";
-  return "Agent not verified yet.";
 }
 
 type AttendancePageClientProps = {
@@ -1491,7 +1482,7 @@ export default function AttendancePageClient({
                 </p>
               ) : null}
               <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {agentStateHint(agentHealth?.state ?? "not_installed")}
+                {agentStateHintForDisplay(agentHealth?.state ?? "not_installed")}
               </p>
               {agentHealth?.lastActivitySource ? (
                 <p className="text-base leading-relaxed text-slate-600 dark:text-slate-400">
@@ -1503,11 +1494,11 @@ export default function AttendancePageClient({
               ) : null}
             </div>
             <span
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${statusBadgeClass(
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${employeeAgentBadgeClass(
                 agentHealth?.state ?? "not_installed"
               )}`}
             >
-              {agentHealth?.statusLabel ?? "Not installed"}
+              {agentHealth?.statusLabel ?? labelForDisplayAgentState(agentHealth?.state ?? "not_installed")}
             </span>
           </div>
 

@@ -8,6 +8,7 @@ import {
   resolveAgentHealthState,
   type AgentHealthState
 } from "@/lib/attendance-agent-health-state";
+import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { computeDayTotalsFromSessions } from "@/lib/attendance-shift-minutes";
 import {
   buildAttendanceReason,
@@ -15,6 +16,7 @@ import {
   type AttendanceStatusKind,
   type UnscheduledCause
 } from "@/lib/attendance-reason";
+import { labelForDisplayAgentState } from "@/lib/attendance-agent-health-display";
 
 export type AttendanceEmployeeBreakRow = {
   id: number;
@@ -64,10 +66,7 @@ function formatDurationMinutes(start: Date, end: Date | null): number | null {
 }
 
 function agentStateLabel(state: AgentHealthState): string {
-  if (state === "running") return "Running";
-  if (state === "installed") return "Installed";
-  if (state === "stale") return "No recent activity";
-  return "Not installed";
+  return labelForDisplayAgentState(state);
 }
 
 function normalizeRange(from: string, to: string): { from: string; to: string } {
@@ -145,6 +144,8 @@ export async function getAttendanceEmployeeDetail(params: {
   if (scope.role === "manager" && user.departmentId !== scope.departmentId) {
     return null;
   }
+
+  await autoClockOutDueOpenShifts({ userId });
 
   const [log, heartbeatRows, setupRows, breakSessions] = await Promise.all([
     db

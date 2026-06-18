@@ -9,13 +9,17 @@ jest.mock("@/lib/auth", () => ({
   verifyAuthToken: jest.fn()
 }));
 jest.mock("@/lib/attendance-date", () => ({
-  getLocalDateString: () => "2026-03-31"
+  getLocalDateString: () => "2026-03-31",
+  formatAttendanceDurationReadable: (minutes: number) => `${minutes} min`
 }));
 jest.mock("@/lib/attendance-early-leave", () => ({
   computeEarlyLeaveForClockOut: jest.fn().mockResolvedValue({
     earlyLeaveMinutes: 0,
     expectedShiftEndTime: "17:00"
   })
+}));
+jest.mock("@/lib/attendance-clock-out-service", () => ({
+  finalizeAttendanceClockOut: jest.fn()
 }));
 jest.mock("@/lib/db", () => ({
   db: {
@@ -36,15 +40,16 @@ jest.mock("@asbatechs-crm/database", () => ({
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const finalizeAttendanceClockOut = jest.requireMock("@/lib/attendance-clock-out-service")
+  .finalizeAttendanceClockOut as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  txUpdateSet.mockReturnValue({
-    where: () => ({
-      returning: () => Promise.resolve([{ id: 1, totalWorkMinutes: 120 }])
-    })
+  finalizeAttendanceClockOut.mockResolvedValue({
+    id: 1,
+    totalWorkMinutes: 120,
+    totalBreakMinutes: 30
   });
-  txUpdateWhere.mockResolvedValue([{ id: 1, totalWorkMinutes: 120 }]);
 });
 
 describe("attendance clock-out route", () => {
@@ -67,49 +72,42 @@ describe("attendance clock-out route", () => {
       .mockResolvedValueOnce([
         {
           id: 1,
+          date: "2026-03-31",
           clockIn: new Date(Date.now() - 3 * 60 * 60 * 1000),
           clockOut: null,
           totalBreakMinutes: 30
         }
-      ])
-      .mockResolvedValueOnce([]); // no open break
+      ]);
 
     const res = await POST(req());
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.attendance.totalWorkMinutes).toBeGreaterThan(0);
+    expect(finalizeAttendanceClockOut).toHaveBeenCalled();
+    expect(data.attendance.totalWorkMinutes).toBe(120);
   });
 
-  it("adds open unscheduled sleep time to break, idle, and sleep totals", async () => {
+  it("delegates open break handling to finalizeAttendanceClockOut", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2 });
-    selectWhere
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          clockIn: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          clockOut: null,
-          totalBreakMinutes: 5,
-          unscheduledIdleMinutes: 3,
-          sleepMinutes: 2
-        }
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 9,
-          breakStart: new Date(Date.now() - 10 * 60 * 1000),
-          breakType: "unscheduled",
-          unscheduledCause: "sleep"
-        }
-      ]);
+    selectWhere.mockResolvedValueOnce([
+      {
+        id: 1,
+        date: "2026-03-31",
+        clockIn: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        clockOut: null,
+        totalBreakMinutes: 5,
+        unscheduledIdleMinutes: 3,
+        sleepMinutes: 2
+      }
+    ]);
 
     const res = await POST(req());
-    const updatePayload = txUpdateSet.mock.calls.at(-1)?.[0];
 
     expect(res.status).toBe(200);
-    expect(updatePayload.totalBreakMinutes).toBeGreaterThanOrEqual(14);
-    expect(updatePayload.unscheduledIdleMinutes).toBeGreaterThanOrEqual(12);
-    expect(updatePayload.sleepMinutes).toBeGreaterThanOrEqual(11);
-    expect(updatePayload.lastActivitySource).toBe("browser");
+    expect(finalizeAttendanceClockOut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activitySource: "browser"
+      })
+    );
   });
 });

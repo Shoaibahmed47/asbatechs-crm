@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
-import { computeEarlyLeaveForClockOut } from "@/lib/attendance-early-leave";
-import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
+import { finalizeAttendanceClockOut } from "@/lib/attendance-clock-out-service";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 import { buildClockOutFeedbackMessage } from "@/lib/attendance-clock-feedback";
 
@@ -54,82 +53,30 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
+  const updated = await finalizeAttendanceClockOut({
+    log: {
+      id: log.id,
+      userId,
+      date: log.date,
+      clockIn: log.clockIn as Date,
+      clockOut: log.clockOut,
+      totalBreakMinutes: log.totalBreakMinutes,
+      unscheduledIdleMinutes: log.unscheduledIdleMinutes,
+      sleepMinutes: log.sleepMinutes
+    },
+    clockOutAt: now,
+    activitySource: "browser"
+  });
 
-  const [openBreak] = await db
-    .select()
-    .from(schema.breakSessions)
-    .where(
-      and(
-        eq(schema.breakSessions.attendanceLogId, log.id),
-        isNull(schema.breakSessions.breakEnd)
-      )
-    );
-
-  let totalBreakMinutes = log.totalBreakMinutes ?? 0;
-  let unscheduledIdleMinutes = log.unscheduledIdleMinutes ?? 0;
-  let sleepMinutes = log.sleepMinutes ?? 0;
-  if (openBreak) {
-    const added = Math.max(
-      0,
-      Math.floor(
-        (now.getTime() - new Date(openBreak.breakStart as Date).getTime()) /
-          60000
-      )
-    );
-    totalBreakMinutes += added;
-    if (openBreak.breakType === "unscheduled") {
-      unscheduledIdleMinutes += added;
-      if (openBreak.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP) {
-        sleepMinutes += added;
-      }
-    }
+  if (!updated) {
+    return NextResponse.json({ error: "Could not clock out." }, { status: 500 });
   }
-
-  const diffMs = now.getTime() - new Date(log.clockIn as Date).getTime();
-  let totalWorkMinutes = Math.floor(diffMs / 60000) - totalBreakMinutes;
-  if (totalWorkMinutes < 0) totalWorkMinutes = 0;
-
-  const totalHours = (totalWorkMinutes / 60).toFixed(2);
-
-  const { earlyLeaveMinutes, expectedShiftEndTime } = await computeEarlyLeaveForClockOut({
-    userId,
-    logDate: String(log.date),
-    clockIn: new Date(log.clockIn as Date),
-    clockOut: now
-  });
-
-  const [updated] = await db.transaction(async (tx) => {
-    if (openBreak) {
-      await tx
-        .update(schema.breakSessions)
-        .set({ breakEnd: now })
-        .where(eq(schema.breakSessions.id, openBreak.id));
-    }
-
-    return tx
-      .update(schema.attendanceLogs)
-      .set({
-        clockOut: now,
-        totalWorkMinutes,
-        totalBreakMinutes,
-        unscheduledIdleMinutes,
-        sleepMinutes,
-        status: "offline",
-        totalHours,
-        lastActivityAt: now,
-        lastActivitySource: "browser",
-        earlyLeaveMinutes,
-        expectedShiftEndTime
-      })
-      .where(eq(schema.attendanceLogs.id, log.id))
-      .returning();
-  });
 
   return NextResponse.json({
     attendance: updated,
     feedback: {
-      workMinutes: totalWorkMinutes,
-      message: buildClockOutFeedbackMessage(totalWorkMinutes)
+      workMinutes: updated.totalWorkMinutes ?? 0,
+      message: buildClockOutFeedbackMessage(updated.totalWorkMinutes ?? 0)
     }
   });
 }

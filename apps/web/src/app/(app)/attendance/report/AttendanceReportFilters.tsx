@@ -6,6 +6,7 @@ import { DayPicker, type DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
 import { areSearchQueriesEqual } from "@/lib/url-search-params";
+import type { AgentHealthFilterState } from "@/lib/attendance-agent-health-display";
 
 type DepartmentOption = { id: number; name: string };
 
@@ -17,7 +18,7 @@ type AttendanceReportFiltersProps = {
   preset: string;
   search: string;
   status: "all" | "present" | "working" | "absent";
-  agentState: "all" | "running" | "installed" | "stale" | "not_installed";
+  agentState: AgentHealthFilterState;
   alertsOnly: boolean;
   departmentId: string;
   departments: DepartmentOption[];
@@ -261,7 +262,6 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
               <option value="all">All agent states</option>
               <option value="running">Running</option>
               <option value="installed">Installed</option>
-              <option value="stale">No recent activity</option>
               <option value="not_installed">Not installed</option>
             </select>
           </div>

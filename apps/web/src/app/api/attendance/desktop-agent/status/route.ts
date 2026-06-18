@@ -9,6 +9,7 @@ import {
   pickLatestAgentSignalOnDate,
   resolveAgentHealthState
 } from "@/lib/attendance-agent-health-state";
+import { labelForDisplayAgentState } from "@/lib/attendance-agent-health-display";
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
@@ -98,22 +99,15 @@ export async function GET(req: NextRequest) {
       ? "setup"
       : null;
 
-  const statusLabel =
-    state === "running"
-      ? "Running"
-      : state === "installed"
-        ? "Installed"
-        : state === "stale"
-          ? "No recent activity"
-          : "Not installed";
+  const statusLabel = labelForDisplayAgentState(state);
 
   const recommendedAction =
     state === "not_installed"
       ? "Install the desktop agent once from Attendance page."
-      : state === "stale" && openShift
-        ? "Verify scheduled task and restart agent."
-        : state === "installed" && openShift
-          ? "Click Verify Agent. If still not running, use Reconfigure."
+      : state === "running"
+        ? "No action needed."
+        : openShift
+          ? "Click Verify Agent if you need to confirm the agent is running."
           : "No action needed.";
 
   return NextResponse.json({

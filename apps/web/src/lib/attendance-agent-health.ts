@@ -23,6 +23,10 @@ import { formatAttendanceClock, formatAttendanceDateLabel } from "@/lib/attendan
 import { findPendingAbsenceExplanation } from "@/lib/attendance-absence";
 import { isAttendanceWorkingDay } from "@/lib/attendance-working-days";
 import { isAdminRole } from "@/lib/rbac";
+import {
+  matchesAgentHealthFilter,
+  normalizeAgentHealthFilter
+} from "@/lib/attendance-agent-health-display";
 
 export type { AgentHealthState };
 
@@ -252,6 +256,9 @@ export async function getAttendanceAgentHealth(params: {
   const normalizedSearch = search.trim().toLowerCase();
   const now = Date.now();
   const todayStr = getLocalDateString();
+  const effectiveStateFilter = normalizeAgentHealthFilter(
+    stateFilter === "all" ? null : stateFilter
+  );
 
   const pendingAbsencePairs = await Promise.all(
     scopedUsers.map(async (user) => ({
@@ -455,7 +462,7 @@ export async function getAttendanceAgentHealth(params: {
         row.userEmail.toLowerCase().includes(normalizedSearch);
       const matchesDepartment =
         departmentFilter == null || row.departmentId === departmentFilter;
-      const matchesState = stateFilter === "all" || row.state === stateFilter;
+      const matchesState = matchesAgentHealthFilter(row.state, effectiveStateFilter);
       const matchesAlerts = !alertsOnly || row.needsAttention;
       return matchesSearch && matchesDepartment && matchesState && matchesAlerts;
     })

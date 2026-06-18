@@ -26,6 +26,11 @@ import {
 } from "@/lib/attendance-date";
 import type { AttendanceEmployeeDetail } from "@/lib/attendance-employee-detail";
 import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
+import {
+  agentStateHintForDisplay,
+  labelForDisplayAgentState,
+  toneForDisplayAgentState
+} from "@/lib/attendance-agent-health-display";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -73,17 +78,11 @@ function attendanceStatusLabel(status: string): string {
 }
 
 function toneForAgent(state: string): string {
-  if (state === "running") return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300";
-  if (state === "installed") return "bg-sky-500/15 text-sky-800 dark:text-sky-300";
-  if (state === "stale") return "bg-amber-500/15 text-amber-900 dark:text-amber-300";
-  return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+  return toneForDisplayAgentState(state as "not_installed" | "installed" | "running" | "stale");
 }
 
 function agentStateHint(state: string): string {
-  if (state === "running") return "Live monitoring is active.";
-  if (state === "installed") return "Setup done, waiting for fresh signal.";
-  if (state === "stale") return "No recent activity signal from agent.";
-  return "Agent setup not installed on this machine.";
+  return agentStateHintForDisplay(state as "not_installed" | "installed" | "running" | "stale");
 }
 
 function formatDayHeading(iso: string): string {
