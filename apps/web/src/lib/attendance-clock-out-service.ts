@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { computeEarlyLeaveForClockOut } from "@/lib/attendance-early-leave";
+import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 
 export type AttendanceLogClockOutRow = {
@@ -61,7 +62,14 @@ export async function finalizeAttendanceClockOut(params: {
   }
 
   const clockInDate = new Date(log.clockIn as Date);
-  const diffMs = clockOutAt.getTime() - clockInDate.getTime();
+  const bounds = await resolveOpenShiftBoundsForEmployee({
+    userId: log.userId,
+    logDate: String(log.date),
+    clockIn: clockInDate,
+    clockOut: clockOutAt,
+    now: clockOutAt
+  });
+  const diffMs = bounds.end.getTime() - bounds.start.getTime();
   let totalWorkMinutes = Math.floor(diffMs / 60000) - totalBreakMinutes;
   if (totalWorkMinutes < 0) totalWorkMinutes = 0;
 

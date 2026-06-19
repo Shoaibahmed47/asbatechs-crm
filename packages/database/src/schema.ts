@@ -45,6 +45,10 @@ export const users = pgTable("users", {
   expectedCheckInTime: text("expected_check_in_time"),
   /** Per-employee expected shift end / check-out (HH:mm). Null = use office default. */
   expectedShiftEndTime: text("expected_shift_end_time"),
+  /** Future schedule — applies from schedule_effective_from (see attendance-employee-schedule). */
+  pendingExpectedCheckInTime: text("pending_expected_check_in_time"),
+  pendingExpectedShiftEndTime: text("pending_expected_shift_end_time"),
+  scheduleEffectiveFrom: date("schedule_effective_from"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });

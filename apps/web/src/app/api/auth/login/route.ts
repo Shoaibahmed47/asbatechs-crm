@@ -9,6 +9,7 @@ import {
   findUserByEmail,
   hashPassword,
   signAuthToken,
+  staffAuthCookieOptions,
   verifyPassword
 } from "@/lib/auth";
 import { ensureDefaultAdmin } from "@/lib/bootstrap-admin";
@@ -218,12 +219,7 @@ export async function POST(req: Request) {
       token
     });
 
-    res.cookies.set(COOKIE_NAME, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/"
-    });
+    res.cookies.set(COOKIE_NAME, token, staffAuthCookieOptions());
 
     return res;
   } catch (err) {

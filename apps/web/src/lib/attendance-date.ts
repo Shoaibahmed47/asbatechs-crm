@@ -108,3 +108,11 @@ export function enumerateLocalDates(from: string, to: string): string[] {
   }
   return out;
 }
+
+export function isValidAttendanceDateString(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+}
+
+export function getTomorrowLocalDateString(from = new Date()): string {
+  return addCalendarDays(getLocalDateString(from), 1);
+}

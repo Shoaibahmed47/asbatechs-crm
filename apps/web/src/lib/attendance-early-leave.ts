@@ -64,8 +64,11 @@ export async function computeEarlyLeaveForClockOut(params: {
   clockIn: Date;
   clockOut: Date;
 }): Promise<{ earlyLeaveMinutes: number; expectedShiftEndTime: string }> {
-  const expectedCheckInTime = await getExpectedCheckInTimeForEmployee(params.userId);
-  const shiftEndTime = await getExpectedShiftEndTimeForEmployee(params.userId);
+  const expectedCheckInTime = await getExpectedCheckInTimeForEmployee(
+    params.userId,
+    params.logDate
+  );
+  const shiftEndTime = await getExpectedShiftEndTimeForEmployee(params.userId, params.logDate);
   const expectedEnd = resolveExpectedShiftEndInstant(
     params.logDate,
     expectedCheckInTime,

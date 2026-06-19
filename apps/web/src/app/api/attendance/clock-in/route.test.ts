@@ -13,13 +13,17 @@ jest.mock("@/lib/attendance-date", () => ({
 jest.mock("@/lib/attendance-late-checkin", () => ({
   hasPendingLateExplanation: jest.fn().mockResolvedValue(false),
   getExpectedCheckInTimeForUser: jest.fn().mockResolvedValue("09:00"),
-  computeLateMinutes: jest.fn().mockReturnValue(0)
+  computeLateMinutes: jest.fn().mockReturnValue(0),
+  computeRawLateMinutes: jest.fn().mockReturnValue(0)
 }));
 jest.mock("@/lib/attendance-early-leave", () => ({
   hasPendingEarlyLeaveExplanation: jest.fn().mockResolvedValue(false)
 }));
 jest.mock("@/lib/attendance-absence", () => ({
   hasPendingAbsenceExplanation: jest.fn().mockResolvedValue(false)
+}));
+jest.mock("@/lib/attendance-auto-clock-out", () => ({
+  autoClockOutDueOpenShifts: jest.fn().mockResolvedValue({ closedCount: 0, closedLogIds: [] })
 }));
 jest.mock("@/lib/attendance-office-settings", () => ({
   getAttendanceOfficeHours: jest.fn().mockResolvedValue({

@@ -12,11 +12,10 @@ import {
 import { buildAttendanceReason } from "@/lib/attendance-reason";
 import { ATTENDANCE_AGENT_ALERT_STALE_MINUTES } from "@/lib/attendance-policy";
 import {
-  formatOfficeTimeLabel,
-  isValidOfficeTime,
-  officeShiftEndsNextDay
+  formatOfficeTimeLabel
 } from "@/lib/attendance-office-hours";
 import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
+import { promoteAllDueEmployeeSchedules, resolveEmployeeScheduleForDate } from "@/lib/attendance-employee-schedule";
 import { formatShiftEndLabel } from "@/lib/attendance-early-leave";
 import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
 import { formatAttendanceClock, formatAttendanceDateLabel } from "@/lib/attendance-date";
@@ -99,6 +98,7 @@ export async function getAttendanceAgentHealth(params: {
   } = params;
 
   const officeHours = await getAttendanceOfficeHours();
+  await promoteAllDueEmployeeSchedules();
 
   const scopedUsers = await db
     .select({
@@ -109,7 +109,10 @@ export async function getAttendanceAgentHealth(params: {
       departmentId: schema.users.departmentId,
       departmentName: schema.departments.name,
       employeeExpectedCheckInTime: schema.users.expectedCheckInTime,
-      employeeExpectedShiftEndTime: schema.users.expectedShiftEndTime
+      employeeExpectedShiftEndTime: schema.users.expectedShiftEndTime,
+      pendingExpectedCheckInTime: schema.users.pendingExpectedCheckInTime,
+      pendingExpectedShiftEndTime: schema.users.pendingExpectedShiftEndTime,
+      scheduleEffectiveFrom: schema.users.scheduleEffectiveFrom
     })
     .from(schema.users)
     .leftJoin(schema.departments, eq(schema.users.departmentId, schema.departments.id))
@@ -362,23 +365,21 @@ export async function getAttendanceAgentHealth(params: {
         lastSeenAgeSeconds != null &&
         lastSeenAgeSeconds >= ATTENDANCE_AGENT_ALERT_STALE_MINUTES * 60;
 
-      const employeeCheckInOverride = user.employeeExpectedCheckInTime?.trim() ?? "";
-      const employeeShiftEndOverride = user.employeeExpectedShiftEndTime?.trim() ?? "";
-      const usesCheckInOfficeDefault =
-        !employeeCheckInOverride || !isValidOfficeTime(employeeCheckInOverride);
-      const usesShiftEndOfficeDefault =
-        !employeeShiftEndOverride || !isValidOfficeTime(employeeShiftEndOverride);
-      const usesOfficeDefault = usesCheckInOfficeDefault && usesShiftEndOfficeDefault;
-      const effectiveExpectedCheckInTime = usesCheckInOfficeDefault
-        ? officeHours.expectedCheckInTime
-        : employeeCheckInOverride;
-      const effectiveExpectedShiftEndTime = usesShiftEndOfficeDefault
-        ? officeHours.shiftEndTime
-        : employeeShiftEndOverride;
-      const scheduleEndsNextDay = officeShiftEndsNextDay(
-        effectiveExpectedCheckInTime,
-        effectiveExpectedShiftEndTime
+      const resolvedSchedule = resolveEmployeeScheduleForDate(
+        {
+          expectedCheckInTime: user.employeeExpectedCheckInTime,
+          expectedShiftEndTime: user.employeeExpectedShiftEndTime,
+          pendingExpectedCheckInTime: user.pendingExpectedCheckInTime,
+          pendingExpectedShiftEndTime: user.pendingExpectedShiftEndTime,
+          scheduleEffectiveFrom: user.scheduleEffectiveFrom
+        },
+        officeHours,
+        date
       );
+      const usesOfficeDefault = resolvedSchedule.usesOfficeDefault;
+      const effectiveExpectedCheckInTime = resolvedSchedule.effectiveExpectedCheckInTime;
+      const effectiveExpectedShiftEndTime = resolvedSchedule.effectiveExpectedShiftEndTime;
+      const scheduleEndsNextDay = resolvedSchedule.shiftEndsNextDay;
       const lateMinutes = todayLog?.lateMinutes ?? 0;
       const logDate = todayLog?.logDate ? String(todayLog.logDate) : date;
       const snapshotExpected = todayLog?.logExpectedCheckInTime?.trim() ?? "";
@@ -403,8 +404,8 @@ export async function getAttendanceAgentHealth(params: {
         lastSeenAgeSeconds,
         state,
         needsAttention,
-        employeeExpectedCheckInTime: usesCheckInOfficeDefault ? null : employeeCheckInOverride,
-        employeeExpectedShiftEndTime: usesShiftEndOfficeDefault ? null : employeeShiftEndOverride,
+        employeeExpectedCheckInTime: resolvedSchedule.employeeExpectedCheckInTime,
+        employeeExpectedShiftEndTime: resolvedSchedule.employeeExpectedShiftEndTime,
         effectiveExpectedCheckInTime,
         effectiveExpectedCheckInLabel: formatOfficeTimeLabel(effectiveExpectedCheckInTime),
         effectiveExpectedShiftEndTime,

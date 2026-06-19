@@ -77,17 +77,17 @@ export async function POST(req: NextRequest) {
   const category = normalizeBreakCategory(body.category);
   if (!category) {
     return NextResponse.json(
-      { error: "Please select a break type (lunch, prayer, etc.)." },
+      { error: "Please select a break type (lunch, dinner, prayer, etc.)." },
       { status: 400 }
     );
   }
 
   const rawNote = typeof body.note === "string" ? body.note.trim() : "";
-  if (rawNote.length < 3) {
+  if (category === "other" && rawNote.length < 3) {
     return NextResponse.json(
       {
         error:
-          "Please say where you are going before starting break (at least 3 characters)."
+          "Please describe where you are going for an Other break (at least 3 characters)."
       },
       { status: 400 }
     );
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       breakStart: now,
       breakType: "manual",
       breakCategory: category,
-      startNote: rawNote ? rawNote.slice(0, 240) : null
+      startNote: category === "other" ? rawNote.slice(0, 240) : null
     })
     .returning();
 

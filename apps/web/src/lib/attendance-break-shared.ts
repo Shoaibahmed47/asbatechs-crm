@@ -1,5 +1,6 @@
 export const BREAK_CATEGORIES = [
   "lunch",
+  "dinner",
   "prayer",
   "tea_coffee",
   "personal",
@@ -10,6 +11,7 @@ export type BreakCategory = (typeof BREAK_CATEGORIES)[number];
 
 export const BREAK_CATEGORY_LABELS: Record<BreakCategory, string> = {
   lunch: "Lunch",
+  dinner: "Dinner",
   prayer: "Prayer",
   tea_coffee: "Tea / coffee",
   personal: "Personal",

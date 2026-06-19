@@ -38,7 +38,7 @@ describe("attendance break-start route", () => {
   const req = (body?: Record<string, unknown>) =>
     ({
       cookies: { get: () => ({ value: "token" }) },
-      json: async () => body ?? { category: "lunch", note: "lunch break" }
+      json: async () => body ?? { category: "lunch" }
     }) as any;
 
   it("requires clock-in before break start", async () => {
@@ -63,5 +63,15 @@ describe("attendance break-start route", () => {
     expect(res.status).toBe(200);
     expect(data.session.id).toBe(77);
     expect(updateWhere).toHaveBeenCalled();
+  });
+
+  it("requires a note when break type is other", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
+    selectWhere
+      .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
+      .mockResolvedValueOnce([]);
+
+    const res = await POST(req({ category: "other" }));
+    expect(res.status).toBe(400);
   });
 });

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import { getTomorrowLocalDateString } from "@/lib/attendance-date";
 import { formatOfficeTimeLabel, officeShiftEndsNextDay } from "@/lib/attendance-office-hours";
 import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 
@@ -38,6 +39,15 @@ type Schedule = {
   effectiveExpectedShiftEndLabel: string;
   shiftEndsNextDay: boolean;
   usesOfficeDefault: boolean;
+  hasPendingSchedule: boolean;
+  pendingEffectiveFrom: string | null;
+  pendingEffectiveFromLabel: string | null;
+  pendingEffectiveExpectedCheckInLabel: string | null;
+  pendingEffectiveExpectedShiftEndLabel: string | null;
+  pendingShiftEndsNextDay: boolean;
+  pendingUsesOfficeDefault: boolean;
+  pendingEmployeeExpectedCheckInTime: string | null;
+  pendingEmployeeExpectedShiftEndTime: string | null;
 };
 
 export function AttendanceEmployeeScheduleModal({
@@ -54,6 +64,8 @@ export function AttendanceEmployeeScheduleModal({
   const [checkInTime, setCheckInTime] = useState("19:00");
   const [shiftEndTime, setShiftEndTime] = useState("16:00");
   const [useOfficeDefault, setUseOfficeDefault] = useState(true);
+  const [applyImmediately, setApplyImmediately] = useState(false);
+  const [effectiveFrom, setEffectiveFrom] = useState(() => getTomorrowLocalDateString());
 
   useEffect(() => {
     setMounted(true);
@@ -82,14 +94,32 @@ export function AttendanceEmployeeScheduleModal({
         );
         if (cancelled) return;
         setSchedule(data.schedule);
-        setUseOfficeDefault(data.schedule.usesOfficeDefault);
-        setCheckInTime(
-          data.schedule.employeeExpectedCheckInTime ??
-            data.schedule.officeExpectedCheckInTime
-        );
-        setShiftEndTime(
-          data.schedule.employeeExpectedShiftEndTime ?? data.schedule.officeShiftEndTime
-        );
+        setApplyImmediately(false);
+        setEffectiveFrom(getTomorrowLocalDateString());
+
+        if (data.schedule.hasPendingSchedule) {
+          setUseOfficeDefault(data.schedule.pendingUsesOfficeDefault);
+          setCheckInTime(
+            data.schedule.pendingEmployeeExpectedCheckInTime ??
+              data.schedule.officeExpectedCheckInTime
+          );
+          setShiftEndTime(
+            data.schedule.pendingEmployeeExpectedShiftEndTime ??
+              data.schedule.officeShiftEndTime
+          );
+          if (data.schedule.pendingEffectiveFrom) {
+            setEffectiveFrom(data.schedule.pendingEffectiveFrom);
+          }
+        } else {
+          setUseOfficeDefault(data.schedule.usesOfficeDefault);
+          setCheckInTime(
+            data.schedule.employeeExpectedCheckInTime ??
+              data.schedule.officeExpectedCheckInTime
+          );
+          setShiftEndTime(
+            data.schedule.employeeExpectedShiftEndTime ?? data.schedule.officeShiftEndTime
+          );
+        }
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -122,7 +152,8 @@ export function AttendanceEmployeeScheduleModal({
         {
           userId,
           expectedCheckInTime: useOfficeDefault ? null : checkInTime,
-          expectedShiftEndTime: useOfficeDefault ? null : shiftEndTime
+          expectedShiftEndTime: useOfficeDefault ? null : shiftEndTime,
+          effectiveFrom: applyImmediately ? null : effectiveFrom
         }
       );
       setSchedule(data.schedule);
@@ -193,7 +224,7 @@ export function AttendanceEmployeeScheduleModal({
             {schedule ? (
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Current schedule
+                  Active today
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-sky-800 dark:text-sky-300">
                   {schedule.effectiveExpectedCheckInLabel}
@@ -206,11 +237,16 @@ export function AttendanceEmployeeScheduleModal({
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
-                  {schedule.usesOfficeDefault
-                    ? "Using office default times."
-                    : "Custom times for this employee."}
-                </p>
+                {schedule.hasPendingSchedule &&
+                schedule.pendingEffectiveExpectedCheckInLabel &&
+                schedule.pendingEffectiveExpectedShiftEndLabel ? (
+                  <p className="mt-2 text-base text-amber-800 dark:text-amber-300">
+                    Scheduled from <strong>{schedule.pendingEffectiveFromLabel}</strong>:{" "}
+                    {schedule.pendingEffectiveExpectedCheckInLabel} →{" "}
+                    {schedule.pendingEffectiveExpectedShiftEndLabel}
+                    {schedule.pendingShiftEndsNextDay ? " (next day)" : ""}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -252,9 +288,6 @@ export function AttendanceEmployeeScheduleModal({
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
-                  Late grace applies from office check-in time.
-                </p>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
@@ -291,6 +324,47 @@ export function AttendanceEmployeeScheduleModal({
                 </label>
               </div>
             )}
+
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/60">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={applyImmediately}
+                  onChange={(e) => setApplyImmediately(e.target.checked)}
+                  disabled={saving}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <span className="min-w-0">
+                  <span className="text-base font-medium text-slate-900 dark:text-slate-100">
+                    Apply today (immediate)
+                  </span>
+                  <span className="mt-0.5 block text-base leading-relaxed text-slate-500 dark:text-slate-400">
+                    Use new times for today&apos;s shift. Leave unchecked to start from a future
+                    date (recommended).
+                  </span>
+                </span>
+              </label>
+
+              {!applyImmediately ? (
+                <label className="mt-3 block">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Effective from
+                  </span>
+                  <input
+                    type="date"
+                    value={effectiveFrom}
+                    min={getTomorrowLocalDateString()}
+                    onChange={(e) => setEffectiveFrom(e.target.value)}
+                    disabled={saving}
+                    className="form-input mt-2"
+                  />
+                  <span className="mt-1 block text-base text-slate-500 dark:text-slate-400">
+                    New check-in / check-out apply from this date. Today&apos;s open shift keeps the
+                    current schedule.
+                  </span>
+                </label>
+              ) : null}
+            </div>
           </div>
         )}
 
@@ -306,7 +380,7 @@ export function AttendanceEmployeeScheduleModal({
             onClick={() => void handleSave()}
             disabled={loading || saving}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : applyImmediately ? "Save now" : "Schedule change"}
           </Button>
         </div>
       </div>

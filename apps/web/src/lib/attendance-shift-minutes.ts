@@ -69,9 +69,14 @@ export function computeLiveShiftMinutes(params: {
   clockOut: Date | string | null;
   now: Date;
   breakSessions: ShiftBreakSession[];
+  /** Optional clip window for display / open-shift totals. */
+  calculationStart?: Date | string;
+  calculationEnd?: Date | string;
 }): { workMinutes: number; breakMinutes: number; elapsedMinutes: number } {
-  const clockInMs = toMs(params.clockIn);
-  const shiftEndMs = params.clockOut ? toMs(params.clockOut) : params.now.getTime();
+  const clockInMs = toMs(params.calculationStart ?? params.clockIn);
+  const shiftEndMs = params.clockOut
+    ? toMs(params.clockOut)
+    : toMs(params.calculationEnd ?? params.now);
   const elapsedMinutes = minutesBetween(clockInMs, shiftEndMs);
 
   const intervals: Array<{ start: number; end: number }> = [];
@@ -135,10 +140,14 @@ export function computeDayTotalsFromSessions(params: {
   clockOut: Date | string | null;
   now: Date;
   breakSessions: ShiftBreakSession[];
+  calculationStart?: Date | string;
+  calculationEnd?: Date | string;
 }): DayTotalsFromSessions {
   const live = computeLiveShiftMinutes(params);
-  const clockInMs = toMs(params.clockIn);
-  const shiftEndMs = params.clockOut ? toMs(params.clockOut) : params.now.getTime();
+  const clockInMs = toMs(params.calculationStart ?? params.clockIn);
+  const shiftEndMs = params.clockOut
+    ? toMs(params.clockOut)
+    : toMs(params.calculationEnd ?? params.now);
 
   const breakIntervals: Array<{ start: number; end: number }> = [];
   const inactiveIntervals: Array<{ start: number; end: number }> = [];

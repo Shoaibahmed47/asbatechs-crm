@@ -5,8 +5,39 @@ import { schema } from "@asbatechs-crm/database";
 import { eq, sql } from "drizzle-orm";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret");
-const JWT_EXPIRES_IN = "8h";
+/** Staff browser session — must cover overnight shifts (e.g. 7 PM → 4 AM). Override via JWT_EXPIRES_IN. */
+export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN?.trim() || "24h";
 const COOKIE_NAME = "crm_token";
+
+/** Converts jose-style expiry (e.g. 24h, 7d) to cookie maxAge seconds. */
+export function jwtExpiresInToMaxAgeSeconds(expiresIn: string): number {
+  const match = expiresIn.trim().match(/^(\d+)([smhd])$/i);
+  if (!match) return 60 * 60 * 24;
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case "s":
+      return value;
+    case "m":
+      return value * 60;
+    case "h":
+      return value * 60 * 60;
+    case "d":
+      return value * 60 * 60 * 24;
+    default:
+      return 60 * 60 * 24;
+  }
+}
+
+export function staffAuthCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: jwtExpiresInToMaxAgeSeconds(JWT_EXPIRES_IN)
+  };
+}
 
 export type AuthTokenPayload = {
   userId: number;

@@ -218,6 +218,13 @@
       "when": 1780100000000,
       "tag": "0030_user_expected_shift_end",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0031_user_schedule_effective_from",
+      "breakpoints": true
     }
   ]
 }

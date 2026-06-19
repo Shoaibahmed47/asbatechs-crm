@@ -10,6 +10,7 @@ import {
 } from "@/lib/attendance-agent-health-state";
 import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { computeDayTotalsFromSessions } from "@/lib/attendance-shift-minutes";
+import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import {
   buildAttendanceReason,
   UNSCHEDULED_CAUSE,
@@ -290,12 +291,26 @@ export async function getAttendanceEmployeeDetail(params: {
 
   const totals =
     log.clockIn != null
-      ? computeDayTotalsFromSessions({
-          clockIn: log.clockIn as Date,
-          clockOut: log.clockOut as Date | null,
-          now: new Date(),
-          breakSessions: sessionInputs
-        })
+      ? await (async () => {
+          const now = new Date();
+          const bounds = log.clockOut
+            ? null
+            : await resolveOpenShiftBoundsForEmployee({
+                userId,
+                logDate: date,
+                clockIn: new Date(log.clockIn as Date),
+                clockOut: null,
+                now
+              });
+          return computeDayTotalsFromSessions({
+            clockIn: log.clockIn as Date,
+            clockOut: log.clockOut as Date | null,
+            now,
+            calculationStart: bounds?.start,
+            calculationEnd: bounds?.end,
+            breakSessions: sessionInputs
+          });
+        })()
       : null;
 
   const totalWorkMinutes = totals?.workMinutes ?? log.totalWorkMinutes ?? 0;

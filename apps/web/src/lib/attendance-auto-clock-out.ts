@@ -6,16 +6,12 @@ import {
   type AttendanceLogClockOutRow
 } from "@/lib/attendance-clock-out-service";
 import { resolveExpectedShiftEndInstant } from "@/lib/attendance-early-leave";
-import { isValidOfficeTime } from "@/lib/attendance-office-hours";
+import {
+  promoteAllDueEmployeeSchedules,
+  resolveEmployeeScheduleForDate,
+  type UserScheduleFields
+} from "@/lib/attendance-employee-schedule";
 import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
-
-function effectiveScheduleTime(override: string | null | undefined, officeDefault: string): string {
-  const trimmed = override?.trim() ?? "";
-  if (trimmed && isValidOfficeTime(trimmed)) {
-    return trimmed;
-  }
-  return officeDefault;
-}
 
 /**
  * When shift end has passed, returns the instant to use for automatic clock-out.
@@ -47,8 +43,7 @@ export function resolveAutoClockOutInstant(params: {
 
 type OpenShiftRow = {
   log: AttendanceLogClockOutRow;
-  expectedCheckInTime: string | null;
-  expectedShiftEndTime: string | null;
+  userSchedule: UserScheduleFields;
 };
 
 async function loadOpenShifts(userId?: number): Promise<OpenShiftRow[]> {
@@ -68,7 +63,10 @@ async function loadOpenShifts(userId?: number): Promise<OpenShiftRow[]> {
       unscheduledIdleMinutes: schema.attendanceLogs.unscheduledIdleMinutes,
       sleepMinutes: schema.attendanceLogs.sleepMinutes,
       expectedCheckInTime: schema.users.expectedCheckInTime,
-      expectedShiftEndTime: schema.users.expectedShiftEndTime
+      expectedShiftEndTime: schema.users.expectedShiftEndTime,
+      pendingExpectedCheckInTime: schema.users.pendingExpectedCheckInTime,
+      pendingExpectedShiftEndTime: schema.users.pendingExpectedShiftEndTime,
+      scheduleEffectiveFrom: schema.users.scheduleEffectiveFrom
     })
     .from(schema.attendanceLogs)
     .innerJoin(schema.users, eq(schema.attendanceLogs.userId, schema.users.id))
@@ -87,38 +85,40 @@ async function loadOpenShifts(userId?: number): Promise<OpenShiftRow[]> {
         unscheduledIdleMinutes: row.unscheduledIdleMinutes,
         sleepMinutes: row.sleepMinutes
       },
-      expectedCheckInTime: row.expectedCheckInTime,
-      expectedShiftEndTime: row.expectedShiftEndTime
+      userSchedule: {
+        expectedCheckInTime: row.expectedCheckInTime,
+        expectedShiftEndTime: row.expectedShiftEndTime,
+        pendingExpectedCheckInTime: row.pendingExpectedCheckInTime,
+        pendingExpectedShiftEndTime: row.pendingExpectedShiftEndTime,
+        scheduleEffectiveFrom: row.scheduleEffectiveFrom
+      }
     }));
 }
 
 /**
  * Auto clock-out open shifts whose scheduled shift end has passed.
- * Uses each employee's effective check-in / shift-end schedule.
+ * Uses each employee's schedule for the attendance log date.
  */
 export async function autoClockOutDueOpenShifts(params?: {
   userId?: number;
   now?: Date;
 }): Promise<{ closedCount: number; closedLogIds: number[] }> {
   const now = params?.now ?? new Date();
+  await promoteAllDueEmployeeSchedules();
   const office = await getAttendanceOfficeHours();
   const openShifts = await loadOpenShifts(params?.userId);
 
   const closedLogIds: number[] = [];
 
   for (const row of openShifts) {
-    const expectedCheckInTime = effectiveScheduleTime(
-      row.expectedCheckInTime,
-      office.expectedCheckInTime
-    );
-    const shiftEndTime = effectiveScheduleTime(row.expectedShiftEndTime, office.shiftEndTime);
     const logDate = String(row.log.date);
+    const resolved = resolveEmployeeScheduleForDate(row.userSchedule, office, logDate);
 
     const clockOutAt = resolveAutoClockOutInstant({
       logDate,
       clockIn: new Date(row.log.clockIn),
-      expectedCheckInTime,
-      shiftEndTime,
+      expectedCheckInTime: resolved.effectiveExpectedCheckInTime,
+      shiftEndTime: resolved.effectiveExpectedShiftEndTime,
       now
     });
 

@@ -13,7 +13,8 @@ import {
 const updateSchema = z.object({
   userId: z.number().int().positive(),
   expectedCheckInTime: z.string().trim().nullable(),
-  expectedShiftEndTime: z.string().trim().nullable()
+  expectedShiftEndTime: z.string().trim().nullable(),
+  effectiveFrom: z.string().trim().nullable().optional()
 });
 
 async function authorizeManagerScope(
@@ -99,7 +100,8 @@ export async function PUT(req: NextRequest) {
     const schedule = await updateEmployeeSchedule({
       userId: parsed.data.userId,
       expectedCheckInTime: parsed.data.expectedCheckInTime,
-      expectedShiftEndTime: parsed.data.expectedShiftEndTime
+      expectedShiftEndTime: parsed.data.expectedShiftEndTime,
+      effectiveFrom: parsed.data.effectiveFrom ?? null
     });
     return NextResponse.json({ schedule });
   } catch (error) {

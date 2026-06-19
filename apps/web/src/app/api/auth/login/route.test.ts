@@ -14,7 +14,14 @@ jest.mock("@/lib/auth", () => ({
   COOKIE_NAME: "crm_token",
   findUserByEmail: jest.fn(),
   verifyPassword: jest.fn(),
-  signAuthToken: jest.fn()
+  signAuthToken: jest.fn(),
+  staffAuthCookieOptions: () => ({
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    path: "/",
+    maxAge: 86400
+  })
 }));
 jest.mock("@/lib/db", () => ({
   db: {

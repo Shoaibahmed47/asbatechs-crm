@@ -1181,13 +1181,13 @@ export default function AttendancePageClient({
     setShowStartBreakModal(true);
   }
 
-  async function submitStartBreak(payload: { category: string; note: string }) {
+  async function submitStartBreak(payload: { category: string; note?: string }) {
     setStartBreakSubmitting(true);
     setStartBreakError(null);
     try {
       await apiFetch.post("/api/attendance/break-start", {
         category: payload.category,
-        note: payload.note
+        ...(payload.note ? { note: payload.note } : {})
       });
       setShowStartBreakModal(false);
       await refresh();
