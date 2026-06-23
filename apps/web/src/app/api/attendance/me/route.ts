@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { resolveOpenAttendanceLogForUser, type OpenAttendanceLogRow } from "@/lib/attendance-open-shift";
 import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import { computeLiveShiftMinutes } from "@/lib/attendance-shift-minutes";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
@@ -23,16 +24,40 @@ export async function GET(req: NextRequest) {
   const userId = payload.userId;
   const { searchParams } = new URL(req.url);
   const dateParam = toDateParam(searchParams.get("date"));
+  const calendarToday = getLocalDateString();
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, dateParam as any)
-      )
-    );
+  let log: OpenAttendanceLogRow | undefined;
+  let logDate = dateParam;
+  let carriedOvernight = false;
+
+  if (dateParam === calendarToday) {
+    const open = await resolveOpenAttendanceLogForUser({ userId });
+    if (open) {
+      log = open.log;
+      logDate = open.logDate;
+      carriedOvernight = logDate !== calendarToday;
+    } else {
+      [log] = await db
+        .select()
+        .from(schema.attendanceLogs)
+        .where(
+          and(
+            eq(schema.attendanceLogs.userId, userId),
+            eq(schema.attendanceLogs.date, calendarToday as any)
+          )
+        );
+    }
+  } else {
+    [log] = await db
+      .select()
+      .from(schema.attendanceLogs)
+      .where(
+        and(
+          eq(schema.attendanceLogs.userId, userId),
+          eq(schema.attendanceLogs.date, dateParam as any)
+        )
+      );
+  }
 
   if (!log) {
     return NextResponse.json({ attendance: null });
@@ -86,7 +111,7 @@ export async function GET(req: NextRequest) {
   if (log.clockIn && !log.clockOut) {
     const bounds = await resolveOpenShiftBoundsForEmployee({
       userId,
-      logDate: dateParam,
+      logDate,
       clockIn: new Date(log.clockIn as Date),
       clockOut: null,
       now
@@ -122,6 +147,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     attendance: {
       ...log,
+      date: logDate,
+      carriedOvernight,
       status,
       liveWorkMinutes,
       liveBreakMinutes,

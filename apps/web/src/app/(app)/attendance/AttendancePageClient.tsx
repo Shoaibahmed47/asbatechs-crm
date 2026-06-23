@@ -75,6 +75,7 @@ type BreakSessionRow = {
 type Attendance = {
   id: number;
   date: string;
+  carriedOvernight?: boolean;
   clockIn: string | null;
   clockOut: string | null;
   totalWorkMinutes: number | null;
@@ -669,6 +670,10 @@ export default function AttendancePageClient({
   const isViewingToday = selectedDate === getLocalDateString();
   const isWeekendToday = isAttendanceWeekendToday();
   const isMultiDayRange = dateFrom !== dateTo;
+  const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+  const canManageLiveShift =
+    isViewingToday ||
+    Boolean(shiftOpen && attendance?.date && selectedDate === attendance.date);
 
   const loadPunctuality = useCallback(async () => {
     if (!isEmployeeViewer) return;
@@ -714,8 +719,7 @@ export default function AttendancePageClient({
   }, [attendance?.breakSessions, isEmployeeViewer]);
 
   useEffect(() => {
-    if (!isEmployeeViewer || !isViewingToday) return;
-    const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+    if (!isEmployeeViewer || !canManageLiveShift) return;
     if (!shiftOpen) {
       tabCloseReturnHandledRef.current = null;
       return;
@@ -748,7 +752,8 @@ export default function AttendancePageClient({
     attendance?.clockIn,
     attendance?.clockOut,
     isEmployeeViewer,
-    isViewingToday,
+    canManageLiveShift,
+    shiftOpen,
     postActivityEvent,
     refresh
   ]);
@@ -828,17 +833,24 @@ export default function AttendancePageClient({
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (isViewingToday) {
+      if (canManageLiveShift) {
         void refresh();
       }
       void refreshAgentHealth({ silent: true });
     }, 20000);
     return () => window.clearInterval(id);
-  }, [isViewingToday, refresh, refreshAgentHealth]);
+  }, [canManageLiveShift, refresh, refreshAgentHealth]);
 
   useEffect(() => {
-    if (!isEmployeeViewer || !isViewingToday) return;
-    const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+    if (!isEmployeeViewer || !shiftOpen || !attendance?.date) return;
+    const calendarToday = getLocalDateString();
+    if (selectedDate === attendance.date && selectedDate < calendarToday) {
+      setSelectedDate(calendarToday);
+    }
+  }, [attendance?.date, isEmployeeViewer, selectedDate, shiftOpen]);
+
+  useEffect(() => {
+    if (!isEmployeeViewer || !canManageLiveShift) return;
     if (!shiftOpen) {
       sleepAwayPendingRef.current = false;
       /* FUTURE: cursorAwayActiveRef.current = false; */
@@ -970,7 +982,8 @@ export default function AttendancePageClient({
     attendance?.clockIn,
     attendance?.clockOut,
     isEmployeeViewer,
-    isViewingToday,
+    canManageLiveShift,
+    shiftOpen,
     postActivityEvent,
     refresh
   ]);
@@ -1071,16 +1084,13 @@ export default function AttendancePageClient({
 
   const clockInLabel = formatAttendanceClock(attendance?.clockIn);
   const clockOutLabel = formatAttendanceClock(attendance?.clockOut);
-  const shiftOpen = Boolean(
-    attendance?.clockIn && !attendance?.clockOut
-  );
 
   const breakMinutesDisplay =
     shiftOpen && attendance?.liveBreakMinutes != null
       ? formatWorkDuration(attendance.liveBreakMinutes)
       : formatWorkDuration(attendance?.totalBreakMinutes);
 
-  const canEditShift = isViewingToday && !isWeekendToday;
+  const canEditShift = canManageLiveShift && !isWeekendToday;
   const canClockIn =
     canEditShift &&
     !pendingLateExplanation &&
@@ -1091,8 +1101,8 @@ export default function AttendancePageClient({
   const openBreakSession = attendance?.breakSessions?.find((session) => !session.breakEnd);
   const isManualBreakOpen = openBreakSession?.breakType === "manual";
 
-  const canStartBreak = isViewingToday && shiftOpen && status === "active";
-  const canEndBreak = isViewingToday && status === "break";
+  const canStartBreak = canManageLiveShift && shiftOpen && status === "active";
+  const canEndBreak = canManageLiveShift && status === "break";
 
   async function prepareInstallCommand() {
     try {
@@ -1599,10 +1609,16 @@ export default function AttendancePageClient({
       ) : null}
       {isEmployeeViewer ? (
       <>
-      {!isViewingToday ? (
+      {!isViewingToday && !canManageLiveShift ? (
         <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-300">
-          Viewing {selectedDate}. Clock in, breaks, and live timers apply only to today â€” use
+          Viewing {selectedDate}. Clock in, breaks, and live timers apply only to today — use
           Today or pick today in the calendar for active actions.
+        </p>
+      ) : null}
+      {attendance?.carriedOvernight ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200">
+          Your overnight shift from <strong>{attendance.date}</strong> is still open. Clock out
+          when you finish — it will save against that shift date.
         </p>
       ) : null}
       {isMultiDayRange ? (

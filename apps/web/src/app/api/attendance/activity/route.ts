@@ -3,7 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-import { getLocalDateString } from "@/lib/attendance-date";
+import { resolveOpenAttendanceLogForUser } from "@/lib/attendance-open-shift";
 import {
   checkOpenComplianceAwayAlerts,
   endComplianceAway,
@@ -107,7 +107,6 @@ export async function POST(req: NextRequest) {
     (eventType === "lock" ? UNSCHEDULED_CAUSE.SLEEP : null);
   const eventAt = normalizeObservedAt(body.observedAt);
   const userId = payload.userId;
-  const today = getLocalDateString(eventAt);
 
   const [employee] = await db
     .select({ name: schema.users.name })
@@ -116,15 +115,8 @@ export async function POST(req: NextRequest) {
     .limit(1);
   const employeeName = employee?.name ?? "Employee";
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, today as any)
-      )
-    );
+  const open = await resolveOpenAttendanceLogForUser({ userId, now: eventAt });
+  const log = open?.log;
 
   // Health-check mode: when shift is not open, keep lightweight heartbeat for agent verify flow.
   if ((!log || !log.clockIn || log.clockOut) && source === "agent") {

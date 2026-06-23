@@ -4,6 +4,7 @@ import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { resolveOpenAttendanceLogForUser } from "@/lib/attendance-open-shift";
 import { resolveAppUrl } from "@/lib/request-origin";
 import {
   pickLatestAgentSignalOnDate,
@@ -34,16 +35,8 @@ export async function GET(req: NextRequest) {
   const today = getLocalDateString();
   const appUrl = resolveAppUrl(req);
 
-  const [[todayLog], [latestAgentHeartbeat], [latestSetupMarker]] = await Promise.all([
-    db
-      .select()
-      .from(schema.attendanceLogs)
-      .where(
-        and(
-          eq(schema.attendanceLogs.userId, payload.userId),
-          eq(schema.attendanceLogs.date, today as any)
-        )
-      ),
+  const [openShiftRow, [latestAgentHeartbeat], [latestSetupMarker]] = await Promise.all([
+    resolveOpenAttendanceLogForUser({ userId: payload.userId }),
     db
       .select({ createdAt: schema.activityLogs.createdAt })
       .from(schema.activityLogs)
@@ -72,6 +65,8 @@ export async function GET(req: NextRequest) {
       .limit(1)
   ]);
 
+  const todayLog = openShiftRow?.log;
+  const shiftLogDate = openShiftRow?.logDate ?? today;
   const openShift = Boolean(todayLog?.clockIn && !todayLog?.clockOut);
   const latestLogActivityAt =
     todayLog?.lastActivitySource === "agent" && todayLog.lastActivityAt
@@ -83,7 +78,7 @@ export async function GET(req: NextRequest) {
   const latestSetupAt = latestSetupMarker?.createdAt
     ? new Date(latestSetupMarker.createdAt as Date)
     : null;
-  const latestActualAgentAt = pickLatestAgentSignalOnDate(today, [
+  const latestActualAgentAt = pickLatestAgentSignalOnDate(shiftLogDate, [
     latestLogActivityAt,
     ...heartbeatDates
   ]);

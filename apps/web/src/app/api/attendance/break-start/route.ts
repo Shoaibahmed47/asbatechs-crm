@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
-import { getLocalDateString } from "@/lib/attendance-date";
+import { resolveOpenAttendanceLogForUser } from "@/lib/attendance-open-shift";
 import { normalizeBreakCategory } from "@/lib/attendance-break-shared";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
@@ -18,17 +18,9 @@ export async function POST(req: NextRequest) {
   if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
-  const today = getLocalDateString();
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, today as any)
-      )
-    );
+  const open = await resolveOpenAttendanceLogForUser({ userId });
+  const log = open?.log;
 
   if (!log) {
     return NextResponse.json(
