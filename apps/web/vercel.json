@@ -2,11 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && NODE_OPTIONS=--max-old-space-size=8192 npm run build",
-  "crons": [
-    {
-      "path": "/api/cron/attendance-auto-clock-out",
-      "schedule": "*/15 * * * *"
-    }
-  ]
+  "buildCommand": "cd ../.. && NODE_OPTIONS=--max-old-space-size=8192 npm run build"
 }

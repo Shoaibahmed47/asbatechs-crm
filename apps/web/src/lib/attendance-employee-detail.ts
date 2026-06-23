@@ -8,7 +8,6 @@ import {
   resolveAgentHealthState,
   type AgentHealthState
 } from "@/lib/attendance-agent-health-state";
-import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { computeDayTotalsFromSessions } from "@/lib/attendance-shift-minutes";
 import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import {
@@ -145,8 +144,6 @@ export async function getAttendanceEmployeeDetail(params: {
   if (scope.role === "manager" && user.departmentId !== scope.departmentId) {
     return null;
   }
-
-  await autoClockOutDueOpenShifts({ userId });
 
   const [log, heartbeatRows, setupRows, breakSessions] = await Promise.all([
     db

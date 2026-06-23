@@ -17,7 +17,6 @@ import {
 } from "@/lib/attendance-clock-feedback";
 import { hasPendingAbsenceExplanation } from "@/lib/attendance-absence";
 import { hasPendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave";
-import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 function getBearerToken(req: NextRequest): string | null {
@@ -64,8 +63,6 @@ export async function POST(req: NextRequest) {
 
   const userId = payload.userId;
   const today = getLocalDateString();
-
-  await autoClockOutDueOpenShifts({ userId });
 
   if (await hasPendingLateExplanation(userId)) {
     return NextResponse.json(
