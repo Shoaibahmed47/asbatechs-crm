@@ -13,7 +13,8 @@ import {
 } from "@/lib/attendance-away-compliance";
 import { ATTENDANCE_CURSOR_IDLE_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
+import { rejectAttendanceOnWeekendUnlessOpenShift } from "@/lib/attendance-weekend-guard";
+import { resolveAttendanceLogForLiveView } from "@/lib/attendance-live-log";
 
 type ActivityEvent =
   | "activity"
@@ -25,7 +26,11 @@ type ActivityEvent =
   | "away_start"
   | "away_end";
 
-type SourceType = "browser" | "agent";
+type SourceType = "browser" | "agent" | "electron";
+
+function isBackgroundMonitorSource(source: SourceType): boolean {
+  return source === "agent" || source === "electron";
+}
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
@@ -55,7 +60,9 @@ function normalizeEvent(value: unknown): ActivityEvent {
 }
 
 function normalizeSource(value: unknown): SourceType {
-  return value === "agent" ? "agent" : "browser";
+  if (value === "agent") return "agent";
+  if (value === "electron") return "electron";
+  return "browser";
 }
 
 function normalizeObservedAt(value: unknown): Date {
@@ -89,7 +96,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const weekendBlocked = rejectAttendanceOnWeekend();
+  const weekendBlocked = await rejectAttendanceOnWeekendUnlessOpenShift(payload.userId);
   if (weekendBlocked) return weekendBlocked;
 
   let body: Record<string, unknown> = {};
@@ -116,18 +123,10 @@ export async function POST(req: NextRequest) {
     .limit(1);
   const employeeName = employee?.name ?? "Employee";
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, today as any)
-      )
-    );
+  const log = await resolveAttendanceLogForLiveView(userId, today);
 
   // Health-check mode: when shift is not open, keep lightweight heartbeat for agent verify flow.
-  if ((!log || !log.clockIn || log.clockOut) && source === "agent") {
+  if ((!log || !log.clockIn || log.clockOut) && isBackgroundMonitorSource(source)) {
     const [latestHeartbeat] = await db
       .select({ createdAt: schema.activityLogs.createdAt })
       .from(schema.activityLogs)

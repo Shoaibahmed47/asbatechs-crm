@@ -29,6 +29,7 @@ import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 import {
   AGENT_HEALTH_FILTER_OPTIONS,
   displayAgentHealthCounts,
+  labelActivitySource,
   labelForDisplayAgentState,
   toneForDisplayAgentState,
   type AgentHealthFilterState
@@ -144,36 +145,16 @@ export function AttendanceReportTables({
     setDetailUser(null);
   }, []);
 
-  const issueInstallCommand = useCallback(async (userId: number) => {
+  const issueInstallCommand = useCallback(async (_userId: number) => {
     try {
-      setIssuingForUserId(userId);
-      const setupRes = await fetch("/api/admin/attendance/desktop-agent/setup-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ userId })
-      });
-      if (!setupRes.ok) {
-        toast.error("Could not re-issue install command.");
-        return;
-      }
-      const setup = (await setupRes.json()) as { token: string };
-      const baseUrl = window.location.origin;
-      const escapedBaseUrl = baseUrl.replaceAll("'", "''");
-      const escapedToken = setup.token.replaceAll("'", "''");
-      const escapedExeUrl = `${baseUrl}/desktop-agent/AttendanceAgent.exe`.replaceAll("'", "''");
-      const command = [
-        "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force",
-        "$ErrorActionPreference = 'Stop'",
-        `$url = '${escapedBaseUrl}/desktop-agent/one-click-setup.ps1'`,
-        "$local = Join-Path $env:TEMP 'asba-one-click-setup.ps1'",
-        "Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $local",
-        `& $local -BaseUrl '${escapedBaseUrl}' -AgentExeUrl '${escapedExeUrl}' -Token '${escapedToken}'`
-      ].join("\r\n");
-      await navigator.clipboard.writeText(command);
-      toast.success("Install command re-issued and copied.");
+      setIssuingForUserId(_userId);
+      const installerUrl =
+        process.env.NEXT_PUBLIC_DESKTOP_INSTALLER_URL?.trim() ||
+        `${window.location.origin}/download/desktop`;
+      await navigator.clipboard.writeText(installerUrl);
+      toast.success("Desktop app download link copied.");
     } catch {
-      toast.error("Could not re-issue install command.");
+      toast.error("Could not copy desktop app link.");
     } finally {
       setIssuingForUserId(null);
     }
@@ -185,14 +166,14 @@ export function AttendanceReportTables({
         <section className="data-card overflow-hidden p-0">
           <div className="border-b border-slate-600/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
             <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Desktop agent
+              Desktop monitoring
             </div>
             <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
-              Agent health (all employees)
+              Desktop app health (all employees)
             </h2>
             <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-              Shows whether the desktop agent is installed or running, plus live attendance status.
-              Click any employee row for full attendance reasons.
+              Shows whether the AsbaTechs CRM desktop app (or legacy agent) is installed or running,
+              plus live attendance status. Click any employee row for full attendance reasons.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {(["all", ...AGENT_HEALTH_FILTER_OPTIONS] as const).map((state) => {
@@ -226,7 +207,7 @@ export function AttendanceReportTables({
                   <th className="px-2 py-2">Email</th>
                   <th className="px-2 py-2">Department</th>
                   <th className="px-2 py-2">Schedule</th>
-                  <th className="px-2 py-2">Agent state</th>
+                  <th className="px-2 py-2">Monitor state</th>
                   <th className="px-2 py-2">Late</th>
                   <th className="px-2 py-2">Early leave</th>
                   <th className="px-2 py-2">Absence</th>
@@ -444,6 +425,11 @@ export function AttendanceReportTables({
                         ) : (
                           <>
                             {formatAge(row.lastSeenAgeSeconds)}
+                            {row.lastSeenSource ? (
+                              <span className="ml-1 text-slate-500 dark:text-slate-400">
+                                · {labelActivitySource(row.lastSeenSource)}
+                              </span>
+                            ) : null}
                             {row.needsAttention ? (
                               <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
                                 Alert
@@ -479,7 +465,7 @@ export function AttendanceReportTables({
                           }}
                           disabled={issuingForUserId === row.userId}
                         >
-                          {issuingForUserId === row.userId ? "Issuing..." : "Re-issue install"}
+                          {issuingForUserId === row.userId ? "Copying..." : "Copy app link"}
                         </button>
                         )}
                       </td>

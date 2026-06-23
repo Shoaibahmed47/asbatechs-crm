@@ -28,6 +28,7 @@ import type { AttendanceEmployeeDetail } from "@/lib/attendance-employee-detail"
 import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 import {
   agentStateHintForDisplay,
+  labelActivitySource,
   labelForDisplayAgentState,
   toneForDisplayAgentState
 } from "@/lib/attendance-agent-health-display";
@@ -497,7 +498,7 @@ export function AttendanceReportEmployeeDetailPanel({
                       toneForAgent(detail.agentState)
                     )}
                   >
-                    Agent: {detail.agentStateLabel}
+                    Monitor: {detail.agentStateLabel}
                   </span>
                   <span className="inline-flex rounded-full bg-slate-200/80 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     Shift: {detail.openShift ? "Open" : "Closed"}
@@ -531,7 +532,9 @@ export function AttendanceReportEmployeeDetailPanel({
                     </dt>
                     <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
                       {detail.lastActivityAt ? formatClock(detail.lastActivityAt) : "—"}
-                      {detail.lastActivitySource ? ` · ${detail.lastActivitySource}` : ""}
+                      {detail.lastActivitySource
+                        ? ` · ${labelActivitySource(detail.lastActivitySource)}`
+                        : ""}
                     </dd>
                   </div>
                 </dl>
@@ -545,7 +548,7 @@ export function AttendanceReportEmployeeDetailPanel({
                 {detail.sleepMinutes === 0 && detail.openShift ? (
                   <p className="mt-2 text-base leading-relaxed text-slate-600 dark:text-slate-400">
                     <strong>Sleep</strong> counts laptop <strong>lock</strong> (Win+L), lid close,
-                    or OS sleep via desktop agent — not mouse idle or closing tabs (
+                    or OS sleep via the desktop app or legacy agent — not mouse idle or closing tabs (
                     <strong>Inactive</strong>). Test: clock in, sleep laptop ~1 min, wake.
                   </p>
                 ) : null}

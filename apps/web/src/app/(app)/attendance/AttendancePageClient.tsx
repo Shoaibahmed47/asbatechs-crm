@@ -47,6 +47,11 @@ import {
   labelForDisplayAgentState
 } from "@/lib/attendance-agent-health-display";
 import {
+  isElectronDesktop,
+  notifyElectronSessionReady,
+  syncElectronShiftOpen
+} from "@/lib/is-electron-desktop";
+import {
   isAdminRole,
   isEmployeeRole,
   isManagerRole,
@@ -310,6 +315,7 @@ export default function AttendancePageClient({
   const [agentHealth, setAgentHealth] = useState<AgentHealth | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
   const [installerReady, setInstallerReady] = useState<boolean | null>(null);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [installCommand, setInstallCommand] = useState("");
@@ -670,6 +676,26 @@ export default function AttendancePageClient({
   const isWeekendToday = isAttendanceWeekendToday();
   const isMultiDayRange = dateFrom !== dateTo;
 
+  useEffect(() => {
+    setIsDesktopApp(isElectronDesktop());
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopApp || !isEmployeeViewer) return;
+    void notifyElectronSessionReady();
+  }, [isDesktopApp, isEmployeeViewer]);
+
+  useEffect(() => {
+    if (!isDesktopApp || !isEmployeeViewer) return;
+    const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
+    void syncElectronShiftOpen(shiftOpen);
+  }, [
+    isDesktopApp,
+    isEmployeeViewer,
+    attendance?.clockIn,
+    attendance?.clockOut
+  ]);
+
   const loadPunctuality = useCallback(async () => {
     if (!isEmployeeViewer) return;
     setPunctualityLoading(true);
@@ -810,9 +836,9 @@ export default function AttendancePageClient({
   }, [isEmployeeViewer, loadPendingExplanations]);
 
   useEffect(() => {
-    if (!isEmployeeViewer) return;
+    if (!isEmployeeViewer || isDesktopApp) return;
     void checkInstallerAvailability();
-  }, [isEmployeeViewer, checkInstallerAvailability]);
+  }, [isEmployeeViewer, isDesktopApp, checkInstallerAvailability]);
 
   useEffect(() => {
     setBreakPage(1);
@@ -837,7 +863,7 @@ export default function AttendancePageClient({
   }, [isViewingToday, refresh, refreshAgentHealth]);
 
   useEffect(() => {
-    if (!isEmployeeViewer || !isViewingToday) return;
+    if (!isEmployeeViewer || !isViewingToday || isDesktopApp) return;
     const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
     if (!shiftOpen) {
       sleepAwayPendingRef.current = false;
@@ -971,6 +997,7 @@ export default function AttendancePageClient({
     attendance?.clockOut,
     isEmployeeViewer,
     isViewingToday,
+    isDesktopApp,
     postActivityEvent,
     refresh
   ]);
@@ -1080,14 +1107,14 @@ export default function AttendancePageClient({
       ? formatWorkDuration(attendance.liveBreakMinutes)
       : formatWorkDuration(attendance?.totalBreakMinutes);
 
-  const canEditShift = isViewingToday && !isWeekendToday;
   const canClockIn =
-    canEditShift &&
+    isViewingToday &&
+    !isWeekendToday &&
     !pendingLateExplanation &&
     !pendingEarlyLeaveExplanation &&
     !pendingAbsenceExplanation &&
     (!attendance || !attendance.clockIn || Boolean(attendance.clockOut));
-  const canClockOut = canEditShift && shiftOpen;
+  const canClockOut = isViewingToday && shiftOpen;
   const openBreakSession = attendance?.breakSessions?.find((session) => !session.breakEnd);
   const isManualBreakOpen = openBreakSession?.breakType === "manual";
 
@@ -1249,6 +1276,16 @@ export default function AttendancePageClient({
   async function startClockInAction() {
     if (!canClockIn) return;
 
+    if (isDesktopApp) {
+      const ready = await notifyElectronSessionReady();
+      if (!ready) {
+        toast.error("Desktop session not ready. Please sign in again.");
+        return;
+      }
+      await action("/api/attendance/clock-in");
+      return;
+    }
+
     const refreshed = await refreshAgentHealth({ silent: true });
     const health = refreshed ?? agentHealthRef.current;
     if (!health) {
@@ -1319,7 +1356,21 @@ export default function AttendancePageClient({
           <div className="min-w-0 text-base text-slate-700 dark:text-slate-300">
             <p className="font-semibold text-slate-900 dark:text-slate-100">Weekend off</p>
             <p className="mt-1 text-base leading-relaxed text-slate-600 dark:text-slate-400">
-              {ATTENDANCE_WEEKEND_OFF_MESSAGE} Review past days below; clock-in resumes Monday.
+              {shiftOpen
+                ? "New clock-in is not available on weekends. Finish your open overnight shift below, then clock out."
+                : `${ATTENDANCE_WEEKEND_OFF_MESSAGE} Review past days below; clock-in resumes Monday.`}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {isEmployeeViewer && shiftOpen && attendance?.date && attendance.date !== selectedDate ? (
+        <div className="flex gap-3 rounded-2xl border border-amber-200/90 bg-amber-50/80 px-4 py-3 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/35">
+          <div className="min-w-0 text-base text-amber-900 dark:text-amber-200">
+            <p className="font-semibold">Overnight shift in progress</p>
+            <p className="mt-1 text-base leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+              This shift started on <strong>{formatAttendanceDateLabel(attendance.date)}</strong>.
+              Live status and clock-out apply to that open shift.
             </p>
           </div>
         </div>
@@ -1459,7 +1510,58 @@ export default function AttendancePageClient({
           {error}
         </div>
       )}
-      {isEmployeeViewer ? (
+      {isEmployeeViewer && isDesktopApp ? (
+        <div className="data-card p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300">
+                Desktop app monitoring
+              </div>
+              <p className="text-base font-medium leading-relaxed text-slate-900 dark:text-slate-100">
+                Attendance monitoring runs inside the AsbaTechs CRM desktop app — lock, sleep,
+                and activity signals are sent automatically.
+              </p>
+              <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                {agentStateHintForDisplay(agentHealth?.state ?? "not_installed")}
+              </p>
+              {agentHealth?.lastActivitySource ? (
+                <p className="text-base leading-relaxed text-slate-600 dark:text-slate-400">
+                  Last signal source:{" "}
+                  <strong className="font-semibold text-slate-800 dark:text-slate-200">
+                    {agentHealth.lastActivitySource === "electron"
+                      ? "Desktop App"
+                      : agentHealth.lastActivitySource}
+                  </strong>
+                </p>
+              ) : null}
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${employeeAgentBadgeClass(
+                agentHealth?.state ?? "not_installed"
+              )}`}
+            >
+              {agentHealth?.statusLabel ??
+                labelForDisplayAgentState(agentHealth?.state ?? "not_installed")}
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={agentLoading}
+              onClick={() => void verifyAgentNow()}
+            >
+              {agentLoading ? "Checking..." : "Check monitoring"}
+            </Button>
+          </div>
+          {agentError ? (
+            <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
+              {agentError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {isEmployeeViewer && !isDesktopApp ? (
         <div className="data-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">

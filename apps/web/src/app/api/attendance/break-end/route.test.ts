@@ -11,6 +11,12 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-live-log", () => ({
+  resolveAttendanceLogForLiveView: jest.fn()
+}));
+jest.mock("@/lib/attendance-weekend-guard", () => ({
+  rejectAttendanceOnWeekendUnlessOpenShift: jest.fn().mockResolvedValue(null)
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({
@@ -24,6 +30,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const resolveAttendanceLogForLiveView = jest.requireMock("@/lib/attendance-live-log")
+  .resolveAttendanceLogForLiveView as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,9 +51,12 @@ describe("attendance break-end route", () => {
 
   it("returns 400 when no open break session exists", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 1, clockOut: null, totalBreakMinutes: 0 }])
-      .mockResolvedValueOnce([]);
+    resolveAttendanceLogForLiveView.mockResolvedValueOnce({
+      id: 1,
+      clockOut: null,
+      totalBreakMinutes: 0
+    });
+    selectWhere.mockResolvedValueOnce([]);
 
     const res = await POST(req());
     expect(res.status).toBe(400);
@@ -53,9 +64,14 @@ describe("attendance break-end route", () => {
 
   it("ends break and updates attendance totals", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 1, clockOut: null, totalBreakMinutes: 0 }])
-      .mockResolvedValueOnce([{ id: 9, breakStart: new Date(Date.now() - 10 * 60 * 1000) }]);
+    resolveAttendanceLogForLiveView.mockResolvedValueOnce({
+      id: 1,
+      clockOut: null,
+      totalBreakMinutes: 0
+    });
+    selectWhere.mockResolvedValueOnce([
+      { id: 9, breakStart: new Date(Date.now() - 10 * 60 * 1000) }
+    ]);
 
     const res = await POST(req());
     const data = await res.json();

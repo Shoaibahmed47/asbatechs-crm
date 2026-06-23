@@ -5,6 +5,7 @@ import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { autoClockOutDueOpenShifts } from "@/lib/attendance-auto-clock-out";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { resolveAttendanceLogForLiveView } from "@/lib/attendance-live-log";
 import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import { computeLiveShiftMinutes } from "@/lib/attendance-shift-minutes";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
@@ -27,19 +28,13 @@ export async function GET(req: NextRequest) {
 
   await autoClockOutDueOpenShifts({ userId });
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, dateParam as any)
-      )
-    );
+  const log = await resolveAttendanceLogForLiveView(userId, dateParam);
 
   if (!log) {
     return NextResponse.json({ attendance: null });
   }
+
+  const logDate = String(log.date);
 
   const [openBreak] = await db
     .select()
@@ -89,7 +84,7 @@ export async function GET(req: NextRequest) {
   if (log.clockIn && !log.clockOut) {
     const bounds = await resolveOpenShiftBoundsForEmployee({
       userId,
-      logDate: dateParam,
+      logDate,
       clockIn: new Date(log.clockIn as Date),
       clockOut: null,
       now

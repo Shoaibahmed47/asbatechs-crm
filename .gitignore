@@ -2,6 +2,9 @@ node_modules
 .env
 .env.local
 .env.production
+apps/desktop/signing.env
+*.pfx
+*.p12
 .next
 **/.next
 **/.next/**
@@ -23,3 +26,13 @@ drizzle
 !packages/database/drizzle/migrations/*.sql
 !packages/database/drizzle/migrations/meta/**
 .vercel
+
+apps/desktop/release/
+apps/desktop/release-build/
+apps/desktop/release-fresh/
+apps/desktop/release-signed/
+apps/desktop/dist/
+apps/desktop/.electron-driver/
+apps/desktop/*.exe
+
+

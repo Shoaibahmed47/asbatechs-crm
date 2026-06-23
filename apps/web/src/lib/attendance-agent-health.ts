@@ -24,7 +24,8 @@ import { isAttendanceWorkingDay } from "@/lib/attendance-working-days";
 import { isAdminRole } from "@/lib/rbac";
 import {
   matchesAgentHealthFilter,
-  normalizeAgentHealthFilter
+  normalizeAgentHealthFilter,
+  isBackgroundMonitorSource
 } from "@/lib/attendance-agent-health-display";
 
 export type { AgentHealthState };
@@ -229,7 +230,7 @@ export async function getAttendanceAgentHealth(params: {
   }
   for (const todayLog of todayLogs) {
     const fromLog =
-      todayLog.lastActivitySource === "agent" && todayLog.lastActivityAt
+      isBackgroundMonitorSource(todayLog.lastActivitySource) && todayLog.lastActivityAt
         ? new Date(todayLog.lastActivityAt as Date)
         : null;
     const lastAgentAt = pickLatestAgentSignalOnDate(date, [
@@ -348,7 +349,9 @@ export async function getAttendanceAgentHealth(params: {
         todayActivityAt && lastSeenAt?.getTime() === todayActivityAt.getTime()
           ? todayLog?.lastActivitySource ?? "browser"
           : lastAgentAt && lastSeenAt?.getTime() === lastAgentAt.getTime()
-            ? "agent"
+            ? todayLog?.lastActivitySource === "electron"
+              ? "electron"
+              : "agent"
             : fallbackSetupSeenAt && lastSeenAt?.getTime() === fallbackSetupSeenAt.getTime()
               ? "setup"
             : null;

@@ -31,6 +31,18 @@ export function matchesAgentHealthFilter(
   return rowState === filter;
 }
 
+export function isBackgroundMonitorSource(source: string | null | undefined): boolean {
+  return source === "agent" || source === "electron";
+}
+
+export function labelActivitySource(source: string | null | undefined): string {
+  if (source === "electron") return "Desktop App";
+  if (source === "agent") return "Agent";
+  if (source === "browser") return "Browser";
+  if (source === "setup") return "Setup";
+  return source ?? "—";
+}
+
 export function labelForDisplayAgentState(state: AgentHealthState): string {
   if (state === "running") return "Running";
   if (state === "installed" || state === "stale") return "Installed";
@@ -56,9 +68,9 @@ export function employeeAgentBadgeClass(state: AgentHealthState): string {
 export function agentStateHintForDisplay(state: AgentHealthState): string {
   if (state === "running") return "Live monitoring is active.";
   if (state === "installed" || state === "stale") {
-    return "Agent is installed on this device.";
+    return "Desktop app or agent is installed on this device.";
   }
-  return "Agent not installed yet.";
+  return "Desktop app not detected yet.";
 }
 
 export function displayAgentHealthCounts(

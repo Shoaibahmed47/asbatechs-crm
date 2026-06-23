@@ -1,4 +1,7 @@
-# Desktop Attendance Agent
+# Desktop Attendance Agent (deprecated)
+
+> **Deprecated:** New deployments should use the Electron desktop app in [`apps/desktop`](../desktop/).
+> This .NET agent remains for migration only.
 
 This folder contains a Windows desktop agent scaffold for attendance compliance events.
 

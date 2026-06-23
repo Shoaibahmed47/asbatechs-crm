@@ -5,7 +5,8 @@ import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { finalizeAttendanceClockOut } from "@/lib/attendance-clock-out-service";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
+import { resolveAttendanceLogForLiveView } from "@/lib/attendance-live-log";
+import { rejectAttendanceOnWeekendUnlessOpenShift } from "@/lib/attendance-weekend-guard";
 import { buildClockOutFeedbackMessage } from "@/lib/attendance-clock-feedback";
 
 export async function POST(req: NextRequest) {
@@ -15,21 +16,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const weekendBlocked = rejectAttendanceOnWeekend();
+  const weekendBlocked = await rejectAttendanceOnWeekendUnlessOpenShift(payload.userId);
   if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
   const today = getLocalDateString();
 
-  const [log] = await db
-    .select()
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        eq(schema.attendanceLogs.date, today as any)
-      )
-    );
+  const log = await resolveAttendanceLogForLiveView(userId, today);
 
   if (!log) {
     return NextResponse.json(

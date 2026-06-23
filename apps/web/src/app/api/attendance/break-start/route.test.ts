@@ -12,6 +12,12 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-live-log", () => ({
+  resolveAttendanceLogForLiveView: jest.fn()
+}));
+jest.mock("@/lib/attendance-weekend-guard", () => ({
+  rejectAttendanceOnWeekendUnlessOpenShift: jest.fn().mockResolvedValue(null)
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({
@@ -28,6 +34,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const resolveAttendanceLogForLiveView = jest.requireMock("@/lib/attendance-live-log")
+  .resolveAttendanceLogForLiveView as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,7 +51,7 @@ describe("attendance break-start route", () => {
 
   it("requires clock-in before break start", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere.mockResolvedValueOnce([]);
+    resolveAttendanceLogForLiveView.mockResolvedValueOnce(undefined);
 
     const res = await POST(req());
     expect(res.status).toBe(400);
@@ -51,10 +59,12 @@ describe("attendance break-start route", () => {
 
   it("starts break and updates status", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    resolveAttendanceLogForLiveView.mockResolvedValueOnce({
+      id: 5,
+      clockIn: new Date(),
+      clockOut: null
+    });
+    selectWhere.mockResolvedValueOnce([]);
     insertReturning.mockResolvedValueOnce([{ id: 77 }]);
 
     const res = await POST(req());
@@ -67,9 +77,12 @@ describe("attendance break-start route", () => {
 
   it("requires a note when break type is other", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
-      .mockResolvedValueOnce([]);
+    resolveAttendanceLogForLiveView.mockResolvedValueOnce({
+      id: 5,
+      clockIn: new Date(),
+      clockOut: null
+    });
+    selectWhere.mockResolvedValueOnce([]);
 
     const res = await POST(req({ category: "other" }));
     expect(res.status).toBe(400);

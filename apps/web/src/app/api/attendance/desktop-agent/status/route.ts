@@ -4,6 +4,7 @@ import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getLocalDateString } from "@/lib/attendance-date";
+import { findOpenAttendanceLog } from "@/lib/attendance-live-log";
 import { resolveAppUrl } from "@/lib/request-origin";
 import {
   pickLatestAgentSignalOnDate,
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const today = getLocalDateString();
   const appUrl = resolveAppUrl(req);
 
-  const [[todayLog], [latestAgentHeartbeat], [latestSetupMarker]] = await Promise.all([
+  const [[todayLog], openShiftLog, [latestAgentHeartbeat], [latestSetupMarker]] = await Promise.all([
     db
       .select()
       .from(schema.attendanceLogs)
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
           eq(schema.attendanceLogs.date, today as any)
         )
       ),
+    findOpenAttendanceLog(payload.userId),
     db
       .select({ createdAt: schema.activityLogs.createdAt })
       .from(schema.activityLogs)
@@ -72,10 +74,15 @@ export async function GET(req: NextRequest) {
       .limit(1)
   ]);
 
-  const openShift = Boolean(todayLog?.clockIn && !todayLog?.clockOut);
+  const openShift = Boolean(
+    openShiftLog?.clockIn && !openShiftLog?.clockOut
+  );
+  const activeLog = openShiftLog ?? todayLog;
   const latestLogActivityAt =
-    todayLog?.lastActivitySource === "agent" && todayLog.lastActivityAt
-      ? new Date(todayLog.lastActivityAt as Date)
+    (activeLog?.lastActivitySource === "agent" ||
+      activeLog?.lastActivitySource === "electron") &&
+    activeLog.lastActivityAt
+      ? new Date(activeLog.lastActivityAt as Date)
       : null;
   const heartbeatDates = latestAgentHeartbeat?.createdAt
     ? [new Date(latestAgentHeartbeat.createdAt as Date)]
@@ -94,7 +101,9 @@ export async function GET(req: NextRequest) {
   });
   const lastActivityAt = latestActualAgentAt ?? latestSetupAt ?? null;
   const lastActivitySource = latestActualAgentAt
-    ? "agent"
+    ? activeLog?.lastActivitySource === "electron"
+      ? "electron"
+      : "agent"
     : latestSetupAt
       ? "setup"
       : null;
@@ -103,11 +112,11 @@ export async function GET(req: NextRequest) {
 
   const recommendedAction =
     state === "not_installed"
-      ? "Install the desktop agent once from Attendance page."
+      ? "Install the AsbaTechs CRM desktop app (recommended) or the legacy desktop agent from Attendance."
       : state === "running"
         ? "No action needed."
         : openShift
-          ? "Click Verify Agent if you need to confirm the agent is running."
+          ? "Click Verify Agent if you need to confirm monitoring is running."
           : "No action needed.";
 
   return NextResponse.json({
