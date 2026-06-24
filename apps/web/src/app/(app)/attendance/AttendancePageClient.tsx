@@ -18,7 +18,7 @@ import {
 import { AttendanceAbsenceExplanationModal } from "@/components/attendance/AttendanceAbsenceExplanationModal";
 import { AttendanceEarlyLeaveExplanationModal } from "@/components/attendance/AttendanceEarlyLeaveExplanationModal";
 import { AttendanceLateExplanationModal } from "@/components/attendance/AttendanceLateExplanationModal";
-/* FUTURE: end-break popup
+/* FUTURE: end-break 
 import { AttendanceEndBreakModal } from "@/components/attendance/AttendanceEndBreakModal";
 */
 import { AttendancePunctualityCard } from "@/components/attendance/AttendancePunctualityCard";
