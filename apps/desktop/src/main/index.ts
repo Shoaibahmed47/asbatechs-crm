@@ -12,9 +12,7 @@ import {
   updateTrayAttendanceStatus
 } from "./tray";
 import { createMainWindow, focusMainWindow, getMainWindow } from "./window";
-import { resolveCrmAppUrl } from "../shared/config";
-
-const crmUrl = resolveCrmAppUrl();
+import { getCrmAppUrl } from "./crm-app-url";
 let authSession: AuthSession;
 let attendanceMonitor: AttendanceMonitor;
 
@@ -34,7 +32,7 @@ async function refreshTrayStatusFromApi(): Promise<void> {
   }
 
   try {
-    const res = await fetch(`${crmUrl}/api/attendance/desktop-agent/status`, {
+    const res = await fetch(`${getCrmAppUrl()}/api/attendance/desktop-agent/status`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) {
@@ -93,6 +91,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  const crmUrl = getCrmAppUrl();
   authSession = new AuthSession(crmUrl, session.defaultSession);
   attendanceMonitor = new AttendanceMonitor(crmUrl, authSession);
 

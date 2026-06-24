@@ -22,6 +22,22 @@ Set `CRM_APP_URL` to your hosted CRM when testing against production:
 CRM_APP_URL=https://crm.example.com npm run dev:desktop
 ```
 
+### Production installer URL (required)
+
+Before `npm run build:desktop`, create `apps/desktop/crm-app.url` (copy from `crm-app.url.example`) with **one line** — your live CRM origin, for example:
+
+```text
+https://crm.asbatechs.com
+```
+
+The build will fail if this file is missing or still points to `localhost`.
+
+Alternatively:
+
+```bash
+CRM_APP_URL=https://crm.example.com npm run build:desktop
+```
+
 ## Build installer (Windows x64)
 
 **Unsigned** (local dev / test):

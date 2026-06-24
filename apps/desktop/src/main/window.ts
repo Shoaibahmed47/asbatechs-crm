@@ -4,18 +4,50 @@ import {
   APP_TITLE,
   isAllowedNavigationUrl,
   MIN_WINDOW_HEIGHT,
-  MIN_WINDOW_WIDTH,
-  resolveCrmAppUrl
+  MIN_WINDOW_WIDTH
 } from "../shared/config";
+import { getCrmAppUrl } from "./crm-app-url";
 
 let mainWindow: BrowserWindow | null = null;
+
+function showLoadErrorPage(win: BrowserWindow, crmUrl: string, detail: string): void {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>AsbaTechs CRM</title>
+  <style>
+    body { font-family: Segoe UI, sans-serif; margin: 0; padding: 40px; background: #f8fafc; color: #0f172a; }
+    .card { max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { line-height: 1.55; margin: 0 0 12px; color: #334155; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }
+    ul { margin: 12px 0 0 18px; color: #334155; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Could not load CRM</h1>
+    <p>The desktop app tried to open:</p>
+    <p><code>${crmUrl}</code></p>
+    <p>${detail}</p>
+    <ul>
+      <li>Confirm this URL opens in your browser.</li>
+      <li>Check internet connection.</li>
+      <li>Ask IT to rebuild the installer with the correct live CRM URL.</li>
+    </ul>
+  </div>
+</body>
+</html>`;
+  void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+}
 
 export function getMainWindow(): BrowserWindow | null {
   return mainWindow;
 }
 
 export function createMainWindow(): BrowserWindow {
-  const crmUrl = resolveCrmAppUrl();
+  const crmUrl = getCrmAppUrl();
   const crmOrigin = new URL(crmUrl).origin;
 
   const win = new BrowserWindow({
@@ -52,6 +84,12 @@ export function createMainWindow(): BrowserWindow {
       event.preventDefault();
       void shell.openExternal(url);
     }
+  });
+
+  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    if (validatedURL.startsWith("data:")) return;
+    const detail = `Error ${errorCode}: ${errorDescription}`;
+    showLoadErrorPage(win, crmUrl, detail);
   });
 
   void win.loadURL(crmUrl);
