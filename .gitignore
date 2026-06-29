@@ -23,3 +23,13 @@ drizzle
 !packages/database/drizzle/migrations/*.sql
 !packages/database/drizzle/migrations/meta/**
 .vercel
+
+# Desktop app build artifacts (do not commit)
+apps/desktop/release/
+apps/desktop/release-build/
+apps/desktop/release-fresh/
+apps/desktop/release-signed/
+apps/desktop/dist/
+apps/desktop/.electron-driver/
+apps/desktop/*.exe
+apps/desktop/crm-app.url
