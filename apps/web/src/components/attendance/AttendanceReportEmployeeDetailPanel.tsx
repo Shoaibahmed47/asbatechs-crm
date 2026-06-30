@@ -879,7 +879,7 @@ export function AttendanceReportEmployeeDetailPanel({
                         }}
                         className="h-9 w-20 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
-                      <Button type="button" size="sm" variant="secondary" onClick={applyCustomDayCount}>
+                      <Button type="button" size="sm" variant="outline" onClick={applyCustomDayCount}>
                         Apply
                       </Button>
                     </div>
@@ -905,7 +905,7 @@ export function AttendanceReportEmployeeDetailPanel({
                       className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </label>
-                  <Button type="button" size="sm" variant="secondary" onClick={applyCustomDateRange}>
+                  <Button type="button" size="sm" variant="outline" onClick={applyCustomDateRange}>
                     Apply range
                   </Button>
                 </div>
