@@ -61,7 +61,7 @@ import {
   ATTENDANCE_WEEKEND_OFF_MESSAGE,
   isAttendanceWeekendToday
 } from "@/lib/attendance-working-days";
-//sdk
+
 type AttendanceStatus = "active" | "break" | "idle" | "offline";
 
 type BreakSessionRow = {
