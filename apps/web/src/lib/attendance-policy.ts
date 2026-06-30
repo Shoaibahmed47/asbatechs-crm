@@ -32,6 +32,9 @@ export const ATTENDANCE_LATE_EXPLANATION_TEST_MODE =
 
 /** Browser tab unload only (not switching to another tab). */
 export const ATTENDANCE_TAB_CLOSE_AWAY_SECONDS = 10;
+
+/** Max days in one employee period export (CEO reports). */
+export const MAX_ATTENDANCE_PERIOD_DAYS = 93;
 export const ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS = 10;
 export const ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS = 10;
 

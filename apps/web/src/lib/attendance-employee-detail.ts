@@ -17,6 +17,10 @@ import {
   type UnscheduledCause
 } from "@/lib/attendance-reason";
 import { labelForDisplayAgentState } from "@/lib/attendance-agent-health-display";
+import {
+  getAttendanceEmployeePeriodSummary,
+  type AttendanceEmployeePeriodSummary
+} from "@/lib/attendance-employee-period";
 
 export type AttendanceEmployeeBreakRow = {
   id: number;
@@ -58,6 +62,7 @@ export type AttendanceEmployeeDetail = {
   breakSessions: AttendanceEmployeeBreakRow[];
   breakRangeFrom: string;
   breakRangeTo: string;
+  periodSummary: AttendanceEmployeePeriodSummary | null;
 };
 
 function formatDurationMinutes(start: Date, end: Date | null): number | null {
@@ -204,6 +209,15 @@ export async function getAttendanceEmployeeDetail(params: {
     openShift: openShiftEarly
   });
 
+  const periodSummary =
+    range.from !== range.to
+      ? await getAttendanceEmployeePeriodSummary({
+          userId,
+          from: range.from,
+          to: range.to
+        })
+      : null;
+
   if (!log) {
     return {
       userId: user.id,
@@ -235,7 +249,8 @@ export async function getAttendanceEmployeeDetail(params: {
       totalHours: null,
       breakSessions,
       breakRangeFrom: range.from,
-      breakRangeTo: range.to
+      breakRangeTo: range.to,
+      periodSummary
     };
   }
 
@@ -364,6 +379,7 @@ export async function getAttendanceEmployeeDetail(params: {
     totalHours,
     breakSessions,
     breakRangeFrom: range.from,
-    breakRangeTo: range.to
+    breakRangeTo: range.to,
+    periodSummary
   };
 }
