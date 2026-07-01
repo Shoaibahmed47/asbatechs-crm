@@ -91,7 +91,7 @@ export default function ClientLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="form-input w-full bg-gray-100"
+                className="auth-form-input"
                 placeholder="email@example.com"
                 autoComplete="email"
                 required
@@ -107,7 +107,8 @@ export default function ClientLoginPage() {
               <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="form-input w-full bg-gray-100"
+                className="auth-form-input"
+                placeholder="Enter your password"
                 autoComplete="current-password"
                 required
               />

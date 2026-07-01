@@ -243,6 +243,31 @@
     box-shadow: 0 0 0 4px hsl(var(--primary) / 0.14);
   }
 
+  /** Login/signup cards stay light — inputs must stay dark text on white (dark mode safe). */
+  .auth-form-input {
+    @apply block w-full min-h-[2.75rem] rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-normal text-slate-900 caret-slate-900 shadow-sm transition duration-200 focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+  }
+
+  .auth-form-input::placeholder {
+    @apply text-slate-400;
+  }
+
+  .auth-form-input:-webkit-autofill,
+  .auth-form-input:-webkit-autofill:hover,
+  .auth-form-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .dark .auth-form-input {
+    @apply border-slate-300 bg-white text-slate-900 caret-slate-900;
+  }
+
+  .dark .auth-form-input::placeholder {
+    @apply text-slate-400;
+  }
+
   .form-label {
     @apply mb-2 block text-base font-medium leading-snug;
     color: hsl(var(--foreground));
