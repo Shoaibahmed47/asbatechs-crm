@@ -116,7 +116,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="form-input bg-white"
+                className="form-input bg-gray-100"
                 placeholder="email@example.com"
                 autoComplete="email"
                 required
