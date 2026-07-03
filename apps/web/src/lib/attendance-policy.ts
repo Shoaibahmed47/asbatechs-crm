@@ -1,9 +1,9 @@
 /** Heartbeat while employee is active on attendance (browser). */
-export const ATTENDANCE_ACTIVITY_PING_SECONDS = 60;
+export const ATTENDANCE_ACTIVITY_PING_SECONDS = 120;
 export const ATTENDANCE_ACTIVITY_PING_MS = ATTENDANCE_ACTIVITY_PING_SECONDS * 1000;
 
 // Agent health thresholds
-export const ATTENDANCE_AGENT_RUNNING_SECONDS = 180;
+export const ATTENDANCE_AGENT_RUNNING_SECONDS = 300;
 export const ATTENDANCE_AGENT_INSTALLED_SECONDS = 1800;
 export const ATTENDANCE_AGENT_ALERT_STALE_MINUTES = 10;
 
@@ -31,12 +31,12 @@ export const ATTENDANCE_LATE_EXPLANATION_TEST_MODE =
     process.env.ATTENDANCE_LATE_EXPLANATION_TEST_MODE !== "false");
 
 /** Browser tab unload only (not switching to another tab). */
-export const ATTENDANCE_TAB_CLOSE_AWAY_SECONDS = 10;
+export const ATTENDANCE_TAB_CLOSE_AWAY_SECONDS = 60;
 
 /** Max days in one employee period export (CEO reports). */
 export const MAX_ATTENDANCE_PERIOD_DAYS = 93;
-export const ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS = 10;
-export const ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS = 10;
+export const ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS = 60;
+export const ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS = 60;
 
 export const ATTENDANCE_TAB_CLOSE_AWAY_MS =
   ATTENDANCE_TAB_CLOSE_AWAY_SECONDS * 1000;
