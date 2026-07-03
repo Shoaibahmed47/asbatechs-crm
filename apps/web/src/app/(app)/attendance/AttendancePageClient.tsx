@@ -57,10 +57,6 @@ import {
   isManagerRole,
   normalizeRole
 } from "@/lib/rbac";
-import {
-  ATTENDANCE_WEEKEND_OFF_MESSAGE,
-  isAttendanceWeekendToday
-} from "@/lib/attendance-working-days";
 
 type AttendanceStatus = "active" | "break" | "idle" | "offline";
 
@@ -670,16 +666,49 @@ export default function AttendancePageClient({
   }, [agentHealth?.appUrl]);
 
   const normalizedViewerRole = normalizeRole(viewerRole);
+  const [workDayLoading, setWorkDayLoading] = useState(true);
+  const [isWorkingDayToday, setIsWorkingDayToday] = useState(true);
+  const [dayOffMessage, setDayOffMessage] = useState<string | null>(null);
   const isEmployeeViewer = isEmployeeRole(normalizedViewerRole);
   const shouldRedirectToReport =
     isAdminRole(normalizedViewerRole) || isManagerRole(normalizedViewerRole);
   const isViewingToday = selectedDate === getLocalDateString();
-  const isWeekendToday = isAttendanceWeekendToday();
+  const isDayOffToday = isEmployeeViewer && !workDayLoading && !isWorkingDayToday;
   const isMultiDayRange = dateFrom !== dateTo;
   const shiftOpen = Boolean(attendance?.clockIn && !attendance?.clockOut);
   const canManageLiveShift =
     isViewingToday ||
     Boolean(shiftOpen && attendance?.date && selectedDate === attendance.date);
+
+  useEffect(() => {
+    if (!isEmployeeViewer) {
+      setWorkDayLoading(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setWorkDayLoading(true);
+      try {
+        const data = await apiFetch<{
+          isWorkingDay: boolean;
+          dayOffMessage: string | null;
+        }>("/api/attendance/work-day");
+        if (cancelled) return;
+        setIsWorkingDayToday(data.isWorkingDay);
+        setDayOffMessage(data.dayOffMessage);
+      } catch {
+        if (!cancelled) {
+          setIsWorkingDayToday(true);
+          setDayOffMessage(null);
+        }
+      } finally {
+        if (!cancelled) setWorkDayLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmployeeViewer]);
 
   useEffect(() => {
     setIsDesktopApp(isElectronDesktop());
@@ -1112,7 +1141,7 @@ export default function AttendancePageClient({
       ? formatWorkDuration(attendance.liveBreakMinutes)
       : formatWorkDuration(attendance?.totalBreakMinutes);
 
-  const canEditShift = canManageLiveShift && !isWeekendToday;
+  const canEditShift = canManageLiveShift && !isDayOffToday;
   const canClockIn =
     canEditShift &&
     !pendingLateExplanation &&
@@ -1353,15 +1382,16 @@ export default function AttendancePageClient({
         ) : null}
       </div>
 
-      {isEmployeeViewer && isWeekendToday ? (
+      {isDayOffToday ? (
         <div className="flex gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/80 px-4 py-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <Info className="h-4 w-4" aria-hidden />
           </div>
           <div className="min-w-0 text-base text-slate-700 dark:text-slate-300">
-            <p className="font-semibold text-slate-900 dark:text-slate-100">Weekend off</p>
+            <p className="font-semibold text-slate-900 dark:text-slate-100">Day off</p>
             <p className="mt-1 text-base leading-relaxed text-slate-600 dark:text-slate-400">
-              {ATTENDANCE_WEEKEND_OFF_MESSAGE} Review past days below; clock-in resumes Monday.
+              {dayOffMessage ?? "Today is not a working day on your schedule."} Review past days
+              below; clock-in is available on your next scheduled working day.
             </p>
           </div>
         </div>

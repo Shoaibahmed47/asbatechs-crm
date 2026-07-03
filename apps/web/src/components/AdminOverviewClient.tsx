@@ -285,7 +285,7 @@ export function AdminOverviewClient({
       setOfficeHoursError(null);
       try {
         const data = await apiFetch<{ settings: AttendanceOfficeHours }>(
-          "/api/admin/attendance/office-hours"
+          "/api/admin/office-hours"
         );
         if (cancelled) return;
         setOfficeHours(data.settings);
@@ -480,7 +480,7 @@ export function AdminOverviewClient({
     setOfficeHoursError(null);
     try {
       const data = await apiFetch.put<{ settings: AttendanceOfficeHours }>(
-        "/api/admin/attendance/office-hours",
+        "/api/admin/office-hours",
         {
           expectedCheckInTime: officeCheckInTime,
           shiftEndTime: officeEndTime,

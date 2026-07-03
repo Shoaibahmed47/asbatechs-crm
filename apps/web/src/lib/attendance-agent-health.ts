@@ -16,11 +16,11 @@ import {
 } from "@/lib/attendance-office-hours";
 import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
 import { promoteAllDueEmployeeSchedules, resolveEmployeeScheduleForDate } from "@/lib/attendance-employee-schedule";
+import { normalizeWeeklySchedule } from "@/lib/attendance-weekly-schedule";
 import { formatShiftEndLabel } from "@/lib/attendance-early-leave";
 import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
 import { formatAttendanceClock, formatAttendanceDateLabel } from "@/lib/attendance-date";
 import { findPendingAbsenceExplanation } from "@/lib/attendance-absence";
-import { isAttendanceWorkingDay } from "@/lib/attendance-working-days";
 import { isAdminRole } from "@/lib/rbac";
 import {
   matchesAgentHealthFilter,
@@ -112,7 +112,10 @@ export async function getAttendanceAgentHealth(params: {
       employeeExpectedShiftEndTime: schema.users.expectedShiftEndTime,
       pendingExpectedCheckInTime: schema.users.pendingExpectedCheckInTime,
       pendingExpectedShiftEndTime: schema.users.pendingExpectedShiftEndTime,
-      scheduleEffectiveFrom: schema.users.scheduleEffectiveFrom
+      scheduleEffectiveFrom: schema.users.scheduleEffectiveFrom,
+      weeklyScheduleEnabled: schema.users.weeklyScheduleEnabled,
+      weeklySchedule: schema.users.weeklySchedule,
+      pendingWeeklySchedule: schema.users.pendingWeeklySchedule
     })
     .from(schema.users)
     .leftJoin(schema.departments, eq(schema.users.departmentId, schema.departments.id))
@@ -276,7 +279,7 @@ export async function getAttendanceAgentHealth(params: {
   );
 
   const viewDateAbsenceRows =
-    isAttendanceWorkingDay(date) && date < todayStr
+    date < todayStr
       ? await db
           .select({
             userId: schema.attendanceAbsenceRecords.userId,
@@ -371,7 +374,10 @@ export async function getAttendanceAgentHealth(params: {
           expectedShiftEndTime: user.employeeExpectedShiftEndTime,
           pendingExpectedCheckInTime: user.pendingExpectedCheckInTime,
           pendingExpectedShiftEndTime: user.pendingExpectedShiftEndTime,
-          scheduleEffectiveFrom: user.scheduleEffectiveFrom
+          scheduleEffectiveFrom: user.scheduleEffectiveFrom,
+          weeklyScheduleEnabled: user.weeklyScheduleEnabled,
+          weeklySchedule: normalizeWeeklySchedule(user.weeklySchedule),
+          pendingWeeklySchedule: normalizeWeeklySchedule(user.pendingWeeklySchedule)
         },
         officeHours,
         date
@@ -448,7 +454,7 @@ export async function getAttendanceAgentHealth(params: {
         pendingAbsenceDate: pendingAbsenceByUser.get(user.id)?.date ?? null,
         pendingAbsenceDateLabel: pendingAbsenceByUser.get(user.id)?.dateLabel ?? null,
         viewDateAbsentWithoutClockIn:
-          isAttendanceWorkingDay(date) &&
+          resolvedSchedule.isWorkingDay &&
           date < todayStr &&
           !todayLog?.clockIn,
         viewDateAbsenceReason: viewDateAbsenceByUser.get(user.id)?.reason ?? null,

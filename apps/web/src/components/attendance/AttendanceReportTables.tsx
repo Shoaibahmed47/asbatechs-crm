@@ -147,7 +147,7 @@ export function AttendanceReportTables({
   const issueInstallCommand = useCallback(async (userId: number) => {
     try {
       setIssuingForUserId(userId);
-      const setupRes = await fetch("/api/admin/attendance/desktop-agent/setup-token", {
+      const setupRes = await fetch("/api/admin/desktop-agent-setup-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

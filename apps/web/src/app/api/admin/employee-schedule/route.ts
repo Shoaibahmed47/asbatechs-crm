@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { schema } from "@asbatechs-crm/database";
+import { schema, type EmployeeWeeklySchedule } from "@asbatechs-crm/database";
 import { db } from "@/lib/db";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { normalizeRole } from "@/lib/rbac";
@@ -9,12 +9,31 @@ import {
   getEmployeeScheduleSummary,
   updateEmployeeSchedule
 } from "@/lib/attendance-employee-schedule";
+import { normalizeWeeklySchedule } from "@/lib/attendance-weekly-schedule";
+
+const dayScheduleSchema = z.object({
+  isWorking: z.boolean(),
+  checkInTime: z.string().trim().nullable().optional(),
+  shiftEndTime: z.string().trim().nullable().optional()
+});
+
+const weeklyScheduleSchema = z.object({
+  sun: dayScheduleSchema,
+  mon: dayScheduleSchema,
+  tue: dayScheduleSchema,
+  wed: dayScheduleSchema,
+  thu: dayScheduleSchema,
+  fri: dayScheduleSchema,
+  sat: dayScheduleSchema
+});
 
 const updateSchema = z.object({
   userId: z.number().int().positive(),
   expectedCheckInTime: z.string().trim().nullable(),
   expectedShiftEndTime: z.string().trim().nullable(),
-  effectiveFrom: z.string().trim().nullable().optional()
+  effectiveFrom: z.string().trim().nullable().optional(),
+  weeklyScheduleEnabled: z.boolean().optional(),
+  weeklySchedule: weeklyScheduleSchema.nullable().optional()
 });
 
 async function authorizeManagerScope(
@@ -96,12 +115,18 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Employee not found" }, { status: 404 });
   }
 
+  const weeklySchedule = parsed.data.weeklySchedule
+    ? (normalizeWeeklySchedule(parsed.data.weeklySchedule) as EmployeeWeeklySchedule)
+    : null;
+
   try {
     const schedule = await updateEmployeeSchedule({
       userId: parsed.data.userId,
       expectedCheckInTime: parsed.data.expectedCheckInTime,
       expectedShiftEndTime: parsed.data.expectedShiftEndTime,
-      effectiveFrom: parsed.data.effectiveFrom ?? null
+      effectiveFrom: parsed.data.effectiveFrom ?? null,
+      weeklyScheduleEnabled: parsed.data.weeklyScheduleEnabled,
+      weeklySchedule
     });
     return NextResponse.json({ schedule });
   } catch (error) {

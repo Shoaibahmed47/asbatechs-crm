@@ -13,7 +13,6 @@ import {
 } from "@/lib/attendance-away-compliance";
 import { ATTENDANCE_CURSOR_IDLE_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 type ActivityEvent =
   | "activity"
@@ -88,9 +87,6 @@ export async function POST(req: NextRequest) {
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const weekendBlocked = rejectAttendanceOnWeekend();
-  if (weekendBlocked) return weekendBlocked;
 
   let body: Record<string, unknown> = {};
   try {

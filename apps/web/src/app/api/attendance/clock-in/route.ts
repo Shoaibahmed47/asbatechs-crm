@@ -17,7 +17,7 @@ import {
 } from "@/lib/attendance-clock-feedback";
 import { hasPendingAbsenceExplanation } from "@/lib/attendance-absence";
 import { hasPendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
+import { rejectAttendanceIfNotWorkingDay } from "@/lib/attendance-weekend-guard";
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
@@ -58,10 +58,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const weekendBlocked = rejectAttendanceOnWeekend();
-  if (weekendBlocked) return weekendBlocked;
-
   const userId = payload.userId;
+
+  const dayOffBlocked = await rejectAttendanceIfNotWorkingDay(userId);
+  if (dayOffBlocked) return dayOffBlocked;
+
   const today = getLocalDateString();
 
   if (await hasPendingLateExplanation(userId)) {

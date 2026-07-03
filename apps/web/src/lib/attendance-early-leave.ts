@@ -8,7 +8,7 @@ import {
   getLocalDateString
 } from "@/lib/attendance-date";
 import { ATTENDANCE_LATE_EXPLANATION_TEST_MODE } from "@/lib/attendance-policy";
-import { isExplanationPromptDue } from "@/lib/attendance-working-days";
+import { isExplanationPromptDueForEmployee } from "@/lib/attendance-employee-working-day";
 import type { PendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave-types";
 
 export type { PendingEarlyLeaveExplanation };
@@ -111,7 +111,10 @@ export async function findPendingEarlyLeaveExplanation(
   if (!row?.clockOut || !row.date) return null;
 
   const date = String(row.date);
-  if (!ATTENDANCE_LATE_EXPLANATION_TEST_MODE && !isExplanationPromptDue(date, today)) {
+  if (
+    !ATTENDANCE_LATE_EXPLANATION_TEST_MODE &&
+    !(await isExplanationPromptDueForEmployee(userId, date, today))
+  ) {
     return null;
   }
 

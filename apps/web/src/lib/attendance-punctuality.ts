@@ -6,10 +6,14 @@ import { db } from "@/lib/db";
 import { getLocalDateString } from "@/lib/attendance-date";
 import {
   addAttendanceCalendarDays,
-  getAttendanceWeekday,
-  isAttendanceWeekend
+  getAttendanceWeekday
 } from "@/lib/attendance-working-days";
 import type { EmployeePunctualityStats } from "@/lib/attendance-punctuality-shared";
+import {
+  enumerateEmployeeWorkingDaysInclusive,
+  isEmployeeWorkingDay,
+  previousEmployeeWorkingDay
+} from "@/lib/attendance-employee-working-day";
 
 export type { EmployeePunctualityStats };
 
@@ -17,14 +21,6 @@ function getWeekMonday(dateStr: string): string {
   const weekday = getAttendanceWeekday(dateStr);
   const daysSinceMonday = (weekday + 6) % 7;
   return addAttendanceCalendarDays(dateStr, -daysSinceMonday);
-}
-
-function previousWorkingDay(dateStr: string): string {
-  let cursor = addAttendanceCalendarDays(dateStr, -1);
-  while (isAttendanceWeekend(cursor)) {
-    cursor = addAttendanceCalendarDays(cursor, -1);
-  }
-  return cursor;
 }
 
 function isOnTimeLog(lateMinutes: number | null | undefined): boolean {
@@ -37,13 +33,16 @@ type DayLog = {
   lateMinutes: number | null;
 };
 
-function computeStreak(
+async function computeStreak(
+  userId: number,
   logsByDate: Map<string, DayLog>,
   today: string
-): { currentStreak: number; streakIncludesToday: boolean; lateToday: boolean } {
+): Promise<{ currentStreak: number; streakIncludesToday: boolean; lateToday: boolean }> {
   let cursor = today;
-  while (isAttendanceWeekend(cursor)) {
+  let guard = 0;
+  while (!(await isEmployeeWorkingDay(userId, cursor)) && guard < 14) {
     cursor = addAttendanceCalendarDays(cursor, -1);
+    guard += 1;
   }
 
   const todayLog = logsByDate.get(cursor);
@@ -57,15 +56,17 @@ function computeStreak(
   if (todayLog?.clockIn && isOnTimeLog(todayLog.lateMinutes)) {
     streakIncludesToday = true;
   } else {
-    cursor = previousWorkingDay(cursor);
+    cursor = await previousEmployeeWorkingDay(userId, cursor);
   }
 
   let streak = 0;
   const maxLookback = 60;
 
   for (let i = 0; i < maxLookback; i += 1) {
-    while (isAttendanceWeekend(cursor)) {
+    let skipGuard = 0;
+    while (!(await isEmployeeWorkingDay(userId, cursor)) && skipGuard < 14) {
       cursor = addAttendanceCalendarDays(cursor, -1);
+      skipGuard += 1;
     }
 
     const log = logsByDate.get(cursor);
@@ -74,7 +75,7 @@ function computeStreak(
     }
 
     streak += 1;
-    cursor = previousWorkingDay(cursor);
+    cursor = await previousEmployeeWorkingDay(userId, cursor);
   }
 
   return { currentStreak: streak, streakIncludesToday, lateToday: false };
@@ -115,7 +116,8 @@ export async function getEmployeePunctualityStats(
   let weekOnTimeDays = 0;
   let weekClockInDays = 0;
 
-  for (const date of enumerateWorkingDaysInclusive(weekStart, today)) {
+  const weekWorkingDays = await enumerateEmployeeWorkingDaysInclusive(userId, weekStart, today);
+  for (const date of weekWorkingDays) {
     const log = logsByDate.get(date);
     if (!log?.clockIn) continue;
     weekClockInDays += 1;
@@ -124,7 +126,11 @@ export async function getEmployeePunctualityStats(
     }
   }
 
-  const { currentStreak, streakIncludesToday, lateToday } = computeStreak(logsByDate, today);
+  const { currentStreak, streakIncludesToday, lateToday } = await computeStreak(
+    userId,
+    logsByDate,
+    today
+  );
 
   return {
     weekOnTimeDays,
@@ -133,16 +139,4 @@ export async function getEmployeePunctualityStats(
     streakIncludesToday,
     lateToday
   };
-}
-
-function enumerateWorkingDaysInclusive(from: string, to: string): string[] {
-  const dates: string[] = [];
-  let cursor = from;
-  while (cursor <= to) {
-    if (!isAttendanceWeekend(cursor)) {
-      dates.push(cursor);
-    }
-    cursor = addAttendanceCalendarDays(cursor, 1);
-  }
-  return dates;
 }

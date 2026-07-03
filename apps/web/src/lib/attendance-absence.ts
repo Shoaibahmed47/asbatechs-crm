@@ -8,9 +8,8 @@ import {
 } from "@/lib/attendance-date";
 import {
   addAttendanceCalendarDays,
-  isAttendanceWorkingDay,
-  isExplanationPromptDue
 } from "@/lib/attendance-working-days";
+import { isExplanationPromptDueForEmployee, isEmployeeWorkingDay } from "@/lib/attendance-employee-working-day";
 
 export type { PendingAbsenceExplanation } from "@/lib/attendance-absence-types";
 
@@ -63,10 +62,10 @@ export async function findPendingAbsenceExplanation(
   const explainedDates = new Set(explainedRows.map((row) => String(row.date)));
 
   for (const date of enumerateLocalDates(scanFrom, yesterday)) {
-    if (!isAttendanceWorkingDay(date)) continue;
+    if (!(await isEmployeeWorkingDay(userId, date))) continue;
     if (presentDates.has(date)) continue;
     if (explainedDates.has(date)) continue;
-    if (!isExplanationPromptDue(date, today)) continue;
+    if (!(await isExplanationPromptDueForEmployee(userId, date, today))) continue;
 
     return {
       date,

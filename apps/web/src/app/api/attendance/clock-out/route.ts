@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { resolveOpenAttendanceLogForUser } from "@/lib/attendance-open-shift";
 import { finalizeAttendanceClockOut } from "@/lib/attendance-clock-out-service";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 import { buildClockOutFeedbackMessage } from "@/lib/attendance-clock-feedback";
 
 export async function POST(req: NextRequest) {
@@ -11,9 +10,6 @@ export async function POST(req: NextRequest) {
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const weekendBlocked = rejectAttendanceOnWeekend();
-  if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
 

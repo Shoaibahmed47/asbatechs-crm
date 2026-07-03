@@ -5,7 +5,6 @@ import { schema } from "@asbatechs-crm/database";
 import { resolveStaffAuth } from "@/lib/staff-auth-request";
 import { resolveOpenAttendanceLogForUser } from "@/lib/attendance-open-shift";
 import { normalizeBreakCategory } from "@/lib/attendance-break-shared";
-import { rejectAttendanceOnWeekend } from "@/lib/attendance-weekend-guard";
 
 export async function POST(req: NextRequest) {
   const payload = await resolveStaffAuth(req);
@@ -13,9 +12,6 @@ export async function POST(req: NextRequest) {
   if (!payload) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const weekendBlocked = rejectAttendanceOnWeekend();
-  if (weekendBlocked) return weekendBlocked;
 
   const userId = payload.userId;
 

@@ -19,6 +19,24 @@ export type ClientWorkAttachment = {
   mimeType: string;
 };
 
+/** One day in an employee weekly work schedule. */
+export type WeeklyDaySchedule = {
+  isWorking: boolean;
+  checkInTime?: string | null;
+  shiftEndTime?: string | null;
+};
+
+/** Per-day schedule (Sun–Sat). Used when weekly_schedule_enabled is true. */
+export type EmployeeWeeklySchedule = {
+  sun: WeeklyDaySchedule;
+  mon: WeeklyDaySchedule;
+  tue: WeeklyDaySchedule;
+  wed: WeeklyDaySchedule;
+  thu: WeeklyDaySchedule;
+  fri: WeeklyDaySchedule;
+  sat: WeeklyDaySchedule;
+};
+
 export const departments = pgTable("departments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -49,6 +67,10 @@ export const users = pgTable("users", {
   pendingExpectedCheckInTime: text("pending_expected_check_in_time"),
   pendingExpectedShiftEndTime: text("pending_expected_shift_end_time"),
   scheduleEffectiveFrom: date("schedule_effective_from"),
+  /** When true, weekly_schedule defines per-day working hours and off days. */
+  weeklyScheduleEnabled: boolean("weekly_schedule_enabled").notNull().default(false),
+  weeklySchedule: jsonb("weekly_schedule").$type<EmployeeWeeklySchedule | null>(),
+  pendingWeeklySchedule: jsonb("pending_weekly_schedule").$type<EmployeeWeeklySchedule | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });
