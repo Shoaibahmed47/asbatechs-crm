@@ -57,7 +57,7 @@ import {
   isManagerRole,
   normalizeRole
 } from "@/lib/rbac";
-
+//deploy
 type AttendanceStatus = "active" | "break" | "idle" | "offline";
 
 type BreakSessionRow = {
