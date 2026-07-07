@@ -8,9 +8,7 @@ const selectWhere = jest.fn(() => {
     return { limit: selectLimit };
   }
   if (whereInvocation === 2) {
-    return Promise.resolve([
-      { id: 7, clockIn: new Date(), clockOut: null, status: "active" }
-    ]);
+    return { orderBy: jest.fn(() => Promise.resolve([])) };
   }
   return Promise.resolve([]);
 });

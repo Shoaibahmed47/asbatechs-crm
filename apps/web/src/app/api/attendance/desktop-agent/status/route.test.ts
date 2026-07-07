@@ -11,6 +11,9 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-05-13"
 }));
+jest.mock("@/lib/attendance-open-shift", () => ({
+  resolveOpenAttendanceLogForUser: jest.fn().mockResolvedValue(null)
+}));
 jest.mock("@/lib/request-origin", () => ({
   resolveAppUrl: () => "http://localhost:3000"
 }));
@@ -53,9 +56,7 @@ describe("attendance desktop-agent status route", () => {
 
   it("returns not installed when no agent activity exists", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2, role: "employee" });
-    whereMock
-      .mockImplementationOnce(() => Promise.resolve([]))
-      .mockImplementation(() => ({ orderBy: orderByMock }));
+    whereMock.mockImplementation(() => ({ orderBy: orderByMock }));
 
     const res = await GET(req());
     const data = await res.json();

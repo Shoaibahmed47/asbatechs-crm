@@ -12,6 +12,9 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-open-shift", () => ({
+  resolveOpenAttendanceLogForUser: jest.fn()
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({
@@ -28,6 +31,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const resolveOpenAttendanceLogForUser = jest.requireMock("@/lib/attendance-open-shift")
+  .resolveOpenAttendanceLogForUser as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,7 +48,7 @@ describe("attendance break-start route", () => {
 
   it("requires clock-in before break start", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere.mockResolvedValueOnce([]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce(null);
 
     const res = await POST(req());
     expect(res.status).toBe(400);
@@ -51,10 +56,11 @@ describe("attendance break-start route", () => {
 
   it("starts break and updates status", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: { id: 5, clockIn: new Date(), clockOut: null },
+      logDate: "2026-03-31"
+    });
+    selectWhere.mockResolvedValueOnce([]);
     insertReturning.mockResolvedValueOnce([{ id: 77 }]);
 
     const res = await POST(req());
@@ -67,9 +73,11 @@ describe("attendance break-start route", () => {
 
   it("requires a note when break type is other", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 5, clockIn: new Date(), clockOut: null }])
-      .mockResolvedValueOnce([]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: { id: 5, clockIn: new Date(), clockOut: null },
+      logDate: "2026-03-31"
+    });
+    selectWhere.mockResolvedValueOnce([]);
 
     const res = await POST(req({ category: "other" }));
     expect(res.status).toBe(400);

@@ -7,6 +7,7 @@ import { addAttendanceCalendarDays } from "@/lib/attendance-working-days";
 import { computeDayTotalsFromSessions } from "@/lib/attendance-shift-minutes";
 import { resolveOpenShiftBoundsForEmployee } from "@/lib/attendance-shift-window";
 import { MAX_ATTENDANCE_PERIOD_DAYS } from "@/lib/attendance-policy";
+import { isEmployeeWorkingDay } from "@/lib/attendance-employee-working-day";
 
 export { MAX_ATTENDANCE_PERIOD_DAYS };
 
@@ -22,6 +23,12 @@ export type AttendanceEmployeeDaySummary = {
   totalHours: string | null;
   status: string;
   openShift: boolean;
+  lateMinutes: number;
+  lateReason: string | null;
+  earlyLeaveMinutes: number;
+  earlyLeaveReason: string | null;
+  absenceReason: string | null;
+  isAbsentWorkingDay: boolean;
 };
 
 export type AttendanceEmployeePeriodSummary = {
@@ -79,10 +86,30 @@ export async function getAttendanceEmployeePeriodSummary(params: {
 
   const logByDate = new Map(logs.map((row) => [String(row.date), row]));
 
+  const absenceRows = await db
+    .select({
+      date: schema.attendanceAbsenceRecords.date,
+      reason: schema.attendanceAbsenceRecords.reason
+    })
+    .from(schema.attendanceAbsenceRecords)
+    .where(
+      and(
+        eq(schema.attendanceAbsenceRecords.userId, params.userId),
+        gte(schema.attendanceAbsenceRecords.date, range.from as any),
+        lte(schema.attendanceAbsenceRecords.date, range.to as any)
+      )
+    );
+
+  const absenceReasonByDate = new Map(
+    absenceRows.map((row) => [String(row.date), row.reason ?? null])
+  );
+
   const dailyRows: AttendanceEmployeeDaySummary[] = [];
 
   for (const day of calendarDays) {
     const log = logByDate.get(day);
+    const isAbsentWorkingDay =
+      day < today && (await isEmployeeWorkingDay(params.userId, day)) && (!log || !log.clockIn);
     if (!log || !log.clockIn) {
       dailyRows.push({
         date: day,
@@ -95,7 +122,13 @@ export async function getAttendanceEmployeePeriodSummary(params: {
         sleepMinutes: 0,
         totalHours: null,
         status: "absent",
-        openShift: false
+        openShift: false,
+        lateMinutes: 0,
+        lateReason: null,
+        earlyLeaveMinutes: 0,
+        earlyLeaveReason: null,
+        absenceReason: absenceReasonByDate.get(day) ?? null,
+        isAbsentWorkingDay
       });
       continue;
     }
@@ -154,7 +187,13 @@ export async function getAttendanceEmployeePeriodSummary(params: {
       sleepMinutes,
       totalHours,
       status: (log.status ?? "offline").toLowerCase(),
-      openShift
+      openShift,
+      lateMinutes: log.lateMinutes ?? 0,
+      lateReason: log.lateReason ?? null,
+      earlyLeaveMinutes: log.earlyLeaveMinutes ?? 0,
+      earlyLeaveReason: log.earlyLeaveReason ?? null,
+      absenceReason: absenceReasonByDate.get(day) ?? null,
+      isAbsentWorkingDay: false
     });
   }
 

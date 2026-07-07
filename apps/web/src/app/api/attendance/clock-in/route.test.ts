@@ -29,6 +29,9 @@ jest.mock("@/lib/attendance-office-settings", () => ({
     lateGraceMinutes: 15
   })
 }));
+jest.mock("@/lib/attendance-weekend-guard", () => ({
+  rejectAttendanceIfNotWorkingDay: jest.fn().mockResolvedValue(null)
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({

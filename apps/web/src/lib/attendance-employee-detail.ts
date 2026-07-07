@@ -21,6 +21,10 @@ import {
   getAttendanceEmployeePeriodSummary,
   type AttendanceEmployeePeriodSummary
 } from "@/lib/attendance-employee-period";
+import { formatExpectedCheckInLabel } from "@/lib/attendance-late-checkin";
+import { formatShiftEndLabel } from "@/lib/attendance-early-leave";
+import { getLocalDateString } from "@/lib/attendance-date";
+import { isEmployeeWorkingDay } from "@/lib/attendance-employee-working-day";
 
 export type AttendanceEmployeeBreakRow = {
   id: number;
@@ -63,6 +67,17 @@ export type AttendanceEmployeeDetail = {
   breakRangeFrom: string;
   breakRangeTo: string;
   periodSummary: AttendanceEmployeePeriodSummary | null;
+  lateMinutes: number;
+  lateReason: string | null;
+  lateReasonSubmittedAt: string | null;
+  expectedCheckInLabel: string | null;
+  earlyLeaveMinutes: number;
+  earlyLeaveReason: string | null;
+  earlyLeaveReasonSubmittedAt: string | null;
+  expectedShiftEndLabel: string | null;
+  absentWithoutClockIn: boolean;
+  absenceReason: string | null;
+  absenceReasonSubmittedAt: string | null;
 };
 
 function formatDurationMinutes(start: Date, end: Date | null): number | null {
@@ -76,6 +91,110 @@ function agentStateLabel(state: AgentHealthState): string {
 
 function normalizeRange(from: string, to: string): { from: string; to: string } {
   return from <= to ? { from, to } : { from: to, to: from };
+}
+
+function mapPunctualityFieldsFromLog(
+  log:
+    | {
+        lateMinutes?: number | null;
+        lateReason?: string | null;
+        lateReasonSubmittedAt?: Date | null;
+        expectedCheckInTime?: string | null;
+        earlyLeaveMinutes?: number | null;
+        earlyLeaveReason?: string | null;
+        earlyLeaveReasonSubmittedAt?: Date | null;
+        expectedShiftEndTime?: string | null;
+      }
+    | undefined
+): Pick<
+  AttendanceEmployeeDetail,
+  | "lateMinutes"
+  | "lateReason"
+  | "lateReasonSubmittedAt"
+  | "expectedCheckInLabel"
+  | "earlyLeaveMinutes"
+  | "earlyLeaveReason"
+  | "earlyLeaveReasonSubmittedAt"
+  | "expectedShiftEndLabel"
+> {
+  if (!log) {
+    return {
+      lateMinutes: 0,
+      lateReason: null,
+      lateReasonSubmittedAt: null,
+      expectedCheckInLabel: null,
+      earlyLeaveMinutes: 0,
+      earlyLeaveReason: null,
+      earlyLeaveReasonSubmittedAt: null,
+      expectedShiftEndLabel: null
+    };
+  }
+
+  const expectedCheckInTime = log.expectedCheckInTime?.trim() ?? "";
+  const expectedShiftEndTime = log.expectedShiftEndTime?.trim() ?? "";
+  return {
+    lateMinutes: log.lateMinutes ?? 0,
+    lateReason: log.lateReason ?? null,
+    lateReasonSubmittedAt: log.lateReasonSubmittedAt
+      ? new Date(log.lateReasonSubmittedAt as Date).toISOString()
+      : null,
+    expectedCheckInLabel: expectedCheckInTime
+      ? formatExpectedCheckInLabel(expectedCheckInTime)
+      : null,
+    earlyLeaveMinutes: log.earlyLeaveMinutes ?? 0,
+    earlyLeaveReason: log.earlyLeaveReason ?? null,
+    earlyLeaveReasonSubmittedAt: log.earlyLeaveReasonSubmittedAt
+      ? new Date(log.earlyLeaveReasonSubmittedAt as Date).toISOString()
+      : null,
+    expectedShiftEndLabel: expectedShiftEndTime
+      ? formatShiftEndLabel(expectedShiftEndTime)
+      : null
+  };
+}
+
+const EMPTY_ABSENCE_FIELDS = {
+  absentWithoutClockIn: false,
+  absenceReason: null,
+  absenceReasonSubmittedAt: null
+} as const;
+
+async function loadAbsenceFieldsForDate(
+  userId: number,
+  date: string,
+  hasClockIn: boolean
+): Promise<{
+  absentWithoutClockIn: boolean;
+  absenceReason: string | null;
+  absenceReasonSubmittedAt: string | null;
+}> {
+  const today = getLocalDateString();
+  const isWorkingDay = await isEmployeeWorkingDay(userId, date);
+  const absentWithoutClockIn = isWorkingDay && date < today && !hasClockIn;
+  if (!absentWithoutClockIn) {
+    return { ...EMPTY_ABSENCE_FIELDS };
+  }
+
+  const [record] = await db
+    .select({
+      reason: schema.attendanceAbsenceRecords.reason,
+      reasonSubmittedAt: schema.attendanceAbsenceRecords.reasonSubmittedAt
+    })
+    .from(schema.attendanceAbsenceRecords)
+    .where(
+      and(
+        eq(schema.attendanceAbsenceRecords.userId, userId),
+        eq(schema.attendanceAbsenceRecords.date, date as any)
+      )
+    )
+    .limit(1);
+
+  return {
+    absentWithoutClockIn: true,
+    absenceReason: record?.reason ?? null,
+    absenceReasonSubmittedAt: record?.reasonSubmittedAt
+      ? new Date(record.reasonSubmittedAt as Date).toISOString()
+      : null
+  };
 }
 
 async function loadBreakSessionsInRange(
@@ -218,6 +337,12 @@ export async function getAttendanceEmployeeDetail(params: {
         })
       : null;
 
+  const absenceFields = await loadAbsenceFieldsForDate(
+    userId,
+    date,
+    Boolean(log?.clockIn)
+  );
+
   if (!log) {
     return {
       userId: user.id,
@@ -250,7 +375,9 @@ export async function getAttendanceEmployeeDetail(params: {
       breakSessions,
       breakRangeFrom: range.from,
       breakRangeTo: range.to,
-      periodSummary
+      periodSummary,
+      ...mapPunctualityFieldsFromLog(undefined),
+      ...absenceFields
     };
   }
 
@@ -380,6 +507,8 @@ export async function getAttendanceEmployeeDetail(params: {
     breakSessions,
     breakRangeFrom: range.from,
     breakRangeTo: range.to,
-    periodSummary
+    periodSummary,
+    ...mapPunctualityFieldsFromLog(log),
+    ...absenceFields
   };
 }

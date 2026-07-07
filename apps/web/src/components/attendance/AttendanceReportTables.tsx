@@ -5,26 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
-import type { AttendanceDailyRow, AttendanceRangeRow } from "@/lib/attendance-daily-report";
-import { formatAttendanceDateLabel, formatAttendanceDurationReadable } from "@/lib/attendance-date";
 import { AttendanceReportEmployeeDetailPanel } from "./AttendanceReportEmployeeDetailPanel";
 import {
   AttendanceEmployeeScheduleModal,
   type ScheduleAnchorRect
 } from "./AttendanceEmployeeScheduleModal";
-import {
-  AttendanceEarlyLeaveDetailModal,
-  type AdminEarlyLeaveDetail
-} from "./AttendanceEarlyLeaveDetailModal";
-import {
-  AttendanceLateDetailModal,
-  type AdminLateDetail
-} from "./AttendanceLateDetailModal";
-import {
-  AttendanceAbsenceDetailModal,
-  type AdminAbsenceDetail
-} from "./AttendanceAbsenceDetailModal";
-import { anchorRectFromElement } from "@/lib/anchored-popover";
 import { clearInteractionLocks } from "@/lib/dom-interaction-locks";
 import {
   AGENT_HEALTH_FILTER_OPTIONS,
@@ -44,8 +29,6 @@ type Props = {
   } | null;
   agentStateFilter: AgentHealthFilterState;
   agentFilterQueryBase: string;
-  dailyRows: AttendanceDailyRow[];
-  rangeRows: AttendanceRangeRow[];
   basePath?: string;
 };
 
@@ -100,8 +83,6 @@ export function AttendanceReportTables({
   agentHealth,
   agentStateFilter,
   agentFilterQueryBase,
-  dailyRows,
-  rangeRows,
   basePath
 }: Props) {
   const router = useRouter();
@@ -112,12 +93,6 @@ export function AttendanceReportTables({
     userId: number;
     userName: string;
     anchorRect: ScheduleAnchorRect;
-  } | null>(null);
-  const [lateDetail, setLateDetail] = useState<AdminLateDetail | null>(null);
-  const [earlyLeaveDetail, setEarlyLeaveDetail] = useState<AdminEarlyLeaveDetail | null>(null);
-  const [absenceDetail, setAbsenceDetail] = useState<{
-    detail: AdminAbsenceDetail;
-    anchorRect: ReturnType<typeof anchorRectFromElement>;
   } | null>(null);
   const [detailUser, setDetailUser] = useState<{ userId: number; userName: string } | null>(null);
   const filterBasePath = basePath ?? pathname;
@@ -219,7 +194,7 @@ export function AttendanceReportTables({
             </div>
           </div>
           <div className="max-h-[min(72vh,40rem)] overflow-auto">
-            <table className="w-full min-w-[62rem] text-left text-sm">
+            <table className="w-full min-w-[48rem] text-left text-sm">
               <thead className="sticky top-0 z-[1] bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr>
                   <th className="px-2 py-2">Name</th>
@@ -227,9 +202,6 @@ export function AttendanceReportTables({
                   <th className="px-2 py-2">Department</th>
                   <th className="px-2 py-2">Schedule</th>
                   <th className="px-2 py-2">Agent state</th>
-                  <th className="px-2 py-2">Late</th>
-                  <th className="px-2 py-2">Early leave</th>
-                  <th className="px-2 py-2">Absence</th>
                   <th className="px-2 py-2">Last seen</th>
                   <th className="px-2 py-2">Shift</th>
                   <th className="px-2 py-2">Attendance</th>
@@ -246,7 +218,7 @@ export function AttendanceReportTables({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {agentHealth.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
                       No matching employees for current agent filters.
                     </td>
                   </tr>
@@ -335,112 +307,6 @@ export function AttendanceReportTables({
                       <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
                         {attendanceExempt ? (
                           "—"
-                        ) : row.lateMinutes > 0 ? (
-                          <button
-                            type="button"
-                            className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setLateDetail({
-                                userName: row.userName,
-                                date: detailDate,
-                                dateLabel: row.lateDateLabel ?? detailDate,
-                                expectedCheckInLabel:
-                                  row.expectedCheckInLabel ?? row.effectiveExpectedCheckInLabel,
-                                clockInLabel: row.clockInLabel ?? "—",
-                                lateMinutes: row.lateMinutes,
-                                lateReason: row.lateReason,
-                                lateReasonSubmittedAt: row.lateReasonSubmittedAt
-                              });
-                            }}
-                          >
-                            {formatAttendanceDurationReadable(row.lateMinutes)} late · View
-                          </button>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
-                        {attendanceExempt ? (
-                          "—"
-                        ) : row.earlyLeaveMinutes > 0 ? (
-                          <button
-                            type="button"
-                            className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 dark:text-sky-200"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setEarlyLeaveDetail({
-                                userName: row.userName,
-                                dateLabel: formatAttendanceDateLabel(detailDate),
-                                expectedShiftEndLabel:
-                                  row.expectedShiftEndLabel ?? "—",
-                                clockOutLabel: row.clockOutLabel ?? "—",
-                                earlyLeaveMinutes: row.earlyLeaveMinutes,
-                                earlyLeaveReason: row.earlyLeaveReason,
-                                earlyLeaveReasonSubmittedAt: row.earlyLeaveReasonSubmittedAt
-                              });
-                            }}
-                          >
-                            {formatAttendanceDurationReadable(row.earlyLeaveMinutes)} early · View
-                          </button>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
-                        {attendanceExempt ? (
-                          "—"
-                        ) : row.pendingAbsenceDateLabel ? (
-                          <button
-                            type="button"
-                            className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-sm font-semibold text-rose-900 hover:bg-rose-500/25 dark:text-rose-200"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setAbsenceDetail({
-                                detail: {
-                                  userName: row.userName,
-                                  dateLabel: row.pendingAbsenceDateLabel!,
-                                  absenceReason: null,
-                                  absenceReasonSubmittedAt: null
-                                },
-                                anchorRect: anchorRectFromElement(event.currentTarget)
-                              });
-                            }}
-                          >
-                            {row.pendingAbsenceDateLabel} · reason pending
-                          </button>
-                        ) : row.viewDateAbsentWithoutClockIn ? (
-                          row.viewDateAbsenceReason ? (
-                            <button
-                              type="button"
-                              className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-sm font-semibold text-rose-900 hover:bg-rose-500/25 dark:text-rose-200"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setAbsenceDetail({
-                                  detail: {
-                                    userName: row.userName,
-                                    dateLabel: formatAttendanceDateLabel(detailDate),
-                                    absenceReason: row.viewDateAbsenceReason,
-                                    absenceReasonSubmittedAt: row.viewDateAbsenceReasonSubmittedAt
-                                  },
-                                  anchorRect: anchorRectFromElement(event.currentTarget)
-                                });
-                              }}
-                            >
-                              Absent · View reason
-                            </button>
-                          ) : (
-                            <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
-                              Absent · no reason
-                            </span>
-                          )
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
-                        {attendanceExempt ? (
-                          "—"
                         ) : (
                           <>
                             {formatAge(row.lastSeenAgeSeconds)}
@@ -500,25 +366,6 @@ export function AttendanceReportTables({
           anchorRect={scheduleModalUser.anchorRect}
           onClose={() => setScheduleModalUser(null)}
           onSaved={() => router.refresh()}
-        />
-      ) : null}
-
-      {lateDetail ? (
-        <AttendanceLateDetailModal detail={lateDetail} onClose={() => setLateDetail(null)} />
-      ) : null}
-
-      {earlyLeaveDetail ? (
-        <AttendanceEarlyLeaveDetailModal
-          detail={earlyLeaveDetail}
-          onClose={() => setEarlyLeaveDetail(null)}
-        />
-      ) : null}
-
-      {absenceDetail ? (
-        <AttendanceAbsenceDetailModal
-          detail={absenceDetail.detail}
-          anchorRect={absenceDetail.anchorRect}
-          onClose={() => setAbsenceDetail(null)}
         />
       ) : null}
 

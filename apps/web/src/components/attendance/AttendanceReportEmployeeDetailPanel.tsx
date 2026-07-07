@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from "react";
 import { createPortal } from "react-dom";
-import { Activity, BarChart3, CalendarRange, Loader2, UserCircle, X } from "lucide-react";
+import { Activity, AlertCircle, BarChart3, CalendarRange, Loader2, UserCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -24,6 +24,7 @@ import {
   enumerateLocalDates,
   formatAttendanceClock,
   formatAttendanceDateTime,
+  formatAttendanceDurationReadable,
   getLocalDateString
 } from "@/lib/attendance-date";
 import type { AttendanceEmployeeDetail } from "@/lib/attendance-employee-detail";
@@ -87,6 +88,21 @@ function toneForAgent(state: string): string {
 
 function agentStateHint(state: string): string {
   return agentStateHintForDisplay(state as "not_installed" | "installed" | "running" | "stale");
+}
+
+function formatExplanationSubmittedAt(iso: string | null): string {
+  if (!iso) return "Not submitted yet";
+  return formatAttendanceDateTime(iso);
+}
+
+function formatExplanationReasonCell(reason: string | null, triggerMinutes: number): string {
+  if (triggerMinutes <= 0) return "—";
+  return reason?.trim() ? reason.trim() : "Pending";
+}
+
+function formatAbsenceReasonCell(reason: string | null, isAbsentDay: boolean): string {
+  if (!isAbsentDay) return "—";
+  return reason?.trim() ? reason.trim() : "Pending";
 }
 
 function formatDayHeading(iso: string): string {
@@ -224,6 +240,11 @@ function buildAttendanceReportDocumentHtml(params: {
           <td width="12%" style="${cellStyle}">${escapeHtml(row.hasLog ? formatMinutes(row.totalBreakMinutes) : "—")}</td>
           <td width="12%" style="${cellStyle}">${escapeHtml(row.hasLog ? formatMinutes(row.unscheduledIdleMinutes) : "—")}</td>
           <td width="12%" style="${cellStyle}">${escapeHtml(row.hasLog ? formatMinutes(row.sleepMinutes) : "—")}</td>
+          <td width="10%" style="${cellStyle}">${escapeHtml(row.hasLog && row.lateMinutes > 0 ? formatAttendanceDurationReadable(row.lateMinutes) : "—")}</td>
+          <td width="12%" style="${cellStyle}">${escapeHtml(row.hasLog ? formatExplanationReasonCell(row.lateReason, row.lateMinutes) : "—")}</td>
+          <td width="10%" style="${cellStyle}">${escapeHtml(row.hasLog && row.earlyLeaveMinutes > 0 ? formatAttendanceDurationReadable(row.earlyLeaveMinutes) : "—")}</td>
+          <td width="12%" style="${cellStyle}">${escapeHtml(row.hasLog ? formatExplanationReasonCell(row.earlyLeaveReason, row.earlyLeaveMinutes) : "—")}</td>
+          <td width="12%" style="${cellStyle}">${escapeHtml(formatAbsenceReasonCell(row.absenceReason, row.isAbsentWorkingDay))}</td>
         </tr>`;
         })
         .join("")
@@ -314,6 +335,11 @@ function buildAttendanceReportDocumentHtml(params: {
         <th width="12%" align="left" style="${DOC_TH}">Break</th>
         <th width="12%" align="left" style="${DOC_TH}">Inactive</th>
         <th width="12%" align="left" style="${DOC_TH}">Sleep</th>
+        <th width="10%" align="left" style="${DOC_TH}">Late</th>
+        <th width="12%" align="left" style="${DOC_TH}">Late reason</th>
+        <th width="10%" align="left" style="${DOC_TH}">Early leave</th>
+        <th width="12%" align="left" style="${DOC_TH}">Early leave reason</th>
+        <th width="12%" align="left" style="${DOC_TH}">Absence reason</th>
       </tr>
     </thead>
     <tbody>${dailyRowsHtml}</tbody>
@@ -321,7 +347,23 @@ function buildAttendanceReportDocumentHtml(params: {
     : `
   <p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f3d67;">Daily Metrics — ${escapeHtml(activeDate)}</p>
   ${metricsTableHtml}
-  <p style="margin-top:12px;font-size:13px;color:#334155;background:#f1f5f9;padding:10px 14px;border:1px solid #e2e8f0;"><strong>Reason:</strong> ${escapeHtml(detail.attendanceReason)}</p>`;
+  <p style="margin-top:12px;font-size:13px;color:#334155;background:#f1f5f9;padding:10px 14px;border:1px solid #e2e8f0;"><strong>Reason:</strong> ${escapeHtml(detail.attendanceReason)}</p>${
+    detail.lateMinutes > 0
+      ? `<p style="margin-top:10px;font-size:13px;color:#0c4a6e;background:#e0f2fe;padding:10px 14px;border:1px solid #bae6fd;"><strong>Late arrival:</strong> ${escapeHtml(formatAttendanceDurationReadable(detail.lateMinutes))}${detail.expectedCheckInLabel ? ` · expected ${escapeHtml(detail.expectedCheckInLabel)}` : ""}<br/><strong>Employee reason:</strong> ${escapeHtml(formatExplanationReasonCell(detail.lateReason, detail.lateMinutes))}<br/><strong>Submitted:</strong> ${escapeHtml(formatExplanationSubmittedAt(detail.lateReasonSubmittedAt))}</p>`
+      : ""
+  }${
+    detail.earlyLeaveMinutes > 0
+      ? `<p style="margin-top:10px;font-size:13px;color:#0c4a6e;background:#e0f2fe;padding:10px 14px;border:1px solid #bae6fd;"><strong>Early leave:</strong> ${escapeHtml(formatAttendanceDurationReadable(detail.earlyLeaveMinutes))}${detail.expectedShiftEndLabel ? ` · expected end ${escapeHtml(detail.expectedShiftEndLabel)}` : ""}<br/><strong>Employee reason:</strong> ${escapeHtml(formatExplanationReasonCell(detail.earlyLeaveReason, detail.earlyLeaveMinutes))}<br/><strong>Submitted:</strong> ${escapeHtml(formatExplanationSubmittedAt(detail.earlyLeaveReasonSubmittedAt))}</p>`
+      : ""
+  }${
+    detail.absentWithoutClockIn
+      ? `<p style="margin-top:10px;font-size:13px;color:#9f1239;background:#fff1f2;padding:10px 14px;border:1px solid #fecdd3;"><strong>Absence:</strong> No clock-in recorded for this working day.<br/><strong>Employee reason:</strong> ${escapeHtml(formatAbsenceReasonCell(detail.absenceReason, true))}<br/><strong>Submitted:</strong> ${escapeHtml(formatExplanationSubmittedAt(detail.absenceReasonSubmittedAt))}</p>`
+      : ""
+  }${
+    detail.hasLog && detail.lateMinutes === 0 && detail.earlyLeaveMinutes === 0 && !detail.absentWithoutClockIn
+      ? `<p style="margin-top:10px;font-size:13px;color:#047857;background:#ecfdf5;padding:10px 14px;border:1px solid #a7f3d0;"><strong>Punctuality:</strong> On time · full shift</p>`
+      : ""
+  }`;
 
   const periodMetricsBlock = isPeriodReport
     ? `<p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f3d67;">Period totals</p>
@@ -560,13 +602,48 @@ export function AttendanceReportEmployeeDetailPanel({
       );
     } else {
       lines.push(
-        `Clock in: ${formatShiftClock(detail.clockIn)}`,
-        `Clock out: ${formatShiftClock(detail.clockOut)}`,
-        `Work: ${formatMinutes(detail.totalWorkMinutes)}`,
-        `Break: ${formatMinutes(detail.totalBreakMinutes)}`,
-        `Inactive: ${formatMinutes(detail.unscheduledIdleMinutes)}`,
-        `Sleep: ${formatMinutes(detail.sleepMinutes)}`,
-        `Total hours: ${detail.totalHours != null ? `${detail.totalHours} h` : "—"}`
+        ...[
+          `Clock in: ${formatShiftClock(detail.clockIn)}`,
+          `Clock out: ${formatShiftClock(detail.clockOut)}`,
+          `Work: ${formatMinutes(detail.totalWorkMinutes)}`,
+          `Break: ${formatMinutes(detail.totalBreakMinutes)}`,
+          `Inactive: ${formatMinutes(detail.unscheduledIdleMinutes)}`,
+          `Sleep: ${formatMinutes(detail.sleepMinutes)}`,
+          detail.lateMinutes > 0
+            ? `Late: ${formatAttendanceDurationReadable(detail.lateMinutes)}`
+            : null,
+          detail.lateMinutes > 0
+            ? `Late reason: ${formatExplanationReasonCell(detail.lateReason, detail.lateMinutes)}`
+            : null,
+          detail.lateMinutes > 0
+            ? `Late reason submitted: ${formatExplanationSubmittedAt(detail.lateReasonSubmittedAt)}`
+            : null,
+          detail.earlyLeaveMinutes > 0
+            ? `Early leave: ${formatAttendanceDurationReadable(detail.earlyLeaveMinutes)}`
+            : null,
+          detail.earlyLeaveMinutes > 0
+            ? `Early leave reason: ${formatExplanationReasonCell(detail.earlyLeaveReason, detail.earlyLeaveMinutes)}`
+            : null,
+          detail.earlyLeaveMinutes > 0
+            ? `Early leave reason submitted: ${formatExplanationSubmittedAt(detail.earlyLeaveReasonSubmittedAt)}`
+            : null,
+          detail.absentWithoutClockIn
+            ? `Absence: no clock-in on ${activeDate}`
+            : null,
+          detail.absentWithoutClockIn
+            ? `Absence reason: ${formatAbsenceReasonCell(detail.absenceReason, true)}`
+            : null,
+          detail.absentWithoutClockIn
+            ? `Absence reason submitted: ${formatExplanationSubmittedAt(detail.absenceReasonSubmittedAt)}`
+            : null,
+          detail.hasLog &&
+          detail.lateMinutes === 0 &&
+          detail.earlyLeaveMinutes === 0 &&
+          !detail.absentWithoutClockIn
+            ? "Punctuality: On time · full shift"
+            : null,
+          `Total hours: ${detail.totalHours != null ? `${detail.totalHours} h` : "—"}`
+        ].filter((line): line is string => line != null)
       );
     }
     lines.push(`Break sessions: ${breakSessionsSorted.length}`);
@@ -977,6 +1054,112 @@ export function AttendanceReportEmployeeDetailPanel({
                 </div>
               </SectionCard>
 
+              {detail.hasLog || detail.absentWithoutClockIn ? (
+                <SectionCard icon={AlertCircle} title="Punctuality">
+                  {detail.lateMinutes > 0 ? (
+                    <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 p-3 dark:border-sky-800/60 dark:bg-sky-950/20">
+                      <p className="text-sm font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+                        Late arrival
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full bg-sky-500/15 px-3 py-1 text-sm font-semibold text-sky-900 dark:text-sky-200">
+                          {formatAttendanceDurationReadable(detail.lateMinutes)} late
+                        </span>
+                        {detail.expectedCheckInLabel ? (
+                          <span className="inline-flex rounded-full bg-slate-200/80 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Expected {detail.expectedCheckInLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 text-base text-slate-800 dark:text-slate-200">
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">
+                          Employee reason:{" "}
+                        </span>
+                        {detail.lateReason?.trim()
+                          ? detail.lateReason
+                          : "Pending — employee has not submitted yet."}
+                      </p>
+                      <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
+                        Submitted: {formatExplanationSubmittedAt(detail.lateReasonSubmittedAt)}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {detail.earlyLeaveMinutes > 0 ? (
+                    <div
+                      className={cn(
+                        "rounded-xl border border-amber-200/80 bg-amber-50/50 p-3 dark:border-amber-800/60 dark:bg-amber-950/20",
+                        detail.lateMinutes > 0 && "mt-3"
+                      )}
+                    >
+                      <p className="text-sm font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-300">
+                        Early leave
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-950 dark:text-amber-200">
+                          {formatAttendanceDurationReadable(detail.earlyLeaveMinutes)} early
+                        </span>
+                        {detail.expectedShiftEndLabel ? (
+                          <span className="inline-flex rounded-full bg-slate-200/80 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Expected end {detail.expectedShiftEndLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 text-base text-slate-800 dark:text-slate-200">
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">
+                          Employee reason:{" "}
+                        </span>
+                        {detail.earlyLeaveReason?.trim()
+                          ? detail.earlyLeaveReason
+                          : "Pending — employee has not submitted yet."}
+                      </p>
+                      <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
+                        Submitted:{" "}
+                        {formatExplanationSubmittedAt(detail.earlyLeaveReasonSubmittedAt)}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {detail.absentWithoutClockIn ? (
+                    <div
+                      className={cn(
+                        "rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-800/60 dark:bg-rose-950/20",
+                        (detail.lateMinutes > 0 || detail.earlyLeaveMinutes > 0) && "mt-3"
+                      )}
+                    >
+                      <p className="text-sm font-semibold uppercase tracking-wide text-rose-900 dark:text-rose-300">
+                        Absence
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full bg-rose-500/15 px-3 py-1 text-sm font-semibold text-rose-950 dark:text-rose-200">
+                          No clock-in
+                        </span>
+                      </div>
+                      <p className="mt-3 text-base text-slate-800 dark:text-slate-200">
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">
+                          Employee reason:{" "}
+                        </span>
+                        {detail.absenceReason?.trim()
+                          ? detail.absenceReason
+                          : "Pending — employee has not submitted yet."}
+                      </p>
+                      <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
+                        Submitted: {formatExplanationSubmittedAt(detail.absenceReasonSubmittedAt)}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {detail.hasLog &&
+                  detail.lateMinutes === 0 &&
+                  detail.earlyLeaveMinutes === 0 &&
+                  !detail.absentWithoutClockIn ? (
+                    <p className="text-base text-emerald-800 dark:text-emerald-300">
+                      On time and full shift for {activeDate}.
+                    </p>
+                  ) : null}
+                </SectionCard>
+              ) : null}
+
               {detail.periodSummary ? (
                 <SectionCard icon={BarChart3} title="Period summary">
                   <p className="text-base text-slate-600 dark:text-slate-400">
@@ -1015,7 +1198,7 @@ export function AttendanceReportEmployeeDetailPanel({
                     />
                   </div>
                   <div className="mt-4 -mx-1 overflow-x-auto rounded-xl border border-slate-200/90 dark:border-slate-700">
-                    <table className="w-full min-w-[48rem] table-auto text-left text-sm">
+                    <table className="w-full min-w-[64rem] table-auto text-left text-sm">
                       <thead className="bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
                         <tr>
                           <th className="px-3 py-2">Date</th>
@@ -1025,6 +1208,11 @@ export function AttendanceReportEmployeeDetailPanel({
                           <th className="px-3 py-2">Break</th>
                           <th className="px-3 py-2">Inactive</th>
                           <th className="px-3 py-2">Sleep</th>
+                          <th className="px-3 py-2">Late</th>
+                          <th className="px-3 py-2">Late reason</th>
+                          <th className="px-3 py-2">Early leave</th>
+                          <th className="px-3 py-2">Early leave reason</th>
+                          <th className="px-3 py-2">Absence reason</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1057,6 +1245,27 @@ export function AttendanceReportEmployeeDetailPanel({
                             </td>
                             <td className="px-3 py-2 tabular-nums">
                               {row.hasLog ? formatMinutes(row.sleepMinutes) : "—"}
+                            </td>
+                            <td className="px-3 py-2 tabular-nums">
+                              {row.hasLog && row.lateMinutes > 0
+                                ? formatAttendanceDurationReadable(row.lateMinutes)
+                                : "—"}
+                            </td>
+                            <td className="min-w-[10rem] max-w-[16rem] whitespace-normal break-words px-3 py-2 align-top text-slate-700 dark:text-slate-200">
+                              {row.hasLog ? formatExplanationReasonCell(row.lateReason, row.lateMinutes) : "—"}
+                            </td>
+                            <td className="px-3 py-2 tabular-nums">
+                              {row.hasLog && row.earlyLeaveMinutes > 0
+                                ? formatAttendanceDurationReadable(row.earlyLeaveMinutes)
+                                : "—"}
+                            </td>
+                            <td className="min-w-[10rem] max-w-[16rem] whitespace-normal break-words px-3 py-2 align-top text-slate-700 dark:text-slate-200">
+                              {row.hasLog
+                                ? formatExplanationReasonCell(row.earlyLeaveReason, row.earlyLeaveMinutes)
+                                : "—"}
+                            </td>
+                            <td className="min-w-[10rem] max-w-[16rem] whitespace-normal break-words px-3 py-2 align-top text-slate-700 dark:text-slate-200">
+                              {formatAbsenceReasonCell(row.absenceReason, row.isAbsentWorkingDay)}
                             </td>
                           </tr>
                         ))}

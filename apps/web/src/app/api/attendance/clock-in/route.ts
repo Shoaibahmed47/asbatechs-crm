@@ -148,8 +148,10 @@ export async function POST(req: NextRequest) {
             lastActivitySource: "browser",
             lateMinutes,
             expectedCheckInTime,
-            lateReason: null,
-            lateReasonSubmittedAt: null
+            lateReason: existing.lateReason?.trim() ? existing.lateReason : null,
+            lateReasonSubmittedAt: existing.lateReason?.trim()
+              ? existing.lateReasonSubmittedAt
+              : null
           })
           .where(eq(schema.attendanceLogs.id, existing.id))
           .returning();
@@ -165,8 +167,10 @@ export async function POST(req: NextRequest) {
           lastActivitySource: "browser",
           lateMinutes,
           expectedCheckInTime,
-          lateReason: null,
-          lateReasonSubmittedAt: null
+          lateReason: existing.lateReason?.trim() ? existing.lateReason : null,
+          lateReasonSubmittedAt: existing.lateReason?.trim()
+            ? existing.lateReasonSubmittedAt
+            : null
         })
         .where(eq(schema.attendanceLogs.id, existing.id))
         .returning();

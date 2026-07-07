@@ -21,6 +21,9 @@ jest.mock("@/lib/attendance-early-leave", () => ({
 jest.mock("@/lib/attendance-clock-out-service", () => ({
   finalizeAttendanceClockOut: jest.fn()
 }));
+jest.mock("@/lib/attendance-open-shift", () => ({
+  resolveOpenAttendanceLogForUser: jest.fn()
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({
@@ -42,6 +45,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
 const finalizeAttendanceClockOut = jest.requireMock("@/lib/attendance-clock-out-service")
   .finalizeAttendanceClockOut as jest.Mock;
+const resolveOpenAttendanceLogForUser = jest.requireMock("@/lib/attendance-open-shift")
+  .resolveOpenAttendanceLogForUser as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -60,7 +65,7 @@ describe("attendance clock-out route", () => {
 
   it("returns 404 when no attendance log exists", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2 });
-    selectWhere.mockResolvedValueOnce([]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce(null);
 
     const res = await POST(req());
     expect(res.status).toBe(404);
@@ -68,16 +73,16 @@ describe("attendance clock-out route", () => {
 
   it("calculates and stores total work minutes on clock-out", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2 });
-    selectWhere
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          date: "2026-03-31",
-          clockIn: new Date(Date.now() - 3 * 60 * 60 * 1000),
-          clockOut: null,
-          totalBreakMinutes: 30
-        }
-      ]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: {
+        id: 1,
+        date: "2026-03-31",
+        clockIn: new Date(Date.now() - 3 * 60 * 60 * 1000),
+        clockOut: null,
+        totalBreakMinutes: 30
+      },
+      logDate: "2026-03-31"
+    });
 
     const res = await POST(req());
     const data = await res.json();
@@ -89,8 +94,8 @@ describe("attendance clock-out route", () => {
 
   it("delegates open break handling to finalizeAttendanceClockOut", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 2 });
-    selectWhere.mockResolvedValueOnce([
-      {
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: {
         id: 1,
         date: "2026-03-31",
         clockIn: new Date(Date.now() - 2 * 60 * 60 * 1000),
@@ -98,8 +103,9 @@ describe("attendance clock-out route", () => {
         totalBreakMinutes: 5,
         unscheduledIdleMinutes: 3,
         sleepMinutes: 2
-      }
-    ]);
+      },
+      logDate: "2026-03-31"
+    });
 
     const res = await POST(req());
 

@@ -11,6 +11,12 @@ jest.mock("@/lib/auth", () => ({
 jest.mock("@/lib/attendance-date", () => ({
   getLocalDateString: () => "2026-03-31"
 }));
+jest.mock("@/lib/attendance-open-shift", () => ({
+  resolveOpenAttendanceLogForUser: jest.fn()
+}));
+jest.mock("@/lib/attendance-break-reason", () => ({
+  notifyAdminsManualBreakEnded: jest.fn().mockResolvedValue(undefined)
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     select: jest.fn(() => ({
@@ -24,6 +30,8 @@ jest.mock("@asbatechs-crm/database", () => ({
 }));
 
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const resolveOpenAttendanceLogForUser = jest.requireMock("@/lib/attendance-open-shift")
+  .resolveOpenAttendanceLogForUser as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,9 +51,11 @@ describe("attendance break-end route", () => {
 
   it("returns 400 when no open break session exists", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 1, clockOut: null, totalBreakMinutes: 0 }])
-      .mockResolvedValueOnce([]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: { id: 1, clockOut: null, totalBreakMinutes: 0 },
+      logDate: "2026-03-31"
+    });
+    selectWhere.mockResolvedValueOnce([]);
 
     const res = await POST(req());
     expect(res.status).toBe(400);
@@ -53,9 +63,13 @@ describe("attendance break-end route", () => {
 
   it("ends break and updates attendance totals", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
-    selectWhere
-      .mockResolvedValueOnce([{ id: 1, clockOut: null, totalBreakMinutes: 0 }])
-      .mockResolvedValueOnce([{ id: 9, breakStart: new Date(Date.now() - 10 * 60 * 1000) }]);
+    resolveOpenAttendanceLogForUser.mockResolvedValueOnce({
+      log: { id: 1, clockOut: null, totalBreakMinutes: 0 },
+      logDate: "2026-03-31"
+    });
+    selectWhere.mockResolvedValueOnce([
+      { id: 9, breakStart: new Date(Date.now() - 10 * 60 * 1000), breakType: "unscheduled" }
+    ]);
 
     const res = await POST(req());
     const data = await res.json();

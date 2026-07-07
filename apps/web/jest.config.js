@@ -4,7 +4,8 @@ const config = {
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
   moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/src/$1"
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^server-only$": "<rootDir>/src/__mocks__/server-only.ts"
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   clearMocks: true

@@ -10,10 +10,6 @@ import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
 import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
 import { and, asc, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 import {
-  getAttendanceDailyReport,
-  getAttendanceRangeReport
-} from "@/lib/attendance-daily-report";
-import {
   getAttendanceAgentHealth,
 } from "@/lib/attendance-agent-health";
 import { normalizeAgentHealthFilter } from "@/lib/attendance-agent-health-display";
@@ -62,16 +58,6 @@ function shiftDate(iso: string, deltaDays: number): string {
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const dd = String(dt.getDate()).padStart(2, "0");
   return `${yy}-${mm}-${dd}`;
-}
-
-function getAttendanceStatus(row: {
-  hasLog: boolean;
-  clockIn: string | null;
-  clockOut: string | null;
-}): "present" | "working" | "absent" {
-  if (!row.hasLog) return "absent";
-  if (row.clockIn && !row.clockOut) return "working";
-  return "present";
 }
 
 function getRangeFromPreset(preset: string, today: string): { from: string; to: string } {
@@ -154,7 +140,6 @@ export default async function DashboardPage({
     userCountResult,
     todaysLogsResult,
     liveAttendanceResult,
-    reportResult,
     departmentsResult,
     agentHealthResult,
     assignedClientProjectsResult,
@@ -185,11 +170,6 @@ export default async function DashboardPage({
       .from(schema.attendanceLogs)
       .where(eq(schema.attendanceLogs.date, today as any)),
     isAdminViewer ? getAttendanceStatusForDate(today) : Promise.resolve(null),
-    isAdminViewer
-      ? reportMode === "range"
-        ? getAttendanceRangeReport(normalizedFrom, normalizedTo, adminScope)
-        : getAttendanceDailyReport(reportDate, adminScope)
-      : Promise.resolve([]),
     isAdminViewer
       ? db
           .select({ id: schema.departments.id, name: schema.departments.name })
@@ -305,25 +285,8 @@ export default async function DashboardPage({
     dashboardLoadErrors.push("Live attendance status could not be loaded.");
   }
 
-  let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
-  let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
   let attendanceDepartments: { id: number; name: string }[] = [];
   let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
-
-  if (reportResult.status === "fulfilled") {
-    if (reportMode === "range") {
-      attendanceRangeRows = reportResult.value as Awaited<
-        ReturnType<typeof getAttendanceRangeReport>
-      >;
-    } else {
-      attendanceRows = reportResult.value as Awaited<
-        ReturnType<typeof getAttendanceDailyReport>
-      >;
-    }
-  } else if (isAdminViewer && reportResult.status === "rejected") {
-    console.error("[dashboard/attendance-report] report", reportResult.reason);
-    attendanceLoadErrors.push("Attendance data could not be loaded.");
-  }
 
   if (departmentsResult.status === "fulfilled") {
     attendanceDepartments = departmentsResult.value;
@@ -362,24 +325,6 @@ export default async function DashboardPage({
     count: newByMonth.get(m) ?? 0
   }));
 
-  const filteredAttendanceRows = attendanceRows.filter((row) => {
-    const matchesSearch =
-      reportSearch.length === 0 ||
-      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
-    const rowStatus = getAttendanceStatus(row);
-    const matchesStatus = statusFilter === "all" || rowStatus === statusFilter;
-    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
-  const filteredAttendanceRangeRows = attendanceRangeRows.filter((row) => {
-    const matchesSearch =
-      reportSearch.length === 0 ||
-      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
-    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
-    return matchesSearch && matchesDepartment;
-  });
   const attendanceBaseQueryParams = new URLSearchParams();
   attendanceBaseQueryParams.set("date", reportDate);
   attendanceBaseQueryParams.set("mode", reportMode);
@@ -634,8 +579,6 @@ export default async function DashboardPage({
               agentHealth={attendanceAgentHealth}
               agentStateFilter={agentStateFilter}
               agentFilterQueryBase={attendanceBaseQueryParams.toString()}
-              dailyRows={filteredAttendanceRows}
-              rangeRows={filteredAttendanceRangeRows}
               basePath="/dashboard"
             />
           </Suspense>
