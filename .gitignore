@@ -2,6 +2,10 @@ node_modules
 .env
 .env.local
 .env.production
+apps/desktop/signing.env
+apps/desktop/crm-app.url
+*.pfx
+*.p12
 .next
 **/.next
 **/.next/**

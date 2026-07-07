@@ -308,7 +308,8 @@ export async function getAttendanceEmployeeDetail(params: {
   ]);
 
   const latestAgentLogAt =
-    log?.lastActivitySource === "agent" && log.lastActivityAt
+    (log?.lastActivitySource === "agent" || log?.lastActivitySource === "electron") &&
+    log.lastActivityAt
       ? new Date(log.lastActivityAt as Date)
       : null;
   const heartbeatDates = heartbeatRows

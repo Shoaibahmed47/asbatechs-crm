@@ -17,6 +17,7 @@ import type { AgentHealthState } from "@/lib/attendance-agent-health-state";
 import {
   AGENT_HEALTH_FILTER_OPTIONS,
   displayAgentHealthCounts,
+  labelActivitySource,
   labelForDisplayAgentState,
   toneForDisplayAgentState,
   type AgentHealthFilterState
@@ -790,7 +791,7 @@ export function AdminOverviewClient({
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Department</th>
-                  <th className="px-3 py-2">Agent</th>
+                  <th className="px-3 py-2">Monitor</th>
                   <th className="px-3 py-2">Last seen</th>
                   <th className="px-3 py-2">Shift</th>
                   <th className="px-3 py-2">Attendance</th>
@@ -822,6 +823,11 @@ export function AdminOverviewClient({
                       </td>
                       <td className="px-3 py-2">
                         {formatAge(row.lastSeenAgeSeconds)}
+                        {row.lastSeenSource ? (
+                          <span className="ml-1 text-slate-500 dark:text-slate-400">
+                            · {labelActivitySource(row.lastSeenSource)}
+                          </span>
+                        ) : null}
                         {row.needsAttention ? (
                           <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
                             Alert

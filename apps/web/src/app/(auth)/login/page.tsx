@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ApiFetchError, apiFetch } from "@/lib/api-fetch";
+import {
+  clearDesktopSavedLogin,
+  getDesktopSavedLogin,
+  saveDesktopLogin
+} from "@/lib/desktop-saved-login";
+import { isElectronDesktop, notifyElectronSessionReady } from "@/lib/is-electron-desktop";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +20,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
+  const [savedLoginEmail, setSavedLoginEmail] = useState<string | null>(null);
+  const [showSaveLoginDialog, setShowSaveLoginDialog] = useState(false);
+
+  useEffect(() => {
+    const desktop = isElectronDesktop();
+    setIsDesktopApp(desktop);
+    if (!desktop) return;
+
+    void (async () => {
+      const saved = await getDesktopSavedLogin();
+      if (!saved) return;
+      setEmail(saved.email);
+      setPassword(saved.password);
+      setSavedLoginEmail(saved.email);
+    })();
+  }, []);
+
+  async function finishLoginNavigation(): Promise<void> {
+    await notifyElectronSessionReady();
+    router.push("/dashboard");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +63,19 @@ export default function LoginPage() {
           window.localStorage.removeItem("token");
         }
       }
-      router.push("/dashboard");
+
+      if (isDesktopApp) {
+        const saved = await getDesktopSavedLogin();
+        const alreadySaved =
+          saved?.email === email.trim() && saved.password === password;
+        if (!alreadySaved) {
+          setShowSaveLoginDialog(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      await finishLoginNavigation();
     } catch (err) {
       let msg =
         err instanceof ApiFetchError ? err.message : "Something went wrong. Please try again.";
@@ -51,6 +92,29 @@ export default function LoginPage() {
       setError(msg);
       setLoading(false);
     }
+  }
+
+  async function handleSaveLoginChoice(shouldSave: boolean): Promise<void> {
+    setShowSaveLoginDialog(false);
+    if (shouldSave) {
+      const ok = await saveDesktopLogin(email, password);
+      if (ok) {
+        setSavedLoginEmail(email.trim());
+      }
+    }
+    setLoading(true);
+    try {
+      await finishLoginNavigation();
+    } catch {
+      setLoading(false);
+      setError("Signed in, but could not open the dashboard. Please try again.");
+    }
+  }
+
+  async function handleForgetSavedLogin(): Promise<void> {
+    await clearDesktopSavedLogin();
+    setSavedLoginEmail(null);
+    setPassword("");
   }
 
   return (
@@ -105,6 +169,22 @@ export default function LoginPage() {
           </h1>
           <p className="mt-2 text-center text-sm text-slate-500">Continue to your internal workspace.</p>
 
+          {isDesktopApp && savedLoginEmail ? (
+            <div className="mx-auto mt-5 max-w-md rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              <p>
+                Saved on this computer as <span className="font-semibold">{savedLoginEmail}</span>.
+                Click Login to sign in without typing again.
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-sm font-medium text-sky-800 underline underline-offset-2 hover:text-sky-950"
+                onClick={() => void handleForgetSavedLogin()}
+              >
+                Remove saved login
+              </button>
+            </div>
+          ) : null}
+
           {error ? (
             <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
           ) : null}
@@ -141,11 +221,21 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Login"}
+              {loading ? "Signing in..." : savedLoginEmail ? `Login as ${savedLoginEmail}` : "Login"}
             </Button>
           </form>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={showSaveLoginDialog}
+        title="Save login on this computer?"
+        description="Next time you open the desktop app, your email and password will be filled automatically so you can sign in with one click."
+        confirmLabel="Save"
+        cancelLabel="Not now"
+        onConfirm={() => void handleSaveLoginChoice(true)}
+        onCancel={() => void handleSaveLoginChoice(false)}
+      />
     </div>
   );
 }

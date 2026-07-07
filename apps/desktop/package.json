@@ -1,0 +1,71 @@
+{
+  "name": "asbatechs-crm-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AsbaTechs CRM desktop shell with built-in attendance monitoring",
+  "main": "dist/main/index.js",
+  "author": "AsbaTechs",
+  "scripts": {
+    "bake:crm-url": "node scripts/bake-crm-url.mjs",
+    "bake:crm-url:production": "node scripts/bake-crm-url.mjs --production",
+    "build": "npm run bake:crm-url && npx tsc -p tsconfig.json",
+    "dev": "npm run build && cross-env CRM_APP_URL=http://localhost:3000 electron .",
+    "start": "npm run build && electron .",
+    "clean:release": "powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; Get-Process 'AsbaTechs CRM','electron' | Stop-Process -Force; Start-Sleep -Seconds 2; if (Test-Path 'release/win-unpacked') { Remove-Item -Recurse -Force 'release/win-unpacked' }; exit 0\"",
+    "package": "npm run bake:crm-url:production && npm run build && electron-builder",
+    "package:win": "npm run bake:crm-url:production && npm run clean:release && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false CSC_LINK= WIN_CSC_LINK= CSC_KEY_PASSWORD= electron-builder --win --config.win.signAndEditExecutable=false --config.directories.output=release-build && powershell -NoProfile -Command \"Copy-Item -Force 'release-build/AsbaTechs CRM Setup 0.1.0.exe' 'AsbaTechs-CRM-Setup.exe'\"",
+    "package:win:signed": "npm run bake:crm-url:production && npm run clean:release && npm run build && electron-builder --win --config.win.signAndEditExecutable=true --config.directories.output=release-signed",
+    "package:dir": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win dir --config.win.signAndEditExecutable=false",
+    "verify:signature": "powershell -NoProfile -Command \"Get-AuthenticodeSignature -FilePath 'release-signed/AsbaTechs CRM Setup 0.1.0.exe' | Format-List\""
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "app-builder-bin": "4.0.0",
+    "cross-env": "^7.0.3",
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8",
+    "typescript": "^5.6.3"
+  },
+  "build": {
+    "appId": "com.asbatechs.crm",
+    "productName": "AsbaTechs CRM",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/public/brand-icon.png",
+        "to": "brand-icon.png"
+      },
+      {
+        "from": "crm-app.url",
+        "to": "crm-app.url"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "publisherName": "AsbaTechs",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "shortcutName": "AsbaTechs CRM"
+    }
+  }
+}

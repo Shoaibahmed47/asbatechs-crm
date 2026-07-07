@@ -1,0 +1,5 @@
+# Copy this file to crm-app.url (same folder) and set your live CRM URL on one line.
+# Used when building the Windows installer and as a bundled fallback at runtime.
+#
+# Example:
+# https://crm.asbatechs.com
