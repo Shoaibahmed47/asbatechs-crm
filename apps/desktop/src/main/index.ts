@@ -13,6 +13,11 @@ import {
 } from "./tray";
 import { createMainWindow, focusMainWindow, getMainWindow } from "./window";
 import { getCrmAppUrl } from "./crm-app-url";
+import {
+  clearSavedCredentials,
+  getSavedCredentials,
+  saveCredentials
+} from "./saved-credentials";
 let authSession: AuthSession;
 let attendanceMonitor: AttendanceMonitor;
 
@@ -87,6 +92,19 @@ function registerIpc(): void {
   ipcMain.handle("desktop:set-shift-open", (_event, open: boolean) => {
     setShiftOpen(Boolean(open));
     void refreshTrayStatusFromApi();
+  });
+
+  ipcMain.handle("desktop:get-saved-login", () => getSavedCredentials());
+
+  ipcMain.handle("desktop:save-login", (_event, email: unknown, password: unknown) => {
+    if (typeof email !== "string" || typeof password !== "string") {
+      return false;
+    }
+    return saveCredentials(email, password);
+  });
+
+  ipcMain.handle("desktop:clear-saved-login", () => {
+    clearSavedCredentials();
   });
 }
 
