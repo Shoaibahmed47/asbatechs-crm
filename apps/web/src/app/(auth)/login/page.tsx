@@ -43,7 +43,7 @@ export default function LoginPage() {
   async function finishLoginNavigation(role?: string | null): Promise<void> {
     await notifyElectronSessionReady();
     const destination =
-      isDesktopApp && isEmployeeRole(role) ? "/attendance" : "/dashboard";
+      isDesktopApp && isEmployeeRole(role ?? undefined) ? "/attendance" : "/dashboard";
     router.push(destination);
   }
 
