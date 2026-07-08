@@ -8,11 +8,7 @@ import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
 import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
-import { and, asc, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
-import {
-  getAttendanceDailyReport,
-  getAttendanceRangeReport
-} from "@/lib/attendance-daily-report";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, sql, sum } from "drizzle-orm";
 import {
   getAttendanceAgentHealth,
 } from "@/lib/attendance-agent-health";
@@ -62,16 +58,6 @@ function shiftDate(iso: string, deltaDays: number): string {
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const dd = String(dt.getDate()).padStart(2, "0");
   return `${yy}-${mm}-${dd}`;
-}
-
-function getAttendanceStatus(row: {
-  hasLog: boolean;
-  clockIn: string | null;
-  clockOut: string | null;
-}): "present" | "working" | "absent" {
-  if (!row.hasLog) return "absent";
-  if (row.clockIn && !row.clockOut) return "working";
-  return "present";
 }
 
 function getRangeFromPreset(preset: string, today: string): { from: string; to: string } {
@@ -152,9 +138,8 @@ export default async function DashboardPage({
     saleResult,
     totalSalesResult,
     userCountResult,
-    todaysLogsResult,
+    openShiftCountResult,
     liveAttendanceResult,
-    reportResult,
     departmentsResult,
     agentHealthResult,
     assignedClientProjectsResult,
@@ -181,15 +166,16 @@ export default async function DashboardPage({
       ),
     db.select({ value: count() }).from(schema.users),
     db
-      .select()
+      .select({ value: count() })
       .from(schema.attendanceLogs)
-      .where(eq(schema.attendanceLogs.date, today as any)),
+      .where(
+        and(
+          eq(schema.attendanceLogs.date, today as any),
+          isNotNull(schema.attendanceLogs.clockIn),
+          isNull(schema.attendanceLogs.clockOut)
+        )
+      ),
     isAdminViewer ? getAttendanceStatusForDate(today) : Promise.resolve(null),
-    isAdminViewer
-      ? reportMode === "range"
-        ? getAttendanceRangeReport(normalizedFrom, normalizedTo, adminScope)
-        : getAttendanceDailyReport(reportDate, adminScope)
-      : Promise.resolve([]),
     isAdminViewer
       ? db
           .select({ id: schema.departments.id, name: schema.departments.name })
@@ -263,8 +249,8 @@ export default async function DashboardPage({
     totalSalesResult.status === "fulfilled" ? totalSalesResult.value[0] : undefined;
   const userCount =
     userCountResult.status === "fulfilled" ? userCountResult.value[0] : undefined;
-  const todaysLogs =
-    todaysLogsResult.status === "fulfilled" ? todaysLogsResult.value : [];
+  const openShiftCount =
+    openShiftCountResult.status === "fulfilled" ? openShiftCountResult.value[0] : undefined;
 
   if (hotResult.status === "rejected") {
     console.error("[dashboard] hot leads count", hotResult.reason);
@@ -286,16 +272,14 @@ export default async function DashboardPage({
     console.error("[dashboard] user count", userCountResult.reason);
     dashboardLoadErrors.push("Team member count could not be loaded.");
   }
-  if (todaysLogsResult.status === "rejected") {
-    console.error("[dashboard] today attendance logs", todaysLogsResult.reason);
+  if (openShiftCountResult.status === "rejected") {
+    console.error("[dashboard] open shift count", openShiftCountResult.reason);
     dashboardLoadErrors.push("Today’s attendance snapshot could not be loaded.");
   }
 
   const totalLeads = Number(hotCount?.value ?? 0) + Number(saleCount?.value ?? 0);
   const totalSalesAmount = Number(totalSales?.value ?? 0);
   const totalUsers = Number(userCount?.value ?? 0);
-
-  const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
 
   let liveAttendanceToday: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
   if (liveAttendanceResult.status === "fulfilled") {
@@ -305,25 +289,8 @@ export default async function DashboardPage({
     dashboardLoadErrors.push("Live attendance status could not be loaded.");
   }
 
-  let attendanceRows: Awaited<ReturnType<typeof getAttendanceDailyReport>> = [];
-  let attendanceRangeRows: Awaited<ReturnType<typeof getAttendanceRangeReport>> = [];
   let attendanceDepartments: { id: number; name: string }[] = [];
   let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
-
-  if (reportResult.status === "fulfilled") {
-    if (reportMode === "range") {
-      attendanceRangeRows = reportResult.value as Awaited<
-        ReturnType<typeof getAttendanceRangeReport>
-      >;
-    } else {
-      attendanceRows = reportResult.value as Awaited<
-        ReturnType<typeof getAttendanceDailyReport>
-      >;
-    }
-  } else if (isAdminViewer && reportResult.status === "rejected") {
-    console.error("[dashboard/attendance-report] report", reportResult.reason);
-    attendanceLoadErrors.push("Attendance data could not be loaded.");
-  }
 
   if (departmentsResult.status === "fulfilled") {
     attendanceDepartments = departmentsResult.value;
@@ -362,24 +329,11 @@ export default async function DashboardPage({
     count: newByMonth.get(m) ?? 0
   }));
 
-  const filteredAttendanceRows = attendanceRows.filter((row) => {
-    const matchesSearch =
-      reportSearch.length === 0 ||
-      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
-    const rowStatus = getAttendanceStatus(row);
-    const matchesStatus = statusFilter === "all" || rowStatus === statusFilter;
-    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
-  const filteredAttendanceRangeRows = attendanceRangeRows.filter((row) => {
-    const matchesSearch =
-      reportSearch.length === 0 ||
-      row.userName.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      row.userEmail.toLowerCase().includes(reportSearch.toLowerCase());
-    const matchesDepartment = departmentFilter == null || row.departmentId === departmentFilter;
-    return matchesSearch && matchesDepartment;
-  });
+  const activeToday =
+    liveAttendanceToday != null
+      ? liveAttendanceToday.people.filter((person) => person.clockIn && !person.clockOut).length
+      : Number(openShiftCount?.value ?? 0);
+
   const attendanceBaseQueryParams = new URLSearchParams();
   attendanceBaseQueryParams.set("date", reportDate);
   attendanceBaseQueryParams.set("mode", reportMode);
@@ -634,8 +588,6 @@ export default async function DashboardPage({
               agentHealth={attendanceAgentHealth}
               agentStateFilter={agentStateFilter}
               agentFilterQueryBase={attendanceBaseQueryParams.toString()}
-              dailyRows={filteredAttendanceRows}
-              rangeRows={filteredAttendanceRangeRows}
               basePath="/dashboard"
             />
           </Suspense>

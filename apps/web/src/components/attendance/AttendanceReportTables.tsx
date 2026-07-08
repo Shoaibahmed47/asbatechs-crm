@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { AttendanceAgentHealthRow, AgentHealthState } from "@/lib/attendance-agent-health";
-import type { AttendanceDailyRow, AttendanceRangeRow } from "@/lib/attendance-daily-report";
 import { formatAttendanceDateLabel, formatAttendanceDurationReadable } from "@/lib/attendance-date";
 import { AttendanceReportEmployeeDetailPanel } from "./AttendanceReportEmployeeDetailPanel";
 import {
@@ -45,8 +44,6 @@ type Props = {
   } | null;
   agentStateFilter: AgentHealthFilterState;
   agentFilterQueryBase: string;
-  dailyRows: AttendanceDailyRow[];
-  rangeRows: AttendanceRangeRow[];
   basePath?: string;
 };
 
@@ -101,8 +98,6 @@ export function AttendanceReportTables({
   agentHealth,
   agentStateFilter,
   agentFilterQueryBase,
-  dailyRows,
-  rangeRows,
   basePath
 }: Props) {
   const router = useRouter();
