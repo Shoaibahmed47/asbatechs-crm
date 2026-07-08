@@ -13,6 +13,7 @@ import {
   saveDesktopLogin
 } from "@/lib/desktop-saved-login";
 import { isElectronDesktop, notifyElectronSessionReady } from "@/lib/is-electron-desktop";
+import { isEmployeeRole } from "@/lib/rbac";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const [isDesktopApp, setIsDesktopApp] = useState(false);
   const [savedLoginEmail, setSavedLoginEmail] = useState<string | null>(null);
   const [showSaveLoginDialog, setShowSaveLoginDialog] = useState(false);
+  const [loggedInRole, setLoggedInRole] = useState<string | null>(null);
 
   useEffect(() => {
     const desktop = isElectronDesktop();
@@ -38,9 +40,11 @@ export default function LoginPage() {
     })();
   }, []);
 
-  async function finishLoginNavigation(): Promise<void> {
+  async function finishLoginNavigation(role?: string | null): Promise<void> {
     await notifyElectronSessionReady();
-    router.push("/dashboard");
+    const destination =
+      isDesktopApp && isEmployeeRole(role) ? "/attendance" : "/dashboard";
+    router.push(destination);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,7 +53,10 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const data = await apiFetch.post<{ token?: string }>("/api/auth/login", {
+      const data = await apiFetch.post<{
+        token?: string;
+        user?: { role?: string | null };
+      }>("/api/auth/login", {
         email,
         password
       });
@@ -69,13 +76,14 @@ export default function LoginPage() {
         const alreadySaved =
           saved?.email === email.trim() && saved.password === password;
         if (!alreadySaved) {
+          setLoggedInRole(data.user?.role ?? null);
           setShowSaveLoginDialog(true);
           setLoading(false);
           return;
         }
       }
 
-      await finishLoginNavigation();
+      await finishLoginNavigation(data.user?.role);
     } catch (err) {
       let msg =
         err instanceof ApiFetchError ? err.message : "Something went wrong. Please try again.";
@@ -104,7 +112,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await finishLoginNavigation();
+      await finishLoginNavigation(loggedInRole);
     } catch {
       setLoading(false);
       setError("Signed in, but could not open the dashboard. Please try again.");

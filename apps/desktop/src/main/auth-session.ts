@@ -67,6 +67,8 @@ export class AuthSession {
   private bearerToken: string | null = null;
   private bearerExpiresAt: number | null = null;
   private staffRole: StaffRole | null = null;
+  private refreshInFlight: Promise<boolean> | null = null;
+  private lastRefreshAt = 0;
 
   constructor(baseUrl: string, sessionRef: Session) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -88,6 +90,20 @@ export class AuthSession {
   }
 
   async refreshFromSessionCookie(): Promise<boolean> {
+    if (this.refreshInFlight) {
+      return this.refreshInFlight;
+    }
+
+    const hasFreshToken =
+      this.bearerToken != null &&
+      this.bearerExpiresAt != null &&
+      this.bearerExpiresAt - Date.now() > 2 * 60 * 1000 &&
+      Date.now() - this.lastRefreshAt < 15_000;
+    if (hasFreshToken) {
+      return true;
+    }
+
+    const run = async (): Promise<boolean> => {
     const cookies = await this.sessionRef.cookies.get({
       url: this.baseUrl,
       name: "crm_token"
@@ -135,7 +151,14 @@ export class AuthSession {
       expiresAt: setup.expiresAt,
       role: this.staffRole
     });
+    this.lastRefreshAt = Date.now();
     return true;
+    };
+
+    this.refreshInFlight = run().finally(() => {
+      this.refreshInFlight = null;
+    });
+    return this.refreshInFlight;
   }
 
   async getBearerToken(forceRefresh = false): Promise<string | null> {
@@ -153,6 +176,7 @@ export class AuthSession {
     this.bearerToken = null;
     this.bearerExpiresAt = null;
     this.staffRole = null;
+    this.lastRefreshAt = 0;
     writeStoredToken(null);
   }
 }

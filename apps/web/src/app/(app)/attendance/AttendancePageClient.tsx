@@ -51,6 +51,7 @@ import {
   notifyElectronSessionReady,
   syncElectronShiftOpen
 } from "@/lib/is-electron-desktop";
+import { runAfterFirstPaint } from "@/lib/defer-non-critical";
 import {
   isAdminRole,
   isEmployeeRole,
@@ -716,7 +717,9 @@ export default function AttendancePageClient({
 
   useEffect(() => {
     if (!isDesktopApp || !isEmployeeViewer) return;
-    void notifyElectronSessionReady();
+    runAfterFirstPaint(() => {
+      void notifyElectronSessionReady();
+    }, 800);
   }, [isDesktopApp, isEmployeeViewer]);
 
   useEffect(() => {
@@ -741,8 +744,11 @@ export default function AttendancePageClient({
   }, [isEmployeeViewer]);
 
   useEffect(() => {
-    void loadPunctuality();
-  }, [loadPunctuality]);
+    if (!isEmployeeViewer) return;
+    runAfterFirstPaint(() => {
+      void loadPunctuality();
+    }, 1200);
+  }, [isEmployeeViewer, loadPunctuality]);
 
   useEffect(() => {
     if (!isEmployeeViewer || !attendance?.breakSessions) return;
@@ -855,14 +861,26 @@ export default function AttendancePageClient({
 
   useEffect(() => {
     void refresh();
-    void refreshAgentHealth({ silent: true });
     void refreshMyProfile();
-  }, [refresh, refreshAgentHealth, refreshMyProfile, isEmployeeViewer]);
+    if (isDesktopApp) {
+      runAfterFirstPaint(() => {
+        void refreshAgentHealth({ silent: true });
+      }, 600);
+      return;
+    }
+    void refreshAgentHealth({ silent: true });
+  }, [refresh, refreshAgentHealth, refreshMyProfile, isEmployeeViewer, isDesktopApp]);
 
   useEffect(() => {
     if (!isEmployeeViewer) return;
+    if (isDesktopApp) {
+      runAfterFirstPaint(() => {
+        void loadPendingExplanations();
+      }, 400);
+      return;
+    }
     void loadPendingExplanations();
-  }, [isEmployeeViewer, loadPendingExplanations]);
+  }, [isEmployeeViewer, isDesktopApp, loadPendingExplanations]);
 
   useEffect(() => {
     if (!isEmployeeViewer || isDesktopApp) return;
@@ -882,14 +900,15 @@ export default function AttendancePageClient({
   }, [verifyRetryInSeconds]);
 
   useEffect(() => {
+    const pollMs = isDesktopApp ? 30_000 : 20_000;
     const id = window.setInterval(() => {
       if (canManageLiveShift) {
         void refresh();
       }
       void refreshAgentHealth({ silent: true });
-    }, 20000);
+    }, pollMs);
     return () => window.clearInterval(id);
-  }, [canManageLiveShift, refresh, refreshAgentHealth]);
+  }, [canManageLiveShift, refresh, refreshAgentHealth, isDesktopApp]);
 
   useEffect(() => {
     if (!isEmployeeViewer || !shiftOpen || !attendance?.date) return;

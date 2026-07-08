@@ -8,7 +8,7 @@ import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
 import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
-import { and, asc, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, sql, sum } from "drizzle-orm";
 import {
   getAttendanceAgentHealth,
 } from "@/lib/attendance-agent-health";
@@ -138,7 +138,7 @@ export default async function DashboardPage({
     saleResult,
     totalSalesResult,
     userCountResult,
-    todaysLogsResult,
+    openShiftCountResult,
     liveAttendanceResult,
     departmentsResult,
     agentHealthResult,
@@ -166,9 +166,15 @@ export default async function DashboardPage({
       ),
     db.select({ value: count() }).from(schema.users),
     db
-      .select()
+      .select({ value: count() })
       .from(schema.attendanceLogs)
-      .where(eq(schema.attendanceLogs.date, today as any)),
+      .where(
+        and(
+          eq(schema.attendanceLogs.date, today as any),
+          isNotNull(schema.attendanceLogs.clockIn),
+          isNull(schema.attendanceLogs.clockOut)
+        )
+      ),
     isAdminViewer ? getAttendanceStatusForDate(today) : Promise.resolve(null),
     isAdminViewer
       ? db
@@ -243,8 +249,8 @@ export default async function DashboardPage({
     totalSalesResult.status === "fulfilled" ? totalSalesResult.value[0] : undefined;
   const userCount =
     userCountResult.status === "fulfilled" ? userCountResult.value[0] : undefined;
-  const todaysLogs =
-    todaysLogsResult.status === "fulfilled" ? todaysLogsResult.value : [];
+  const openShiftCount =
+    openShiftCountResult.status === "fulfilled" ? openShiftCountResult.value[0] : undefined;
 
   if (hotResult.status === "rejected") {
     console.error("[dashboard] hot leads count", hotResult.reason);
@@ -266,16 +272,14 @@ export default async function DashboardPage({
     console.error("[dashboard] user count", userCountResult.reason);
     dashboardLoadErrors.push("Team member count could not be loaded.");
   }
-  if (todaysLogsResult.status === "rejected") {
-    console.error("[dashboard] today attendance logs", todaysLogsResult.reason);
+  if (openShiftCountResult.status === "rejected") {
+    console.error("[dashboard] open shift count", openShiftCountResult.reason);
     dashboardLoadErrors.push("Today’s attendance snapshot could not be loaded.");
   }
 
   const totalLeads = Number(hotCount?.value ?? 0) + Number(saleCount?.value ?? 0);
   const totalSalesAmount = Number(totalSales?.value ?? 0);
   const totalUsers = Number(userCount?.value ?? 0);
-
-  const activeToday = todaysLogs.filter((l) => l.clockIn && !l.clockOut).length;
 
   let liveAttendanceToday: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
   if (liveAttendanceResult.status === "fulfilled") {
@@ -324,6 +328,11 @@ export default async function DashboardPage({
     label: formatMonthLabel(m),
     count: newByMonth.get(m) ?? 0
   }));
+
+  const activeToday =
+    liveAttendanceToday != null
+      ? liveAttendanceToday.people.filter((person) => person.clockIn && !person.clockOut).length
+      : Number(openShiftCount?.value ?? 0);
 
   const attendanceBaseQueryParams = new URLSearchParams();
   attendanceBaseQueryParams.set("date", reportDate);
