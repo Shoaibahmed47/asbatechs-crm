@@ -12,7 +12,6 @@ const WEEKDAY_SHORT: Record<string, number> = {
 };
 
 /** Company weekend — no attendance / clock-in (Saturday & Sunday, Asia/Karachi). */
-//update
 export const ATTENDANCE_WEEKEND_OFF_ENABLED = true;
 
 export function addAttendanceCalendarDays(dateStr: string, days: number): string {
