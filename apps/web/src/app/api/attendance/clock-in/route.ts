@@ -8,8 +8,7 @@ import { getAttendanceOfficeHours } from "@/lib/attendance-office-settings";
 import {
   computeLateMinutes,
   computeRawLateMinutes,
-  getExpectedCheckInTimeForUser,
-  hasPendingLateExplanation
+  getExpectedCheckInTimeForUser
 } from "@/lib/attendance-late-checkin";
 import {
   buildClockInFeedbackMessage,
@@ -64,17 +63,6 @@ export async function POST(req: NextRequest) {
   if (dayOffBlocked) return dayOffBlocked;
 
   const today = getLocalDateString();
-
-  if (await hasPendingLateExplanation(userId)) {
-    return NextResponse.json(
-      {
-        error:
-          "Please submit your late arrival explanation on the Attendance page before clocking in.",
-        code: "LATE_EXPLANATION_REQUIRED"
-      },
-      { status: 403 }
-    );
-  }
 
   if (await hasPendingEarlyLeaveExplanation(userId)) {
     return NextResponse.json(

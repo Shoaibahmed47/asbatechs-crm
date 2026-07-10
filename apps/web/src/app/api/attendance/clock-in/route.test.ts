@@ -95,4 +95,16 @@ describe("attendance clock-in route", () => {
     expect(data.attendance.status).toBe("active");
     expect(auth.verifyAuthToken).toHaveBeenLastCalledWith("token");
   });
+
+  it("allows clock-in even when a late explanation from a prior day is pending", async () => {
+    auth.verifyAuthToken.mockResolvedValueOnce({ userId: 4 });
+    selectWhere.mockResolvedValueOnce([]);
+    insertReturning.mockResolvedValueOnce([{ id: 3, status: "active" }]);
+
+    const res = await POST(req());
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.attendance.status).toBe("active");
+  });
 });

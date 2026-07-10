@@ -1163,10 +1163,10 @@ export default function AttendancePageClient({
   const canEditShift = canManageLiveShift && !isDayOffToday;
   const canClockIn =
     canEditShift &&
-    !pendingLateExplanation &&
     !pendingEarlyLeaveExplanation &&
     !pendingAbsenceExplanation &&
     (!attendance || !attendance.clockIn || Boolean(attendance.clockOut));
+  const shouldShowLateExplanationModal = Boolean(pendingLateExplanation && shiftOpen);
   const canClockOut = canEditShift && shiftOpen;
   const openBreakSession = attendance?.breakSessions?.find((session) => !session.breakEnd);
   const isManualBreakOpen = openBreakSession?.breakType === "manual";
@@ -1439,7 +1439,7 @@ export default function AttendancePageClient({
         <AttendancePunctualityCard stats={punctualityStats} loading={punctualityLoading} />
       ) : null}
 
-      {pendingLateExplanation ? (
+      {shouldShowLateExplanationModal && pendingLateExplanation ? (
         <AttendanceLateExplanationModal
           pending={pendingLateExplanation}
           submitting={lateExplanationSubmitting}
@@ -1801,7 +1801,7 @@ export default function AttendancePageClient({
                 variant={canClockIn && !loading ? "default" : "outline"}
                 disabled={loading || !canClockIn}
                 title={
-                  pendingLateExplanation || pendingEarlyLeaveExplanation
+                  pendingEarlyLeaveExplanation || pendingAbsenceExplanation
                     ? "Submit your pending attendance explanation before clocking in."
                     : !canClockIn
                       ? "You are already clocked in. Clock out to start a new shift later."
