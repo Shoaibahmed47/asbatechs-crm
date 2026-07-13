@@ -37,3 +37,11 @@ apps/desktop/dist/
 apps/desktop/.electron-driver/
 apps/desktop/*.exe
 apps/desktop/crm-app.url
+
+# Desktop agent compiled binaries (do not commit)
+apps/desktop-agent/**/bin/
+apps/desktop-agent/**/obj/
+apps/desktop-agent/**/publish/
+
+# Local user uploads
+apps/web/public/uploads/

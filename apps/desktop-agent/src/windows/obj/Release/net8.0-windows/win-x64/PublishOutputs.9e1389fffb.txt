@@ -1,2 +1,0 @@
-C:\Users\User\asbatechs_crm\apps\desktop-agent\src\windows\bin\Release\net8.0-windows\win-x64\publish\AttendanceAgent.pdb
-C:\Users\User\asbatechs_crm\apps\desktop-agent\src\windows\bin\Release\net8.0-windows\win-x64\publish\AttendanceAgent.exe
