@@ -8,6 +8,13 @@ import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
 import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
+import {
+  DashboardLiveAttendanceCommandCards,
+  DashboardLiveAttendanceSummary,
+  DashboardLiveOpenShiftsMetric,
+  LiveAttendanceCountsProvider,
+  type LiveAttendanceCounts
+} from "@/components/DashboardLiveAttendanceCounts";
 import { and, asc, count, desc, eq, gte, isNotNull, isNull, sql, sum } from "drizzle-orm";
 import {
   getAttendanceAgentHealth,
@@ -334,6 +341,13 @@ export default async function DashboardPage({
       ? liveAttendanceToday.people.filter((person) => person.clockIn && !person.clockOut).length
       : Number(openShiftCount?.value ?? 0);
 
+  const initialLiveAttendanceCounts: LiveAttendanceCounts = {
+    active: liveAttendanceToday?.people.filter((p) => p.status === "active").length ?? 0,
+    onBreak: liveAttendanceToday?.people.filter((p) => p.status === "break").length ?? 0,
+    offline: liveAttendanceToday?.people.filter((p) => p.status === "offline").length ?? 0,
+    openShifts: activeToday
+  };
+
   const attendanceBaseQueryParams = new URLSearchParams();
   attendanceBaseQueryParams.set("date", reportDate);
   attendanceBaseQueryParams.set("mode", reportMode);
@@ -357,7 +371,7 @@ export default async function DashboardPage({
   const dashboardLoadError =
     dashboardLoadErrors.length > 0 ? dashboardLoadErrors.join(" ") : null;
 
-  return (
+  const dashboardBody = (
     <div className="space-y-8">
       {dashboardLoadError ? (
         <div
@@ -403,25 +417,7 @@ export default async function DashboardPage({
                 {isAdminViewer ? "Team attendance (today)" : "Attendance"}
               </div>
               {isAdminViewer && liveAttendanceToday ? (
-                <div className="mt-2 space-y-1 text-sm">
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 font-semibold">
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      {liveAttendanceToday.people.filter((p) => p.status === "active").length}{" "}
-                      active
-                    </span>
-                    <span className="text-amber-700 dark:text-amber-400">
-                      {liveAttendanceToday.people.filter((p) => p.status === "break").length}{" "}
-                      break
-                    </span>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {liveAttendanceToday.people.filter((p) => p.status === "offline").length}{" "}
-                      offline
-                    </span>
-                  </div>
-                  <div className="text-base text-slate-500 dark:text-slate-400">
-                    {activeToday} with an open shift (incl. break)
-                  </div>
-                </div>
+                <DashboardLiveAttendanceSummary initial={initialLiveAttendanceCounts} />
               ) : (
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
                   Clock in, breaks, and your hours are on the{" "}
@@ -469,32 +465,7 @@ export default async function DashboardPage({
                     sleep/inactive signals, and employee reasons from the Executive Dashboard.
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[30rem]">
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-                      Active
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
-                      {liveAttendanceToday?.people.filter((p) => p.status === "active").length ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-300">
-                      Break
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-amber-800 dark:text-amber-300">
-                      {liveAttendanceToday?.people.filter((p) => p.status === "break").length ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-300/70 bg-slate-100/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      Open shifts
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                      {activeToday}
-                    </p>
-                  </div>
-                </div>
+                <DashboardLiveAttendanceCommandCards initial={initialLiveAttendanceCounts} />
               </div>
             </div>
 
@@ -673,12 +644,18 @@ export default async function DashboardPage({
           <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Open shifts
           </div>
-          <div className="mt-3 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
-            {activeToday}
-          </div>
-          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-            Employees currently clocked in and not yet clocked out.
-          </p>
+          {isAdminViewer ? (
+            <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
+          ) : (
+            <>
+              <div className="mt-3 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
+                {activeToday}
+              </div>
+              <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
+                Employees currently clocked in and not yet clocked out.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
@@ -696,4 +673,14 @@ export default async function DashboardPage({
       />
     </div>
   );
+
+  if (isAdminViewer) {
+    return (
+      <LiveAttendanceCountsProvider initial={initialLiveAttendanceCounts}>
+        {dashboardBody}
+      </LiveAttendanceCountsProvider>
+    );
+  }
+
+  return dashboardBody;
 }

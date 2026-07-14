@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
+import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import { isAdminRole, isManagerRole } from "@/lib/rbac";
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const payload = token ? await verifyAuthToken(token) : null;
+
+  if (!payload || (!isAdminRole(payload.role) && !isManagerRole(payload.role))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const logs = await db.select().from(schema.attendanceLogs);
 
   const lines: string[] = [];
@@ -33,4 +42,3 @@ export async function GET(_req: NextRequest) {
     }
   });
 }
-
