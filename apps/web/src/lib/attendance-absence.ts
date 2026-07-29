@@ -176,7 +176,10 @@ export async function submitAbsenceExplanation(params: {
 
   // One scan only — reuse in-memory context for nextPending instead of scanning twice.
   const ctx = await loadAbsenceScanContext(params.userId);
-  const pending = ctx ? pickPendingFromScan(ctx) : null;
+  if (!ctx) {
+    throw new Error("Absence explanation not found or already submitted.");
+  }
+  const pending = pickPendingFromScan(ctx);
   if (!pending || pending.date !== params.date) {
     throw new Error("Absence explanation not found or already submitted.");
   }
