@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from "electron";
+import { app, BrowserWindow, Menu, session, shell } from "electron";
 import path from "path";
 import {
   APP_TITLE,
@@ -9,6 +9,23 @@ import {
 import { getCrmAppUrl } from "./crm-app-url";
 
 let mainWindow: BrowserWindow | null = null;
+let desktopRequestHeaderConfigured = false;
+
+function configureDesktopRequestHeader(crmOrigin: string): void {
+  if (desktopRequestHeaderConfigured) return;
+  desktopRequestHeaderConfigured = true;
+
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    try {
+      if (new URL(details.url).origin === crmOrigin) {
+        details.requestHeaders["x-asbatechs-desktop"] = "1";
+      }
+    } catch {
+      // Keep the request untouched if URL parsing fails.
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
 
 function showLoadErrorPage(win: BrowserWindow, crmUrl: string, detail: string): void {
   const html = `<!DOCTYPE html>
@@ -49,6 +66,7 @@ export function getMainWindow(): BrowserWindow | null {
 export function createMainWindow(): BrowserWindow {
   const crmUrl = getCrmAppUrl();
   const crmOrigin = new URL(crmUrl).origin;
+  configureDesktopRequestHeader(crmOrigin);
 
   const win = new BrowserWindow({
     width: 1440,

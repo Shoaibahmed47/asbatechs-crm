@@ -235,7 +235,7 @@ CRM **UI** updates still come from your normal Next.js deploy — the shell only
 
 ## Legacy agent (migration only)
 
-Keep `apps/desktop-agent` only for machines not yet migrated. Do not issue new PowerShell setup scripts for new hires.
+The legacy `apps/desktop-agent` package has been removed. Do not issue old PowerShell setup scripts for new hires.
 
 ## Development smoke test
 

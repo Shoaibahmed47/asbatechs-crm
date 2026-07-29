@@ -14,12 +14,12 @@ const authEdge = jest.requireMock("@/lib/auth-edge") as {
 
 function makeReq(
   pathname: string,
-  opts?: { staffToken?: string; clientToken?: string }
+  opts?: { staffToken?: string; clientToken?: string; headers?: Record<string, string> }
 ) {
   return {
     url: `http://localhost${pathname}`,
     nextUrl: { pathname },
-    headers: new Headers(),
+    headers: new Headers(opts?.headers),
     cookies: {
       get: (name: string) => {
         if (name === "crm_token" && opts?.staffToken) {
@@ -71,7 +71,7 @@ describe("middleware protected routes", () => {
   it("redirects non-admin away from department settings", async () => {
     authEdge.verifyAuthTokenEdge.mockResolvedValueOnce({
       userId: 2,
-      role: "employee",
+      role: "manager",
       departmentId: 1
     });
     const res = await middleware(
@@ -81,9 +81,44 @@ describe("middleware protected routes", () => {
     expect(res.headers.get("location")).toContain("/dashboard");
   });
 
-  it("allows unauthenticated desktop-agent static scripts", async () => {
-    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce(null);
-    const res = await middleware(makeReq("/desktop-agent/one-click-setup.ps1"));
+
+  it("redirects employee browser sessions to desktop-required", async () => {
+    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce({
+      userId: 3,
+      role: "employee",
+      departmentId: 1
+    });
+    const res = await middleware(
+      makeReq("/dashboard", { staffToken: "staff-jwt" })
+    );
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/desktop-required");
+  });
+
+  it("allows employee sessions from the desktop app", async () => {
+    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce({
+      userId: 3,
+      role: "employee",
+      departmentId: 1
+    });
+    const res = await middleware(
+      makeReq("/dashboard", {
+        staffToken: "staff-jwt",
+        headers: { "x-asbatechs-desktop": "1" }
+      })
+    );
     expect(res.status).toBe(200);
+  });
+
+  it("blocks employee browser API access", async () => {
+    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce({
+      userId: 3,
+      role: "employee",
+      departmentId: 1
+    });
+    const res = await middleware(
+      makeReq("/api/attendance/me", { staffToken: "staff-jwt" })
+    );
+    expect(res.status).toBe(403);
   });
 });
