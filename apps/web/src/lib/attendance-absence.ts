@@ -175,11 +175,12 @@ export async function submitAbsenceExplanation(params: {
   }
 
   // One scan only — reuse in-memory context for nextPending instead of scanning twice.
-  const ctx = await loadAbsenceScanContext(params.userId);
-  if (!ctx) {
+  const loadedCtx = await loadAbsenceScanContext(params.userId);
+  if (loadedCtx == null) {
     throw new Error("Absence explanation not found or already submitted.");
   }
-  const pending = pickPendingFromScan(ctx);
+  const scanCtx: AbsenceScanContext = loadedCtx;
+  const pending = pickPendingFromScan(scanCtx);
   if (!pending || pending.date !== params.date) {
     throw new Error("Absence explanation not found or already submitted.");
   }
@@ -209,8 +210,8 @@ export async function submitAbsenceExplanation(params: {
       .then((rows) => rows[0] ?? null)
   ]);
 
-  ctx.explainedDates.add(params.date);
-  const nextPending = pickPendingFromScan(ctx);
+  scanCtx.explainedDates.add(params.date);
+  const nextPending = pickPendingFromScan(scanCtx);
 
   // Don't block the employee UI on admin fan-out.
   void notifyAdminsAbsenceExplanation({
