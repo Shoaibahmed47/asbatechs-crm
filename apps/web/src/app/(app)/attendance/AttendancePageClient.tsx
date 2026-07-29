@@ -1700,8 +1700,7 @@ export default function AttendancePageClient({
             <AttendanceDateRangeCalendar
               variant="compact"
               autoApply
-              stackMonths
-              numberOfMonths={2}
+              numberOfMonths={1}
               from={dateFrom}
               to={dateTo}
               activeDate={selectedDate}
