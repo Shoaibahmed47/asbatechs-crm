@@ -70,12 +70,32 @@
 }
 
 @layer components {
-  /* Keep dual-month attendance range picker side-by-side (May | June). */
-  .attendance-range-picker .rdp-months {
-    flex-wrap: nowrap;
+  .attendance-range-popover {
+    container-type: inline-size;
+    container-name: attendance-range;
   }
 
-  /* Detail drawer: months stacked (only when stackMonths prop is set). */
+  /* Prefer fitting both months; wrap/stack instead of clipping Sundays/Saturdays. */
+  .attendance-range-picker .rdp-months {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .attendance-range-picker .rdp-month {
+    width: min(100%, 17.5rem);
+    max-width: 100%;
+  }
+
+  .attendance-range-picker .rdp-month table,
+  .attendance-range-picker .rdp-month .rdp-weekdays,
+  .attendance-range-picker .rdp-month .rdp-weeks {
+    width: 100%;
+  }
+
+  /* Explicit stackMonths prop. */
   .attendance-range-picker--stacked .rdp-months {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -88,27 +108,21 @@
     max-width: 20rem;
   }
 
-  /* Detail drawer inline: May | June side-by-side, centered in wide panel. */
-  .attendance-range-picker--inline .rdp-months {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    width: 100%;
-    gap: 2rem;
-  }
-
   .attendance-range-picker--inline .rdp-root {
     width: 100%;
+    max-width: 100%;
   }
 
   .attendance-range-popover--floating .rdp-months {
-    flex-wrap: nowrap;
     justify-content: center;
   }
 
   .attendance-range-popover .rdp-root {
     --rdp-accent-color: hsl(199 89% 48%);
     --rdp-accent-background-color: hsl(199 89% 48% / 0.15);
+    --rdp-day-width: 2rem;
+    --rdp-day-height: 2rem;
+    width: 100%;
   }
 
   .attendance-range-popover .rdp-month_caption {
@@ -116,8 +130,35 @@
   }
 
   .attendance-range-popover .rdp-day {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: var(--rdp-day-width, 2rem);
+    height: var(--rdp-day-height, 2rem);
+  }
+
+  /* Narrow Breaks card / drawers: stack months so full weeks stay visible. */
+  @container attendance-range (max-width: 36rem) {
+    .attendance-range-picker:not(.attendance-range-picker--force-row) .rdp-months {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+
+    .attendance-range-picker:not(.attendance-range-picker--force-row) .rdp-month {
+      width: 100%;
+      max-width: 20rem;
+    }
+  }
+
+  @container attendance-range (min-width: 36rem) {
+    .attendance-range-popover .rdp-root {
+      --rdp-day-width: 2.25rem;
+      --rdp-day-height: 2.25rem;
+    }
+
+    .attendance-range-picker:not(.attendance-range-picker--stacked) .rdp-months {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 1.5rem;
+    }
   }
 
   .app-shell {

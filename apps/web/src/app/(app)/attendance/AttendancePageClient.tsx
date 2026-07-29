@@ -616,7 +616,6 @@ export default function AttendancePageClient({
         });
         setPendingAbsenceExplanation(data.nextPending ?? null);
         toast.success("Absence explanation submitted.");
-        void loadPendingExplanations();
       } catch (error) {
         setAbsenceExplanationError(
           error instanceof ApiFetchError
@@ -627,7 +626,7 @@ export default function AttendancePageClient({
         setAbsenceExplanationSubmitting(false);
       }
     },
-    [pendingAbsenceExplanation, loadPendingExplanations]
+    [pendingAbsenceExplanation]
   );
 
   const refreshMyProfile = useCallback(async () => {
@@ -1701,6 +1700,8 @@ export default function AttendancePageClient({
             <AttendanceDateRangeCalendar
               variant="compact"
               autoApply
+              stackMonths
+              numberOfMonths={2}
               from={dateFrom}
               to={dateTo}
               activeDate={selectedDate}

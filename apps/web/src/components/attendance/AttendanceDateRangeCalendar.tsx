@@ -148,7 +148,7 @@ export function AttendanceDateRangeCalendar({
   const rootRef = useRef<HTMLDivElement>(null);
   const today = getLocalDateString();
   const isToday = from === today && to === today && activeDate === today;
-  const popoverWidth = numberOfMonths === 1 ? 300 : 560;
+  const popoverWidth = numberOfMonths === 1 ? 320 : 640;
 
   const draftFrom = draftRange?.from ? toIso(draftRange.from) : "";
   const draftTo = draftRange?.to ? toIso(draftRange.to) : "";
@@ -249,23 +249,23 @@ export function AttendanceDateRangeCalendar({
 
       <div
         className={cn(
-          "mt-3 flex justify-center pb-1",
-          resolvedDisplay === "inline" ? "w-full" : !stackMonths && "overflow-x-auto"
+          "mt-3 w-full pb-1",
+          "flex justify-center"
         )}
       >
         <DayPicker
           key={calendarKey}
           className={cn(
-            "attendance-range-picker",
+            "attendance-range-picker w-full max-w-full",
             resolvedDisplay === "inline" && "attendance-range-picker--inline",
             stackMonths && "attendance-range-picker--stacked"
           )}
           classNames={{
             months: cn(
-              "flex justify-center gap-8",
-              stackMonths ? "flex-col items-center" : "flex-row flex-nowrap"
+              "flex w-full justify-center gap-4",
+              stackMonths ? "flex-col items-center" : "flex-row flex-wrap"
             ),
-            month: "w-auto shrink-0",
+            month: "w-full max-w-[17.5rem] shrink-0",
             caption_label: "text-sm font-semibold text-slate-900 dark:text-slate-100",
             day: "text-sm"
           }}
@@ -404,7 +404,7 @@ export function AttendanceDateRangeCalendar({
       )}
 
       {open && resolvedDisplay === "inline" ? (
-        <div className="attendance-range-popover mt-3 w-full overflow-x-auto rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
+        <div className="attendance-range-popover mt-3 w-full max-w-full overflow-x-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-950 sm:p-4">
           {pickerBody}
         </div>
       ) : null}
@@ -429,7 +429,7 @@ export function AttendanceDateRangeCalendar({
                       }
                     : { visibility: "hidden" as const }
                 }
-                className="attendance-range-popover attendance-range-popover--floating overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-950"
+                className="attendance-range-popover attendance-range-popover--floating overflow-x-hidden overflow-y-auto rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-950 sm:p-4"
               >
                 {pickerBody}
               </div>
