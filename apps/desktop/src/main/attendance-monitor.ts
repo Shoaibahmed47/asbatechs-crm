@@ -1,4 +1,5 @@
 import { powerMonitor } from "electron";
+import { AttendanceEventQueue, type QueuedAttendanceEvent } from "./attendance-event-queue";
 import type { AuthSession } from "./auth-session";
 import {
   ATTENDANCE_ACTIVITY_PING_SECONDS,
@@ -23,6 +24,8 @@ type MonitorState = {
 export class AttendanceMonitor {
   private auth: AuthSession;
   private baseUrl: string;
+  private queue = new AttendanceEventQueue();
+  private flushInFlight: Promise<void> | null = null;
   private state: MonitorState = {
     cursorAwaySent: false,
     sessionLocked: false,
@@ -49,6 +52,7 @@ export class AttendanceMonitor {
     powerMonitor.on("suspend", this.onSuspend);
     powerMonitor.on("resume", this.onResume);
 
+    void this.flushQueuedEvents();
     void this.runTick();
     this.state.interval = setInterval(() => {
       void this.runTick();
@@ -170,36 +174,62 @@ export class AttendanceMonitor {
     event: ActivityEvent,
     awayCause?: string | null
   ): Promise<void> {
-    const token = await this.auth.getBearerToken();
-    if (!token) return;
-
-    const payload = {
+    this.queue.enqueue({
       event,
       source: "electron",
       awayCause: awayCause ?? undefined,
       observedAt: new Date().toISOString()
-    };
-
-    let res = await fetch(`${this.baseUrl}/api/attendance/activity`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
     });
 
-    if (res.status === 401) {
-      const refreshed = await this.auth.getBearerToken(true);
-      if (!refreshed) return;
-      res = await fetch(`${this.baseUrl}/api/attendance/activity`, {
+    await this.flushQueuedEvents();
+  }
+
+  private async flushQueuedEvents(): Promise<void> {
+    if (this.flushInFlight) return this.flushInFlight;
+
+    this.flushInFlight = this.flushQueuedEventsOnce().finally(() => {
+      this.flushInFlight = null;
+    });
+    return this.flushInFlight;
+  }
+
+  private async flushQueuedEventsOnce(): Promise<void> {
+    if (!this.auth.isEmployee()) return;
+
+    for (const entry of this.queue.list()) {
+      const sent = await this.sendQueuedEvent(entry);
+      if (!sent) return;
+      this.queue.remove(entry.id);
+    }
+  }
+
+  private async sendQueuedEvent(entry: QueuedAttendanceEvent): Promise<boolean> {
+    const token = await this.auth.getBearerToken();
+    if (!token) return false;
+
+    const send = async (bearerToken: string): Promise<Response> => {
+      return fetch(`${this.baseUrl}/api/attendance/activity`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${refreshed}`,
+          Authorization: `Bearer ${bearerToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(entry.payload)
       });
+    };
+
+    try {
+      let res = await send(token);
+
+      if (res.status === 401) {
+        const refreshed = await this.auth.getBearerToken(true);
+        if (!refreshed) return false;
+        res = await send(refreshed);
+      }
+
+      return res.ok;
+    } catch {
+      return false;
     }
   }
 }

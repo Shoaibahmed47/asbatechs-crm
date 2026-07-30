@@ -3,14 +3,52 @@ import "server-only";
 import { getLocalDateString } from "@/lib/attendance-date";
 import {
   getExpectedScheduleForEmployeeOnDate,
-  promoteAllDueEmployeeSchedules
+  promoteAllDueEmployeeSchedules,
+  resolveEmployeeScheduleForDate,
+  type UserScheduleFields
 } from "@/lib/attendance-employee-schedule";
+import type { AttendanceOfficeHours } from "@/lib/attendance-office-hours";
 import {
   addAttendanceCalendarDays,
   ATTENDANCE_WEEKEND_OFF_MESSAGE,
   isAttendanceWeekend
 } from "@/lib/attendance-working-days";
 import { WEEKLY_SCHEDULE_DAY_LABELS, weekdayKeyFromDate } from "@/lib/attendance-weekly-schedule";
+
+export function isWorkingDayFromSchedule(
+  user: UserScheduleFields,
+  office: AttendanceOfficeHours,
+  date: string
+): boolean {
+  return resolveEmployeeScheduleForDate(user, office, date).isWorkingDay;
+}
+
+export function getExplanationPromptDueDateFromSchedule(
+  user: UserScheduleFields,
+  office: AttendanceOfficeHours,
+  logDate: string
+): string {
+  let due = addAttendanceCalendarDays(logDate, 1);
+  const maxDays = 14;
+  for (let i = 0; i < maxDays; i += 1) {
+    if (isWorkingDayFromSchedule(user, office, due)) {
+      return due;
+    }
+    due = addAttendanceCalendarDays(due, 1);
+  }
+  return due;
+}
+
+export function isExplanationPromptDueFromSchedule(
+  user: UserScheduleFields,
+  office: AttendanceOfficeHours,
+  logDate: string,
+  today = getLocalDateString()
+): boolean {
+  if (logDate >= today) return false;
+  const dueDate = getExplanationPromptDueDateFromSchedule(user, office, logDate);
+  return today >= dueDate;
+}
 
 export async function isEmployeeWorkingDay(userId: number, date: string): Promise<boolean> {
   const resolved = await getExpectedScheduleForEmployeeOnDate(userId, date);

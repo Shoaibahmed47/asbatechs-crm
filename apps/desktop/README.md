@@ -83,4 +83,4 @@ No PowerShell scripts or `AttendanceAgent.exe` required for new deployments.
 
 ## Legacy agent
 
-The [.NET desktop agent](../desktop-agent/) remains in the repo during migration but is **deprecated**. Use this Electron app for new employee machines.
+The old PowerShell/.NET `AttendanceAgent.exe` flow has been removed. New employee machines should use only this Electron desktop app.

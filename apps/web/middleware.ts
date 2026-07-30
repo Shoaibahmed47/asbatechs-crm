@@ -1,4 +1,4 @@
-  import type { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   CLIENT_COOKIE_NAME,
@@ -7,6 +7,24 @@ import {
   verifyClientTokenEdge
 } from "@/lib/auth-edge";
 import { canViewEmployeeDirectory, isAdminRole, normalizeRole } from "@/lib/rbac";
+
+function isDesktopAppRequest(req: NextRequest): boolean {
+  const desktopHeader = req.headers.get("x-asbatechs-desktop");
+  if (desktopHeader === "1") return true;
+
+  const userAgent = req.headers.get("user-agent") ?? "";
+  return userAgent.includes("AsbaTechsCRMDesktop/");
+}
+
+function isEmployeeBrowserAllowedPath(pathname: string): boolean {
+  return (
+    pathname === "/desktop-required" ||
+    pathname.startsWith("/download/desktop") ||
+    pathname === "/api/auth/logout" ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico"
+  );
+}
 
 export async function middleware(req: NextRequest) {
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -57,7 +75,6 @@ export async function middleware(req: NextRequest) {
         !isClientPublic &&
         !isPublicSignup &&
         !pathname.startsWith("/download/desktop") &&
-        !pathname.startsWith("/desktop-agent") &&
         !pathname.startsWith("/_next") &&
         !pathname.startsWith("/api") &&
         pathname !== "/favicon.ico")
@@ -90,6 +107,27 @@ export async function middleware(req: NextRequest) {
   // Staff session
   if (staffPayload) {
     const staffRole = normalizeRole(staffPayload.role);
+
+    if (
+      staffRole === "employee" &&
+      !isDesktopAppRequest(req) &&
+      !isEmployeeBrowserAllowedPath(pathname)
+    ) {
+      if (pathname.startsWith("/api")) {
+        const res = NextResponse.json(
+          { error: "Employee access requires the AsbaTechs CRM desktop app." },
+          { status: 403 }
+        );
+        res.headers.set("x-request-id", requestId);
+        return res;
+      }
+
+      const desktopRequiredUrl = new URL("/desktop-required", req.url);
+      const res = NextResponse.redirect(desktopRequiredUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
     if (
       pathname.startsWith("/admin") &&
       staffRole !== "admin" &&

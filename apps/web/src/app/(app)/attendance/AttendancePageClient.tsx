@@ -42,11 +42,6 @@ import type { EmployeePunctualityStats } from "@/lib/attendance-punctuality-shar
 import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 import {
-  agentStateHintForDisplay,
-  employeeAgentBadgeClass,
-  labelForDisplayAgentState
-} from "@/lib/attendance-agent-health-display";
-import {
   isElectronDesktop,
   notifyElectronSessionReady,
   syncElectronShiftOpen
@@ -621,7 +616,6 @@ export default function AttendancePageClient({
         });
         setPendingAbsenceExplanation(data.nextPending ?? null);
         toast.success("Absence explanation submitted.");
-        void loadPendingExplanations();
       } catch (error) {
         setAbsenceExplanationError(
           error instanceof ApiFetchError
@@ -632,7 +626,7 @@ export default function AttendancePageClient({
         setAbsenceExplanationSubmitting(false);
       }
     },
-    [pendingAbsenceExplanation, loadPendingExplanations]
+    [pendingAbsenceExplanation]
   );
 
   const refreshMyProfile = useCallback(async () => {
@@ -652,19 +646,8 @@ export default function AttendancePageClient({
   }, []);
 
   const checkInstallerAvailability = useCallback(async () => {
-    try {
-      const browserOrigin =
-        typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-      const baseUrl = agentHealth?.appUrl || browserOrigin;
-      const res = await fetch(`${baseUrl}/desktop-agent/AttendanceAgent.exe`, {
-        method: "GET",
-        credentials: "include"
-      });
-      setInstallerReady(res.ok);
-    } catch {
-      setInstallerReady(false);
-    }
-  }, [agentHealth?.appUrl]);
+    setInstallerReady(null);
+  }, []);
 
   const normalizedViewerRole = normalizeRole(viewerRole);
   const [workDayLoading, setWorkDayLoading] = useState(true);
@@ -1173,86 +1156,26 @@ export default function AttendancePageClient({
 
   const canStartBreak = canManageLiveShift && shiftOpen && status === "active";
   const canEndBreak = canManageLiveShift && status === "break";
+  const desktopMonitoringState = agentHealth?.state ?? "not_installed";
+  const desktopMonitoringLabel =
+    agentHealth?.statusLabel ??
+    (desktopMonitoringState === "running"
+      ? "Running"
+      : desktopMonitoringState === "stale"
+        ? "Stale"
+        : "Waiting");
+  const desktopMonitoringClass =
+    desktopMonitoringState === "running"
+      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      : desktopMonitoringState === "stale"
+        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
 
   async function prepareInstallCommand() {
-    try {
-      const health = await refreshAgentHealth();
-      if (health?.state === "running") {
-        setInstallCommand("");
-        setError(null);
-        toast.success("Agent is already running — no reinstall needed.");
-        return;
-      }
-
-      try {
-        await apiFetch("/api/attendance/desktop-agent/setup-token", { method: "POST" });
-      } catch {
-        // Non-blocking; verify still relies on heartbeat when agent is healthy.
-      }
-
-      let email = employeeEmail;
-      if (!email) {
-        const me = await apiFetch<{
-          user: { email?: string | null } | null;
-        }>("/api/auth/me");
-        email = me.user?.email?.trim() || "";
-        setEmployeeEmail(email);
-      }
-      if (!email) {
-        toast.error("Could not read your account email. Please log in again.");
-        return;
-      }
-
-      const browserOrigin =
-        typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-      const baseUrl = agentHealth?.appUrl || browserOrigin;
-      const exeCheck = await fetch(`${baseUrl}/desktop-agent/AttendanceAgent.exe`, {
-        method: "GET",
-        credentials: "include"
-      });
-      if (!exeCheck.ok) {
-        setInstallerReady(false);
-        toast.error(
-          "Desktop agent file is not ready on server. Please contact admin/IT to publish AttendanceAgent.exe."
-        );
-        return;
-      }
-      setInstallerReady(true);
-      const escapedBaseUrl = baseUrl.replaceAll("'", "''");
-      const escapedEmail = email.replaceAll("'", "''");
-      const escapedExeUrl = `${baseUrl}/desktop-agent/AttendanceAgent.exe`.replaceAll(
-        "'",
-        "''"
-      );
-      const command = [
-        "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force",
-        "$ErrorActionPreference = 'Stop'",
-        `$url = '${escapedBaseUrl}/desktop-agent/one-click-setup.ps1'`,
-        "$local = Join-Path $env:TEMP 'asba-one-click-setup.ps1'",
-        "Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $local",
-        `$pwd = Read-Host 'CRM password (same as login)' -AsSecureString`,
-        "$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)",
-        "$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)",
-        `[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)`,
-        `& $local -BaseUrl '${escapedBaseUrl}' -AgentExeUrl '${escapedExeUrl}' -Email '${escapedEmail}' -Password $plain`,
-        "$plain = $null"
-      ].join("\r\n");
-      setInstallCommand(command);
-      setShowInstallGuide(true);
-      await navigator.clipboard.writeText(command);
-      const isReconfigure =
-        health?.state === "stale" || health?.state === "installed";
-      toast.success(
-        isReconfigure
-          ? "Command ready below and copied. Paste in PowerShell (Admin), enter CRM password, then Verify Agent."
-          : "Command ready below and copied. Paste in PowerShell (Admin), enter CRM password, then Verify Agent."
-      );
-    } catch (err) {
-      if (err instanceof ApiFetchError) {
-        toast.error(err.message || "Could not prepare installer.");
-      } else {
-        toast.error("Could not prepare installer.");
-      }
+    setInstallCommand("");
+    setShowInstallGuide(true);
+    if (typeof window !== "undefined") {
+      window.location.href = "/download/desktop";
     }
   }
 
@@ -1562,7 +1485,9 @@ export default function AttendancePageClient({
                 and activity signals are sent automatically.
               </p>
               <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {agentStateHintForDisplay(agentHealth?.state ?? "not_installed")}
+                {desktopMonitoringState === "running"
+                  ? "Desktop app is sending attendance signals."
+                  : "Keep the desktop app open while your shift is active."}
               </p>
               {agentHealth?.lastActivitySource ? (
                 <p className="text-base leading-relaxed text-slate-600 dark:text-slate-400">
@@ -1576,12 +1501,9 @@ export default function AttendancePageClient({
               ) : null}
             </div>
             <span
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${employeeAgentBadgeClass(
-                agentHealth?.state ?? "not_installed"
-              )}`}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${desktopMonitoringClass}`}
             >
-              {agentHealth?.statusLabel ??
-                labelForDisplayAgentState(agentHealth?.state ?? "not_installed")}
+              {desktopMonitoringLabel}
             </span>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1606,137 +1528,23 @@ export default function AttendancePageClient({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="text-sm font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300">
-                Background monitoring setup
+                Desktop app required
               </div>
               <p className="text-base font-medium leading-relaxed text-slate-900 dark:text-slate-100">
-                Install the desktop agent once per laptop. It auto-refreshes login — no daily
-                reinstall.
+                Employee attendance must run from the AsbaTechs CRM desktop app.
               </p>
-              {installerReady !== null ? (
-                <p
-                  className={`text-sm font-semibold ${
-                    installerReady
-                      ? "text-emerald-700 dark:text-emerald-300"
-                      : "text-rose-700 dark:text-rose-300"
-                  }`}
-                >
-                  {installerReady ? "Agent installer ready" : "Agent installer missing"}
-                </p>
-              ) : null}
               <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {agentStateHintForDisplay(agentHealth?.state ?? "not_installed")}
+                Browser access is kept for admins and managers. The desktop app records laptop
+                lock, sleep, resume, and activity signals without any PowerShell agent install.
               </p>
-              {agentHealth?.lastActivitySource ? (
-                <p className="text-base leading-relaxed text-slate-600 dark:text-slate-400">
-                  Last signal source:{" "}
-                  <strong className="font-semibold text-slate-800 dark:text-slate-200">
-                    {agentHealth.lastActivitySource}
-                  </strong>
-                </p>
-              ) : null}
             </div>
-            <span
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold uppercase ${employeeAgentBadgeClass(
-                agentHealth?.state ?? "not_installed"
-              )}`}
-            >
-              {agentHealth?.statusLabel ?? labelForDisplayAgentState(agentHealth?.state ?? "not_installed")}
-            </span>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => void prepareInstallCommand()}
-            >
-              {agentHealth?.state === "stale" || agentHealth?.state === "installed"
-                ? "Reconfigure Agent"
-                : "Install Agent"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={agentLoading}
-              onClick={() => void verifyAgentNow()}
-            >
-              {agentLoading
-                ? "Verifying..."
-                : verifyRetryInSeconds > 0
-                  ? `Retry in ${verifyRetryInSeconds}s`
-                  : "Verify Agent"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowInstallGuide((v) => !v)}
-            >
-              Install Guide
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const diagnosticsCommand = [
-                  "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force",
-                  "Set-Location \"C:\\ProgramData\\AsbaTechs\\AttendanceAgent\\setup\"",
-                  ".\\verify-agent.ps1"
-                ].join("\r\n");
-                void navigator.clipboard.writeText(diagnosticsCommand);
-                toast.success("Agent check command copied.");
-              }}
-            >
-              Check Agent
+            <Button type="button" onClick={() => void prepareInstallCommand()}>
+              Download desktop app
             </Button>
           </div>
-
-          {agentError ? (
-            <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
-              {agentError}
-            </p>
-          ) : null}
-
-          {showInstallGuide ? (
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
-              <p className="text-sm font-semibold uppercase text-slate-500 dark:text-slate-400">
-                Install guide (one-time per laptop)
-              </p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4 text-base text-slate-700 dark:text-slate-300">
-                <li>Click <strong>Install Agent</strong> (or <strong>Reconfigure Agent</strong> if broken).</li>
-                <li>Paste the command in <strong>PowerShell as Administrator</strong>.</li>
-                <li>Enter your <strong>CRM password</strong> when asked (same as login).</li>
-                <li>Click <strong>Verify Agent</strong> — should show <strong>Running</strong>.</li>
-              </ol>
-            </div>
-          ) : null}
-          {installCommand ? (
-            <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
-              <p className="text-sm font-semibold uppercase text-sky-700 dark:text-sky-300">
-                One-click install command
-              </p>
-              <p className="mt-1 text-base text-slate-700 dark:text-slate-300">
-                Copied to clipboard. Paste in <strong>PowerShell (Run as Administrator)</strong>,
-                press Enter, then type your CRM password when prompted.
-              </p>
-              <textarea
-                readOnly
-                value={installCommand}
-                className="form-input mt-2 min-h-[5.5rem] w-full resize-y py-2 text-sm leading-5"
-              />
-              <div className="mt-2 flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(installCommand);
-                    toast.success("Command copied.");
-                  }}
-                >
-                  Copy Command
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
       {isEmployeeViewer ? (
@@ -1892,6 +1700,7 @@ export default function AttendancePageClient({
             <AttendanceDateRangeCalendar
               variant="compact"
               autoApply
+              numberOfMonths={1}
               from={dateFrom}
               to={dateTo}
               activeDate={selectedDate}

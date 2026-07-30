@@ -60,7 +60,7 @@ export type ResolvedEmployeeSchedule = {
   scheduleSource: "active" | "pending";
 };
 
-const emptyUserScheduleFields: UserScheduleFields = {
+export const emptyUserScheduleFields: UserScheduleFields = {
   expectedCheckInTime: null,
   expectedShiftEndTime: null,
   pendingExpectedCheckInTime: null,
@@ -217,7 +217,7 @@ const userScheduleSelect = {
   pendingWeeklySchedule: schema.users.pendingWeeklySchedule
 };
 
-async function loadUserScheduleFields(userId: number): Promise<UserScheduleFields | null> {
+export async function loadUserScheduleFields(userId: number): Promise<UserScheduleFields | null> {
   const [user] = await db
     .select(userScheduleSelect)
     .from(schema.users)
@@ -230,43 +230,79 @@ async function loadUserScheduleFields(userId: number): Promise<UserScheduleField
   };
 }
 
+/** Promote once, then load office + employee schedule for in-memory day resolution. */
+export async function loadEmployeeScheduleContext(userId: number): Promise<{
+  office: AttendanceOfficeHours;
+  user: UserScheduleFields;
+}> {
+  await promoteAllDueEmployeeSchedules();
+  const [office, user] = await Promise.all([
+    getAttendanceOfficeHours(),
+    loadUserScheduleFields(userId)
+  ]);
+  return {
+    office,
+    user: user ?? emptyUserScheduleFields
+  };
+}
+
+const PROMOTE_CACHE_TTL_MS = 15_000;
+let promoteCache: { at: number; promise: Promise<number> } | null = null;
+
 /** Promote pending schedules whose effective date has arrived (today or earlier). */
 export async function promoteAllDueEmployeeSchedules(): Promise<number> {
-  const today = getLocalDateString();
-  const dueUsers = await db
-    .select({
-      id: schema.users.id,
-      pendingExpectedCheckInTime: schema.users.pendingExpectedCheckInTime,
-      pendingExpectedShiftEndTime: schema.users.pendingExpectedShiftEndTime,
-      pendingWeeklySchedule: schema.users.pendingWeeklySchedule
-    })
-    .from(schema.users)
-    .where(
-      and(
-        isNotNull(schema.users.scheduleEffectiveFrom),
-        lte(schema.users.scheduleEffectiveFrom, today as any)
-      )
-    );
-
-  for (const user of dueUsers) {
-    const updateSet: Record<string, unknown> = {
-      pendingExpectedCheckInTime: null,
-      pendingExpectedShiftEndTime: null,
-      scheduleEffectiveFrom: null,
-      updatedAt: new Date()
-    };
-    if (user.pendingExpectedCheckInTime != null || user.pendingExpectedShiftEndTime != null) {
-      updateSet.expectedCheckInTime = normalizeOptionalTime(user.pendingExpectedCheckInTime);
-      updateSet.expectedShiftEndTime = normalizeOptionalTime(user.pendingExpectedShiftEndTime);
-    }
-    if (user.pendingWeeklySchedule) {
-      updateSet.weeklySchedule = normalizeWeeklySchedule(user.pendingWeeklySchedule);
-      updateSet.pendingWeeklySchedule = null;
-    }
-    await db.update(schema.users).set(updateSet).where(eq(schema.users.id, user.id));
+  const now = Date.now();
+  if (promoteCache && now - promoteCache.at < PROMOTE_CACHE_TTL_MS) {
+    return promoteCache.promise;
   }
 
-  return dueUsers.length;
+  const promise = (async () => {
+    const today = getLocalDateString();
+    const dueUsers = await db
+      .select({
+        id: schema.users.id,
+        pendingExpectedCheckInTime: schema.users.pendingExpectedCheckInTime,
+        pendingExpectedShiftEndTime: schema.users.pendingExpectedShiftEndTime,
+        pendingWeeklySchedule: schema.users.pendingWeeklySchedule
+      })
+      .from(schema.users)
+      .where(
+        and(
+          isNotNull(schema.users.scheduleEffectiveFrom),
+          lte(schema.users.scheduleEffectiveFrom, today as any)
+        )
+      );
+
+    for (const user of dueUsers) {
+      const updateSet: Record<string, unknown> = {
+        pendingExpectedCheckInTime: null,
+        pendingExpectedShiftEndTime: null,
+        scheduleEffectiveFrom: null,
+        updatedAt: new Date()
+      };
+      if (user.pendingExpectedCheckInTime != null || user.pendingExpectedShiftEndTime != null) {
+        updateSet.expectedCheckInTime = normalizeOptionalTime(user.pendingExpectedCheckInTime);
+        updateSet.expectedShiftEndTime = normalizeOptionalTime(user.pendingExpectedShiftEndTime);
+      }
+      if (user.pendingWeeklySchedule) {
+        updateSet.weeklySchedule = normalizeWeeklySchedule(user.pendingWeeklySchedule);
+        updateSet.pendingWeeklySchedule = null;
+      }
+      await db.update(schema.users).set(updateSet).where(eq(schema.users.id, user.id));
+    }
+
+    return dueUsers.length;
+  })();
+
+  promoteCache = { at: now, promise };
+  try {
+    return await promise;
+  } catch (error) {
+    if (promoteCache?.promise === promise) {
+      promoteCache = null;
+    }
+    throw error;
+  }
 }
 
 export async function getExpectedScheduleForEmployeeOnDate(
