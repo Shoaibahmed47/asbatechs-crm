@@ -17,6 +17,13 @@ export const ATTENDANCE_AGENT_ALERT_STALE_MINUTES = 10;
  */
 export const ATTENDANCE_CURSOR_IDLE_ENABLED = false;
 
+/**
+ * Browser Attendance-tab close tracking.
+ * Off while employees use Desktop CRM (window hide ≠ tab close; desktop already skips client listeners).
+ * Set to `true` to re-enable browser tab-close away + admin alerts.
+ */
+export const ATTENDANCE_TAB_CLOSE_ENABLED = false;
+
 /** FUTURE: set true to allow a second break with a written reason (extra break). */
 export const ATTENDANCE_EXTRA_BREAK_ENABLED = false;
 
@@ -36,7 +43,18 @@ export const ATTENDANCE_TAB_CLOSE_AWAY_SECONDS = 60;
 /** Max days in one employee period export (CEO reports). */
 export const MAX_ATTENDANCE_PERIOD_DAYS = 93;
 export const ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS = 60;
-export const ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS = 60;
+
+/**
+ * Laptop sleep/lock — Desktop waits this long before starting away (detect).
+ * Keep in sync with apps/desktop/src/shared/config.ts.
+ */
+export const ATTENDANCE_LAPTOP_SLEEP_DETECT_SECONDS = 2 * 60;
+
+/**
+ * Laptop sleep/lock — only count minutes / alert after away lasts this long
+ * (measured from detect/start).
+ */
+export const ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS = 6 * 60;
 
 export const ATTENDANCE_TAB_CLOSE_AWAY_MS =
   ATTENDANCE_TAB_CLOSE_AWAY_SECONDS * 1000;
@@ -49,7 +67,9 @@ export const ATTENDANCE_LAPTOP_SLEEP_AWAY_MS =
 export const ATTENDANCE_AWAY_POLICY = {
   tabCloseAwaySeconds: ATTENDANCE_TAB_CLOSE_AWAY_SECONDS,
   cursorIdleAwaySeconds: ATTENDANCE_CURSOR_IDLE_AWAY_SECONDS,
+  laptopSleepDetectSeconds: ATTENDANCE_LAPTOP_SLEEP_DETECT_SECONDS,
   laptopSleepAwaySeconds: ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS,
   cursorIdleEnabled: ATTENDANCE_CURSOR_IDLE_ENABLED,
+  tabCloseEnabled: ATTENDANCE_TAB_CLOSE_ENABLED,
   lateExplanationTestMode: ATTENDANCE_LATE_EXPLANATION_TEST_MODE
 } as const;

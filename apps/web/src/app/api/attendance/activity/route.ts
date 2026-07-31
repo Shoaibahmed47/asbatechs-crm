@@ -11,7 +11,10 @@ import {
   startComplianceAway,
   type ComplianceAwayCause
 } from "@/lib/attendance-away-compliance";
-import { ATTENDANCE_CURSOR_IDLE_ENABLED } from "@/lib/attendance-policy";
+import {
+  ATTENDANCE_CURSOR_IDLE_ENABLED,
+  ATTENDANCE_TAB_CLOSE_ENABLED
+} from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE, type UnscheduledCause } from "@/lib/attendance-reason";
 
 type ActivityEvent =
@@ -183,6 +186,19 @@ export async function POST(req: NextRequest) {
       ok: true,
       ignored: true,
       reason: "cursor_idle_tracking_disabled"
+    });
+  }
+
+  /* Disabled: employees use Desktop CRM — set ATTENDANCE_TAB_CLOSE_ENABLED true to re-enable */
+  if (
+    !ATTENDANCE_TAB_CLOSE_ENABLED &&
+    awayCause === UNSCHEDULED_CAUSE.TAB_CLOSE &&
+    (eventType === "away_start" || eventType === "away_end")
+  ) {
+    return NextResponse.json({
+      ok: true,
+      ignored: true,
+      reason: "tab_close_tracking_disabled"
     });
   }
 

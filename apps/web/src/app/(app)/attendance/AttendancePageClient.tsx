@@ -39,7 +39,7 @@ import type { PendingEarlyLeaveExplanation } from "@/lib/attendance-early-leave-
 import type { PendingAbsenceExplanation } from "@/lib/attendance-absence-types";
 import type { PendingLateExplanation } from "@/lib/attendance-late-types";
 import type { EmployeePunctualityStats } from "@/lib/attendance-punctuality-shared";
-import { ATTENDANCE_EXTRA_BREAK_ENABLED } from "@/lib/attendance-policy";
+import { ATTENDANCE_EXTRA_BREAK_ENABLED, ATTENDANCE_TAB_CLOSE_ENABLED } from "@/lib/attendance-policy";
 import { UNSCHEDULED_CAUSE } from "@/lib/attendance-reason";
 import {
   agentStateHintForDisplay,
@@ -116,8 +116,10 @@ type AwayCause = ComplianceAwayCause;
 type AwayPolicy = {
   tabCloseAwaySeconds: number;
   cursorIdleAwaySeconds: number;
+  laptopSleepDetectSeconds?: number;
   laptopSleepAwaySeconds: number;
   cursorIdleEnabled: boolean;
+  tabCloseEnabled?: boolean;
   lateExplanationTestMode?: boolean;
 };
 
@@ -231,7 +233,7 @@ function AttendanceAwayNotice({
   );
 }
 
-const BREAK_MINUTES_HINT = `Total time today when you were not counted as working while clocked in. Includes official breaks and auto-detected away time (closing this Attendance tab or laptop sleep) once each lasts about ${ATTENDANCE_AWAY_POLICY.tabCloseAwaySeconds} seconds or longer. Switching to other browser tabs or sites does not count. Work hours = time since clock in minus break minutes.`;
+const BREAK_MINUTES_HINT = `Total time today when you were not counted as working while clocked in. Includes official breaks and auto-detected away time (laptop sleep/lock) once each lasts about ${Math.round(ATTENDANCE_AWAY_POLICY.laptopSleepAwaySeconds / 60)} minutes or longer. Work hours = time since clock in minus break minutes.`;
 
 function AttendanceStatTile({
   label,
@@ -774,6 +776,8 @@ export default function AttendancePageClient({
   }, [attendance?.breakSessions, isEmployeeViewer]);
 
   useEffect(() => {
+    /* Disabled: tab close tracking off (Desktop CRM). Re-enable with ATTENDANCE_TAB_CLOSE_ENABLED. */
+    if (!ATTENDANCE_TAB_CLOSE_ENABLED) return;
     if (!isEmployeeViewer || !canManageLiveShift || isDesktopApp) return;
     if (!shiftOpen) {
       tabCloseReturnHandledRef.current = null;
@@ -977,6 +981,8 @@ export default function AttendancePageClient({
     };
 
     const onPageHide = () => {
+      /* Disabled: tab close tracking off (Desktop CRM). Re-enable with ATTENDANCE_TAB_CLOSE_ENABLED. */
+      if (!ATTENDANCE_TAB_CLOSE_ENABLED) return;
       const payload = JSON.stringify({
         event: "away_start",
         source: "browser",
@@ -1011,7 +1017,10 @@ export default function AttendancePageClient({
       window.addEventListener(eventName, markCursor, { passive: true });
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pagehide", onPageHide);
+    /* Tab close listener — no-op while ATTENDANCE_TAB_CLOSE_ENABLED is false */
+    if (ATTENDANCE_TAB_CLOSE_ENABLED) {
+      window.addEventListener("pagehide", onPageHide);
+    }
 
     const complianceTick = window.setInterval(() => {
       const now = Date.now();
@@ -1044,7 +1053,9 @@ export default function AttendancePageClient({
         window.removeEventListener(eventName, markCursor);
       }
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pagehide", onPageHide);
+      if (ATTENDANCE_TAB_CLOSE_ENABLED) {
+        window.removeEventListener("pagehide", onPageHide);
+      }
       window.clearInterval(complianceTick);
     };
   }, [

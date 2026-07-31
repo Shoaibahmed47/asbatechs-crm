@@ -7,7 +7,8 @@ import {
   ATTENDANCE_CURSOR_IDLE_ENABLED,
   ATTENDANCE_CURSOR_IDLE_AWAY_MS,
   ATTENDANCE_LAPTOP_SLEEP_AWAY_MS,
-  ATTENDANCE_TAB_CLOSE_AWAY_MS
+  ATTENDANCE_TAB_CLOSE_AWAY_MS,
+  ATTENDANCE_TAB_CLOSE_ENABLED
 } from "@/lib/attendance-policy";
 import {
   UNSCHEDULED_CAUSE,
@@ -266,6 +267,11 @@ export async function startComplianceAway(params: {
     return { started: false };
   }
 
+  /* Disabled: employees use Desktop CRM — set ATTENDANCE_TAB_CLOSE_ENABLED true to re-enable */
+  if (!ATTENDANCE_TAB_CLOSE_ENABLED && params.cause === UNSCHEDULED_CAUSE.TAB_CLOSE) {
+    return { started: false };
+  }
+
   if (params.hasOpenManualBreak) {
     return { started: false };
   }
@@ -361,6 +367,11 @@ export async function endComplianceAway(params: {
 }> {
   /* FUTURE: mouse/keyboard idle — remove this guard when ATTENDANCE_CURSOR_IDLE_ENABLED is true */
   if (!ATTENDANCE_CURSOR_IDLE_ENABLED && params.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
+    return { ok: true, addedMinutes: 0 };
+  }
+
+  /* Disabled: employees use Desktop CRM — set ATTENDANCE_TAB_CLOSE_ENABLED true to re-enable */
+  if (!ATTENDANCE_TAB_CLOSE_ENABLED && params.cause === UNSCHEDULED_CAUSE.TAB_CLOSE) {
     return { ok: true, addedMinutes: 0 };
   }
 

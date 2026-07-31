@@ -83,17 +83,32 @@ export class AttendanceMonitor {
   };
 
   private onSuspend = (): void => {
+    /* Machine freezes while asleep — detect is evaluated on resume. */
     this.state.sessionLocked = true;
     this.state.lockStartedAt = Date.now();
+    this.state.lockAwaySent = false;
     this.state.cursorAwaySent = false;
-    void this.postEvent("lock", "sleep");
-    this.state.lockAwaySent = true;
   };
 
   private onResume = (): void => {
-    if (this.state.lockAwaySent || this.state.sessionLocked) {
+    const startedAt = this.state.lockStartedAt;
+    const wasLocked = this.state.sessionLocked;
+    const alreadySent = this.state.lockAwaySent;
+
+    if (wasLocked && startedAt != null && !alreadySent) {
+      const awaySeconds = (Date.now() - startedAt) / 1000;
+      if (awaySeconds >= ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS) {
+        const detectAt = new Date(
+          startedAt + ATTENDANCE_LAPTOP_SLEEP_AWAY_SECONDS * 1000
+        );
+        void this.postEvent("lock", "sleep", detectAt).then(() => {
+          void this.postEvent("unlock", "sleep");
+        });
+      }
+    } else if (alreadySent) {
       void this.postEvent("unlock", "sleep");
     }
+
     this.resetSleepState();
   };
 
@@ -168,7 +183,8 @@ export class AttendanceMonitor {
 
   private async postEvent(
     event: ActivityEvent,
-    awayCause?: string | null
+    awayCause?: string | null,
+    observedAt?: Date
   ): Promise<void> {
     const token = await this.auth.getBearerToken();
     if (!token) return;
@@ -177,7 +193,7 @@ export class AttendanceMonitor {
       event,
       source: "electron",
       awayCause: awayCause ?? undefined,
-      observedAt: new Date().toISOString()
+      observedAt: (observedAt ?? new Date()).toISOString()
     };
 
     let res = await fetch(`${this.baseUrl}/api/attendance/activity`, {
