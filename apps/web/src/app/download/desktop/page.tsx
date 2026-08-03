@@ -1,11 +1,19 @@
 import Link from "next/link";
 
-const installerUrl =
-  process.env.NEXT_PUBLIC_DESKTOP_INSTALLER_URL?.trim() ||
-  process.env.DESKTOP_INSTALLER_URL?.trim() ||
-  "";
+/** Always read env at request time — avoids empty URL baked in at build. */
+export const dynamic = "force-dynamic";
+
+function getInstallerUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_DESKTOP_INSTALLER_URL?.trim() ||
+    process.env.DESKTOP_INSTALLER_URL?.trim() ||
+    ""
+  );
+}
 
 export default function DesktopDownloadPage() {
+  const installerUrl = getInstallerUrl();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-16">
       <div>
@@ -37,8 +45,9 @@ export default function DesktopDownloadPage() {
       ) : (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           Installer URL is not configured yet. Ask IT to set{" "}
-          <code className="font-mono">NEXT_PUBLIC_DESKTOP_INSTALLER_URL</code> or publish the
-          Electron build from <code className="font-mono">apps/desktop</code>.
+          <code className="font-mono">NEXT_PUBLIC_DESKTOP_INSTALLER_URL</code> or{" "}
+          <code className="font-mono">DESKTOP_INSTALLER_URL</code> on the{" "}
+          <strong>same host</strong> that serves this CRM, then redeploy.
         </p>
       )}
 
