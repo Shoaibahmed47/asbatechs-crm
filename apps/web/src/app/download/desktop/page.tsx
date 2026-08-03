@@ -1,12 +1,14 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
-/** Always read env at request time — avoids empty URL baked in at build. */
+/** Never static-prerender this page (old empty installer HTML was stuck on CDN). */
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 /**
- * Fallback when host env is missing (e.g. betaserver without Vercel vars).
- * Prefer NEXT_PUBLIC_DESKTOP_INSTALLER_URL / DESKTOP_INSTALLER_URL to override
- * after a new GitHub release renames the Setup .exe.
+ * Fallback when host env is missing.
+ * Override with NEXT_PUBLIC_DESKTOP_INSTALLER_URL or DESKTOP_INSTALLER_URL.
  */
 const DEFAULT_DESKTOP_INSTALLER_URL =
   "https://github.com/Shoaibahmed47/asbatechs-crm/releases/latest/download/AsbaTechs%20CRM%20Setup%200.1.0.exe";
@@ -19,7 +21,9 @@ function getInstallerUrl(): string {
   );
 }
 
-export default function DesktopDownloadPage() {
+export default async function DesktopDownloadPage() {
+  // Touch request headers so Next cannot serve a static prerender shell.
+  await headers();
   const installerUrl = getInstallerUrl();
 
   return (
@@ -49,6 +53,10 @@ export default function DesktopDownloadPage() {
       >
         Download AsbaTechs CRM for Windows
       </a>
+
+      <p className="text-xs text-slate-400 dark:text-slate-500" data-deploy-marker="desktop-dl-v3">
+        Installer from GitHub Releases (env optional).
+      </p>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
         IT teams: see <code className="font-mono">docs/desktop-app-deployment.md</code> in the
