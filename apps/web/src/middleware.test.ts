@@ -86,4 +86,16 @@ describe("middleware protected routes", () => {
     const res = await middleware(makeReq("/desktop-agent/one-click-setup.ps1"));
     expect(res.status).toBe(200);
   });
+
+  it("serves desktop download HTML with installer button for public visitors", async () => {
+    authEdge.verifyAuthTokenEdge.mockResolvedValueOnce(null);
+    authEdge.verifyClientTokenEdge.mockResolvedValueOnce(null);
+    const res = await middleware(makeReq("/download/desktop"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-desktop-download")).toBe("middleware-v1");
+    const body = await res.text();
+    expect(body).toContain("desktop-download-btn");
+    expect(body).toContain("AsbaTechs.CRM.Setup.0.1.0.exe");
+    expect(body).not.toContain("Installer URL is not configured");
+  });
 });

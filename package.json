@@ -28,9 +28,13 @@
         "db:push": "npm --workspace packages/database run drizzle:push",
         "db:seed": "npm --workspace packages/database run db:seed",
         "db:clear": "npm --workspace packages/database run db:reset",
-        "db:supabase:seed-push": "npm run db:push && npm run db:seed"
+        "db:supabase:seed-push": "npm run db:push && npm run db:seed",
+        "test:e2e": "playwright test",
+        "test:e2e:desktop": "playwright test e2e/desktop-download.spec.ts",
+        "test:e2e:install": "playwright install chromium"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.1",
         "@types/bcryptjs": "^2.4.6",
         "@types/pg": "^8.18.0",
         "concurrently": "^9.0.0",
