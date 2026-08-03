@@ -1,0 +1,96 @@
+# Build Windows Desktop CRM installer and publish a GitHub Release
+# (uploads Setup .exe + latest.yml for electron-updater).
+#
+# How to run:
+# 1. Repo Settings → Secrets → Actions → add CRM_APP_URL
+#    (e.g. https://your-crm.vercel.app — live CRM origin, no trailing slash)
+# 2. Actions → "Desktop Release" → Run workflow
+#    OR: git tag desktop-v0.1.1 && git push origin desktop-v0.1.1
+#
+# After release, set on Vercel (optional download page):
+#   NEXT_PUBLIC_DESKTOP_INSTALLER_URL=<url-to-Setup-exe-from-the-release>
+
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write production CRM URL for desktop bake
+        env:
+          CRM_APP_URL: ${{ secrets.CRM_APP_URL }}
+        run: |
+          if (-not $env:CRM_APP_URL) {
+            Write-Error "Missing secret CRM_APP_URL. Add it under Repo Settings → Secrets → Actions."
+            exit 1
+          }
+          $url = $env:CRM_APP_URL.Trim().TrimEnd("/")
+          Set-Content -Path "apps/desktop/crm-app.url" -Value $url -NoNewline
+          Write-Host "Baked CRM URL file: $url"
+
+      - name: Build Windows installer (unsigned CI build)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ""
+          WIN_CSC_LINK: ""
+          CSC_KEY_PASSWORD: ""
+        run: npm run build:desktop
+
+      - name: Collect release artifacts
+        id: artifacts
+        run: |
+          $out = "apps/desktop/release-build"
+          if (-not (Test-Path $out)) {
+            Write-Error "Missing output folder: $out"
+            exit 1
+          }
+          Get-ChildItem $out | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+          $exe = Get-ChildItem $out -Filter "*.exe" | Select-Object -First 1
+          $yml = Join-Path $out "latest.yml"
+          if (-not $exe) { Write-Error "No .exe found in $out"; exit 1 }
+          if (-not (Test-Path $yml)) {
+            Write-Warning "latest.yml not found — electron-builder may need publish config. Continuing with .exe only."
+          }
+          "exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          "dir=$out" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop-build-{0}', github.run_number) }}
+          name: AsbaTechs CRM Desktop ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build-{0}', github.run_number) }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            apps/desktop/release-build/*.exe
+            apps/desktop/release-build/latest.yml
+            apps/desktop/release-build/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
