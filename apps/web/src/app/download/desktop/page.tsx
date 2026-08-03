@@ -1,28 +1,22 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 
+import { DESKTOP_INSTALLER_DOWNLOAD_URL } from "@/lib/desktop-installer-url";
+
 /** Never static-prerender this page (old empty installer HTML was stuck on CDN). */
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-/**
- * Fallback when host env is missing.
- * Override with NEXT_PUBLIC_DESKTOP_INSTALLER_URL or DESKTOP_INSTALLER_URL.
- */
-const DEFAULT_DESKTOP_INSTALLER_URL =
-  "https://github.com/Shoaibahmed47/asbatechs-crm/releases/latest/download/AsbaTechs%20CRM%20Setup%200.1.0.exe";
-
 function getInstallerUrl(): string {
   return (
     process.env.NEXT_PUBLIC_DESKTOP_INSTALLER_URL?.trim() ||
     process.env.DESKTOP_INSTALLER_URL?.trim() ||
-    DEFAULT_DESKTOP_INSTALLER_URL
+    DESKTOP_INSTALLER_DOWNLOAD_URL
   );
 }
 
 export default async function DesktopDownloadPage() {
-  // Touch request headers so Next cannot serve a static prerender shell.
   await headers();
   const installerUrl = getInstallerUrl();
 
@@ -54,8 +48,16 @@ export default async function DesktopDownloadPage() {
         Download AsbaTechs CRM for Windows
       </a>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500" data-deploy-marker="desktop-dl-v3">
-        Installer from GitHub Releases (env optional).
+      <p className="text-xs text-slate-400 dark:text-slate-500" data-deploy-marker="desktop-dl-v4">
+        Or open Releases if the button fails:{" "}
+        <a
+          className="font-medium text-sky-600 hover:underline"
+          href="https://github.com/Shoaibahmed47/asbatechs-crm/releases/latest"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub Releases
+        </a>
       </p>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
