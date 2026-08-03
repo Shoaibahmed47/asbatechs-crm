@@ -3,11 +3,19 @@ import Link from "next/link";
 /** Always read env at request time — avoids empty URL baked in at build. */
 export const dynamic = "force-dynamic";
 
+/**
+ * Fallback when host env is missing (e.g. betaserver without Vercel vars).
+ * Prefer NEXT_PUBLIC_DESKTOP_INSTALLER_URL / DESKTOP_INSTALLER_URL to override
+ * after a new GitHub release renames the Setup .exe.
+ */
+const DEFAULT_DESKTOP_INSTALLER_URL =
+  "https://github.com/Shoaibahmed47/asbatechs-crm/releases/latest/download/AsbaTechs%20CRM%20Setup%200.1.0.exe";
+
 function getInstallerUrl(): string {
   return (
     process.env.NEXT_PUBLIC_DESKTOP_INSTALLER_URL?.trim() ||
     process.env.DESKTOP_INSTALLER_URL?.trim() ||
-    ""
+    DEFAULT_DESKTOP_INSTALLER_URL
   );
 }
 
@@ -35,21 +43,12 @@ export default function DesktopDownloadPage() {
         <li>Keep the app running in the system tray during shifts.</li>
       </ol>
 
-      {installerUrl ? (
-        <a
-          href={installerUrl}
-          className="inline-flex w-fit items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-base font-semibold text-white hover:bg-sky-700"
-        >
-          Download AsbaTechs CRM for Windows
-        </a>
-      ) : (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          Installer URL is not configured yet. Ask IT to set{" "}
-          <code className="font-mono">NEXT_PUBLIC_DESKTOP_INSTALLER_URL</code> or{" "}
-          <code className="font-mono">DESKTOP_INSTALLER_URL</code> on the{" "}
-          <strong>same host</strong> that serves this CRM, then redeploy.
-        </p>
-      )}
+      <a
+        href={installerUrl}
+        className="inline-flex w-fit items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-base font-semibold text-white hover:bg-sky-700"
+      >
+        Download AsbaTechs CRM for Windows
+      </a>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
         IT teams: see <code className="font-mono">docs/desktop-app-deployment.md</code> in the
