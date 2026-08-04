@@ -26,11 +26,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <BodyPointerEventsGuard />
       </Suspense>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.1),transparent_28%),radial-gradient(circle_at_right,rgba(6,182,212,0.08),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--brand-teal-light)_14%,transparent),transparent_28%),radial-gradient(circle_at_right,color-mix(in_srgb,var(--brand-orange)_10%,transparent),transparent_24%)]" />
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[280px] p-4 xl:block 2xl:w-[304px] 2xl:p-5">
         <div className="app-panel surface-reveal flex h-full min-h-0 flex-col overflow-hidden rounded-[30px] px-4 py-5 2xl:px-5 2xl:py-6">
           <div className="shrink-0 border-b border-slate-200/70 pb-5 dark:border-slate-800/80 2xl:pb-6">
-            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
+            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--brand-teal-light)] dark:text-[var(--brand-teal)]">
               AsbaTechs
             </div>
             <div className="mt-3 font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white">

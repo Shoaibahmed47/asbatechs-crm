@@ -20,7 +20,22 @@ Monorepo: `apps/web`, `apps/desktop`, `packages/*`. pnpm-style workspaces via ro
 - Match existing code style; small focused diffs; no drive-by refactors.
 - Never commit secrets (`.env`, tokens, `crm-app.url` production URL secrets).
 - Do not force-push `main`/`master` unless the user explicitly asks.
-- Commit only when the user asks; push when the user asks or clearly requests publish.
+- Never skip hooks (`--no-verify`) unless the user explicitly asks.
+
+### After every meaningful code change (default delivery pipeline)
+
+When the user asked for a feature/fix/UI work (not pure Q&A), finish with:
+
+1. **Verify** — run the smallest relevant checks:
+   - Web UI / middleware / download: `PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e:desktop` and/or `npm --workspace apps/web test`
+   - If `npm run build` is feasible and unrelated noise is low, run `npm run build` (or workspace web build)
+2. **Commit** — stage only intended files; skip secrets and noise (`next-env.d.ts` unless required)
+3. **Push** — `git push origin HEAD` (or current branch) so Vercel / CI can pick up `main`
+
+If the user only asked a question or said “do not commit/push”, skip that step.
+If hooks fail, fix and create a **new** commit (do not amend pushed commits).
+
+Exception: desktop native package changes still need **Desktop Release** Action for the `.exe`; web push alone does not update employee installers.
 
 ## Attendance (critical product rules)
 

@@ -2,45 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * AsbaTechs CRM — global design system
+ * Apple-inspired surfaces + brand tokens. Components use existing classes
+ * (.app-panel, .data-card, .form-input, …). No business logic here.
+ */
+
 @layer base {
   :root {
     color-scheme: light;
-    --background: 212 38% 97%;
-    --background-muted: 210 34% 94%;
-    --foreground: 222 47% 11%;
-    --foreground-muted: 215 19% 42%;
+
+    /* Semantic theme (HSL channels for Tailwind / hsl(var(--x))) */
+    --background: 200 28% 97%;
+    --background-muted: 195 24% 94%;
+    --foreground: 200 35% 12%;
+    --foreground-muted: 200 12% 40%;
     --card: 0 0% 100%;
-    --card-muted: 210 26% 98%;
-    --border: 214 30% 86%;
-    --border-strong: 214 26% 76%;
-    --primary: 220 82% 52%;
+    --card-muted: 195 30% 98%;
+    --border: 200 20% 88%;
+    --border-strong: 200 16% 78%;
+    --primary: 199 89% 42%;
     --primary-foreground: 0 0% 100%;
-    --accent: 188 96% 42%;
+    --accent: 174 58% 38%;
     --success: 160 84% 39%;
-    --warning: 35 92% 50%;
+    --warning: 32 92% 48%;
     --danger: 0 72% 51%;
-    --shadow-soft: 0 28px 70px rgba(15, 23, 42, 0.14);
-    --shadow-card: 0 14px 42px rgba(15, 23, 42, 0.1);
+    --shadow-soft: 0 28px 70px rgba(15, 76, 69, 0.12);
+    --shadow-card: 0 12px 36px rgba(15, 76, 69, 0.08);
+
+    /* Brand palette (teal / orange / gold — use via var() or utilities) */
+    --brand-teal: #0f4c45;
+    --brand-teal-light: #1a7a6d;
+    --brand-teal-lighter: #2d9b8a;
+    --brand-orange: #e86a17;
+    --brand-orange-light: #f4843a;
+    --brand-gold: #c9a227;
+    --teal-60: #e8f5f2;
+    --teal-80: #d4ebe6;
+    --teal-100: #b8ddd5;
+    --teal-150: #9ecfc5;
+    --teal-500: #2a8f7e;
+    --orange-100: #ffe8d6;
+
+    /* Legacy apple tokens (optional accents) */
+    --apple-blue: #007aff;
+    --apple-gray: #8e8e93;
+    --apple-light-gray: #f2f2f7;
+    --apple-dark-gray: #1c1c1e;
   }
 
   .dark {
     color-scheme: dark;
-    --background: 221 43% 8%;
-    --background-muted: 222 36% 11%;
-    --foreground: 210 40% 96%;
-    --foreground-muted: 215 18% 78%;
-    --card: 222 39% 12%;
-    --card-muted: 223 30% 16%;
-    --border: 217 24% 24%;
-    --border-strong: 217 19% 30%;
-    --primary: 213 94% 68%;
-    --primary-foreground: 222 47% 11%;
-    --accent: 185 92% 56%;
+    --background: 200 28% 8%;
+    --background-muted: 200 24% 11%;
+    --foreground: 195 25% 96%;
+    --foreground-muted: 195 12% 72%;
+    --card: 200 26% 11%;
+    --card-muted: 200 22% 14%;
+    --border: 200 16% 22%;
+    --border-strong: 200 14% 28%;
+    --primary: 187 72% 52%;
+    --primary-foreground: 200 35% 10%;
+    --accent: 174 55% 48%;
     --success: 160 84% 45%;
     --warning: 38 92% 58%;
     --danger: 0 84% 67%;
-    --shadow-soft: 0 30px 90px rgba(2, 6, 23, 0.52);
-    --shadow-card: 0 16px 54px rgba(2, 6, 23, 0.4);
+    --shadow-soft: 0 30px 90px rgba(2, 20, 18, 0.55);
+    --shadow-card: 0 16px 48px rgba(2, 20, 18, 0.42);
+
+    --brand-teal: #7fd4c4;
+    --brand-teal-light: #4db8a6;
+    --brand-teal-lighter: #2d9b8a;
+    --brand-orange: #f4843a;
+    --brand-orange-light: #ff9a5c;
+    --brand-gold: #e0c35a;
+    --teal-60: #132a28;
+    --teal-80: #163530;
+    --teal-100: #1a443d;
+    --teal-150: #1f5249;
+    --teal-500: #3db8a0;
+    --orange-100: #3d2414;
   }
 
   * {
@@ -53,20 +94,128 @@
   }
 
   body {
-    font-family: var(--font-body), "Segoe UI", sans-serif;
+    font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 1rem;
     line-height: 1.625;
     background:
-      radial-gradient(circle at 8% -6%, rgba(37, 99, 235, 0.18), transparent 22%),
-      radial-gradient(circle at 90% 4%, rgba(6, 182, 212, 0.14), transparent 20%),
-      linear-gradient(180deg, hsl(var(--background-muted)) 0%, hsl(var(--background)) 32%, hsl(var(--background)) 100%);
+      radial-gradient(circle at 6% -4%, color-mix(in srgb, var(--brand-teal-light) 16%, transparent), transparent 24%),
+      radial-gradient(circle at 92% 2%, color-mix(in srgb, var(--brand-orange) 10%, transparent), transparent 22%),
+      linear-gradient(180deg, hsl(var(--background-muted)) 0%, hsl(var(--background)) 34%, hsl(var(--background)) 100%);
     color: hsl(var(--foreground));
     min-height: 100vh;
   }
 
   ::selection {
-    background: rgba(37, 99, 235, 0.18);
+    background: color-mix(in srgb, var(--brand-teal-light) 28%, transparent);
   }
+}
+
+/* Interactive polish — skip transform so Radix menus don’t slide from top-left */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  transition-property: color, background-color, border-color, text-decoration-color, fill,
+    stroke, opacity, box-shadow, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.18s;
+}
+
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+[data-radix-dropdown-menu-sub-content],
+[data-radix-popover-content],
+[data-radix-tooltip-content],
+[data-radix-menu-content],
+[role="listbox"],
+[role="menu"] {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Apple-style / soft elevation utilities */
+.apple-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.apple-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(15, 76, 69, 0.1), 0 4px 6px -2px rgba(15, 76, 69, 0.05);
+}
+
+/* Default scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--brand-teal) 22%, transparent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--brand-teal-light) 38%, transparent);
+}
+
+/* Branded scroll areas (modals / dense panels) */
+.brand-scroll,
+.user-details-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-teal-light) var(--teal-80);
+}
+
+.brand-scroll::-webkit-scrollbar,
+.user-details-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.brand-scroll::-webkit-scrollbar-track,
+.user-details-scroll::-webkit-scrollbar-track {
+  margin: 8px 0;
+  background: color-mix(in srgb, var(--teal-80) 85%, white);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.brand-scroll::-webkit-scrollbar-thumb,
+.user-details-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-teal-light) 0%, var(--brand-orange) 100%);
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--teal-80) 85%, white);
+}
+
+.brand-scroll::-webkit-scrollbar-thumb:hover,
+.user-details-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--brand-teal) 0%, var(--brand-orange-light) 100%);
+}
+
+/* CRM main shell scroll surfaces */
+.portal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--brand-teal-light) 70%, white)
+    color-mix(in srgb, var(--teal-80) 55%, transparent);
+}
+
+.portal-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.portal-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-teal-light) 85%, white) 0%,
+    color-mix(in srgb, var(--brand-orange) 65%, white) 100%
+  );
+  border-radius: 999px;
 }
 
 @layer components {
@@ -75,7 +224,6 @@
     flex-wrap: nowrap;
   }
 
-  /* Detail drawer: months stacked (only when stackMonths prop is set). */
   .attendance-range-picker--stacked .rdp-months {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -88,7 +236,6 @@
     max-width: 20rem;
   }
 
-  /* Detail drawer inline: May | June side-by-side, centered in wide panel. */
   .attendance-range-picker--inline .rdp-months {
     flex-direction: row;
     flex-wrap: nowrap;
@@ -107,8 +254,8 @@
   }
 
   .attendance-range-popover .rdp-root {
-    --rdp-accent-color: hsl(199 89% 48%);
-    --rdp-accent-background-color: hsl(199 89% 48% / 0.15);
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-accent-background-color: hsl(var(--primary) / 0.15);
   }
 
   .attendance-range-popover .rdp-month_caption {
@@ -125,15 +272,15 @@
   }
 
   .app-panel {
-    background: linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card-muted) / 0.92));
-    border: 1px solid hsl(var(--border) / 0.86);
+    background: linear-gradient(180deg, hsl(var(--card) / 0.97), hsl(var(--card-muted) / 0.94));
+    border: 1px solid hsl(var(--border) / 0.9);
     box-shadow: var(--shadow-card);
     @apply backdrop-blur-xl;
   }
 
   .app-panel-muted {
-    background-color: hsl(var(--card-muted) / 0.88);
-    border: 1px solid hsl(var(--border) / 0.85);
+    background-color: hsl(var(--card-muted) / 0.9);
+    border: 1px solid hsl(var(--border) / 0.88);
     @apply backdrop-blur-xl;
   }
 
@@ -151,15 +298,19 @@
   }
 
   .app-nav-link:hover {
-    background-color: hsl(var(--background-muted) / 0.84);
+    background-color: color-mix(in srgb, var(--teal-80) 55%, transparent);
     color: hsl(var(--foreground));
     transform: translateX(2px);
   }
 
   .app-nav-link-active {
-    background: linear-gradient(128deg, hsl(var(--primary) / 0.18), hsl(var(--accent) / 0.1));
+    background: linear-gradient(
+      128deg,
+      color-mix(in srgb, var(--brand-teal-light) 18%, transparent),
+      color-mix(in srgb, var(--brand-orange) 8%, transparent)
+    );
     color: hsl(var(--foreground));
-    border: 1px solid hsl(var(--primary) / 0.26);
+    border: 1px solid color-mix(in srgb, var(--brand-teal-light) 28%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
@@ -209,7 +360,7 @@
 
   .data-card {
     @apply rounded-2xl p-6 transition-shadow duration-300;
-    background-color: hsl(var(--card) / 0.92);
+    background-color: hsl(var(--card) / 0.94);
     border: 1px solid hsl(var(--border) / 0.9);
     box-shadow: var(--shadow-card), inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
   }
@@ -245,7 +396,13 @@
 
   /** Login/signup cards stay light — inputs must stay dark text on white (dark mode safe). */
   .auth-form-input {
-    @apply block w-full min-h-[2.75rem] rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-normal text-slate-900 caret-slate-900 shadow-sm transition duration-200 focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+    @apply block w-full min-h-[2.75rem] rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-normal text-slate-900 caret-slate-900 shadow-sm transition duration-200 focus:outline-none focus:ring-4;
+    border-color: color-mix(in srgb, var(--brand-teal) 18%, #cbd5e1);
+  }
+
+  .auth-form-input:focus {
+    border-color: var(--brand-teal-light);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-teal-light) 20%, transparent);
   }
 
   .auth-form-input::placeholder {
@@ -273,7 +430,6 @@
     color: hsl(var(--foreground));
   }
 
-  /** Compact controls for toolbars, tables, and dense filter rows */
   .form-input-compact {
     @apply block w-full rounded-lg border px-3.5 py-2.5 text-base leading-normal shadow-none transition focus:outline-none focus:ring-2;
     min-height: 2.75rem;
@@ -301,6 +457,39 @@
   .surface-reveal {
     animation: surface-reveal 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+
+  /* Optional stat grid (dashboards can opt-in without logic changes) */
+  .portal-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .portal-stat-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  .portal-stat-card {
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border) / 0.85);
+    background: linear-gradient(145deg, var(--teal-80) 0%, hsl(var(--card)) 55%, white 100%);
+    box-shadow: var(--shadow-card);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .dark .portal-stat-card {
+    background: linear-gradient(145deg, var(--teal-80) 0%, hsl(var(--card)) 60%, hsl(var(--card-muted)) 100%);
+  }
+
+  .portal-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+    border-color: color-mix(in srgb, var(--brand-teal-light) 35%, transparent);
+  }
 }
 
 /* Above invite modal (z-200) */
@@ -313,15 +502,14 @@
   line-height: 1.5 !important;
   border-width: 1px !important;
   border-color: hsl(var(--border) / 0.95) !important;
-  box-shadow: 0 18px 50px -12px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.08) !important;
+  box-shadow: 0 18px 50px -12px rgba(15, 76, 69, 0.18), 0 0 0 1px color-mix(in srgb, var(--brand-teal-light) 12%, transparent) !important;
 }
 
 .dark [data-sonner-toast] {
   border-color: hsl(var(--border) / 0.9) !important;
-  box-shadow: 0 22px 55px -18px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(56, 189, 248, 0.12) !important;
+  box-shadow: 0 22px 55px -18px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--brand-teal-light) 20%, transparent) !important;
 }
 
-/* Daily focus: slide in, hold, brief fade, then quick re-entry. */
 @keyframes daily-focus-text-cycle {
   0% {
     opacity: 0;
@@ -401,6 +589,22 @@
   .details-summary-none summary::-webkit-details-marker {
     display: none;
   }
+
+  .text-brand-teal {
+    color: var(--brand-teal);
+  }
+
+  .text-brand-orange {
+    color: var(--brand-orange);
+  }
+
+  .bg-brand-teal {
+    background-color: var(--brand-teal);
+  }
+
+  .bg-brand-orange {
+    background-color: var(--brand-orange);
+  }
 }
 
 /* Readable defaults for CRM tables inside main content */
@@ -420,7 +624,6 @@
   line-height: 1.55;
 }
 
-/* Auth and client portal: match app readability baseline */
 .auth-shell,
 .client-portal-shell {
   font-size: 1rem;
@@ -440,5 +643,14 @@
 
   .drawer-enter-left {
     animation: none;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    transition: none;
   }
 }

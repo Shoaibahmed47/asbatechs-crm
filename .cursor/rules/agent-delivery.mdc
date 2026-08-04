@@ -1,0 +1,21 @@
+---
+description: After code changes verify, commit, and push to main for delivery
+alwaysApply: true
+---
+
+# Delivery: verify → commit → push
+
+When completing **implementation** work for AsbaTechs CRM (features, fixes, UI, attendance):
+
+1. **Verify** what changed (prefer targeted checks over full monorepo):
+   - Download / middleware: `PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e:desktop`
+   - Unit: `npm --workspace apps/web test` (or a matching pattern)
+   - Web production build when risk is high: `npm run build` or `npm --workspace apps/web run build`
+2. **Commit** with a short message (why), HEREDOC preferred; exclude secrets and local noise.
+3. **Push** to the remote tracking branch (`git push origin HEAD`) so Vercel can deploy `main`.
+
+Do **not** force-push, do **not** skip hooks, do **not** amend commits already on remote.
+
+Skip commit/push only for pure Q&A, or if the user says not to publish.
+
+Desktop shell code changes still require GitHub Action **Desktop Release** for a new employee `.exe`.
