@@ -55,12 +55,12 @@ export function WorkspaceWelcomeBanner({ profile, role, variant = "main" }: Prop
   if (variant === "header") {
     return (
       <div className="min-w-0">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
           AsbaTechs CRM
         </p>
         <p className="mt-1 font-[var(--font-display)] text-xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl">
           Welcome to{" "}
-          <span className="text-sky-700 dark:text-sky-300">CRM workspace</span>
+          <span className="text-brand-700 dark:text-brand-300">CRM workspace</span>
         </p>
       </div>
     );
@@ -68,16 +68,16 @@ export function WorkspaceWelcomeBanner({ profile, role, variant = "main" }: Prop
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/95 via-white to-cyan-50/70 px-5 py-5 shadow-sm dark:border-sky-800/50 dark:from-sky-950/35 dark:via-slate-950 dark:to-cyan-950/20 sm:rounded-3xl sm:px-7 sm:py-6"
+      className="relative overflow-hidden rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/95 via-white to-brand-50/70 px-5 py-5 shadow-sm dark:border-brand-800/50 dark:from-brand-950/35 dark:via-slate-950 dark:to-brand-950/20 sm:rounded-3xl sm:px-7 sm:py-6"
       aria-label="Workspace welcome"
     >
       <div
-        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl dark:bg-sky-500/10"
+        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-400/15 blur-3xl dark:bg-brand-500/10"
         aria-hidden
       />
       <div className="relative flex items-start gap-4">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-200/80 bg-white text-sky-600 shadow-sm dark:border-sky-800/60 dark:bg-sky-950/50 dark:text-sky-300 sm:h-14 sm:w-14"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-200/80 bg-white text-brand-600 shadow-sm dark:border-brand-800/60 dark:bg-brand-950/50 dark:text-brand-300 sm:h-14 sm:w-14"
           aria-hidden
         >
           <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -87,7 +87,7 @@ export function WorkspaceWelcomeBanner({ profile, role, variant = "main" }: Prop
             className="font-[var(--font-display)] text-[1.875rem] font-semibold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-[2.75rem]"
           >
             {greeting},{" "}
-            <span className="text-sky-700 dark:text-sky-300">{firstName}</span>
+            <span className="text-brand-700 dark:text-brand-300">{firstName}</span>
           </h1>
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-600 dark:text-slate-300 sm:text-lg">
             {subtitleForRole(role)}
@@ -97,7 +97,7 @@ export function WorkspaceWelcomeBanner({ profile, role, variant = "main" }: Prop
               {roleLabel}
             </span>
             {department ? (
-              <span className="inline-flex items-center rounded-full border border-sky-200/80 bg-sky-50/95 px-3.5 py-1.5 text-sm font-semibold text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/50 dark:text-sky-200">
+              <span className="inline-flex items-center rounded-full border border-brand-200/80 bg-brand-50/95 px-3.5 py-1.5 text-sm font-semibold text-brand-800 dark:border-brand-800/60 dark:bg-brand-950/50 dark:text-brand-200">
                 {department}
               </span>
             ) : null}

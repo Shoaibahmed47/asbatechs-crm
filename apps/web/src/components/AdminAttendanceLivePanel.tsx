@@ -41,7 +41,7 @@ export function AdminAttendanceLivePanel({
     <section className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="glass-chip inline-flex text-sky-700 dark:text-sky-200">Team presence</div>
+          <div className="glass-chip inline-flex text-brand-700 dark:text-brand-200">Team presence</div>
           <h2 className="mt-3 font-[var(--font-display)] text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
             Live attendance - {date}
           </h2>

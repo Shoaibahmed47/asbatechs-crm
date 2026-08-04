@@ -73,7 +73,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
             <button
               type="button"
               onClick={closePreview}
-              className="fixed right-3 top-3 z-[202] inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/70 text-white shadow-lg ring-1 ring-black/40 transition hover:bg-black/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:right-5 sm:top-5"
+              className="fixed right-3 top-3 z-[202] inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/70 text-white shadow-lg ring-1 ring-black/40 transition hover:bg-black/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 sm:right-5 sm:top-5"
               aria-label="Close preview"
             >
               <X className="h-5 w-5" strokeWidth={2.25} />
@@ -137,7 +137,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
                     href={item.src}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm font-medium text-sky-300 hover:underline"
+                    className="text-sm font-medium text-brand-300 hover:underline"
                   >
                     Open file
                   </a>
@@ -224,7 +224,7 @@ export function WorkUpdateMediaPreview({ item }: { item: ResolvedMedia }) {
         <button
           type="button"
           onClick={openPreview}
-          className="mt-2 inline-block text-sm font-medium text-sky-300 hover:underline"
+          className="mt-2 inline-block text-sm font-medium text-brand-300 hover:underline"
         >
           Preview
         </button>

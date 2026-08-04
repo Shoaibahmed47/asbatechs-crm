@@ -54,14 +54,14 @@ export function toneForDisplayAgentState(state: AgentHealthState): string {
     return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300";
   }
   if (state === "installed" || state === "stale") {
-    return "bg-sky-500/15 text-sky-800 dark:text-sky-300";
+    return "bg-brand-500/15 text-brand-800 dark:text-brand-300";
   }
   return "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
 }
 
 export function employeeAgentBadgeClass(state: AgentHealthState): string {
   if (state === "running") return "bg-emerald-100 text-emerald-800";
-  if (state === "installed" || state === "stale") return "bg-sky-100 text-sky-800";
+  if (state === "installed" || state === "stale") return "bg-brand-100 text-brand-800";
   return "bg-slate-200 text-slate-700";
 }
 

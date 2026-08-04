@@ -391,7 +391,7 @@ export default async function DashboardPage({
       <section className="app-panel rounded-[24px] px-4 py-5 sm:rounded-[28px] sm:px-8 sm:py-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="glass-chip inline-flex text-sky-700 dark:text-sky-200">
+            <div className="glass-chip inline-flex text-brand-700 dark:text-brand-200">
               Executive overview
             </div>
             <p className="page-subtitle mt-4">
@@ -409,7 +409,7 @@ export default async function DashboardPage({
                 {totalUsers}
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
-                <div className="h-full w-3/5 rounded-full bg-sky-500/85" />
+                <div className="h-full w-3/5 rounded-full bg-brand-500/85" />
               </div>
             </div>
             <div className="app-panel-muted rounded-2xl px-4 py-3">
@@ -440,7 +440,7 @@ export default async function DashboardPage({
                 })}
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
-                <div className="h-full w-2/3 rounded-full bg-cyan-500/80" />
+                <div className="h-full w-2/3 rounded-full bg-brand-500/80" />
               </div>
             </div>
           </div>
@@ -454,7 +454,7 @@ export default async function DashboardPage({
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.75),transparent)] dark:bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_34%)]" />
               <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-300">
                     Attendance command center
                   </div>
                   <h2 className="mt-3 font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
@@ -475,20 +475,20 @@ export default async function DashboardPage({
                   <>
                     <Link
                       href={`/dashboard?date=${reportPrev}`}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                     >
                       Previous day
                     </Link>
                     <Link
                       href={`/dashboard?date=${reportNext}`}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                     >
                       Next day
                     </Link>
                     {reportDate !== today ? (
                       <Link
                         href="/dashboard"
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                       >
                         Today
                       </Link>
@@ -603,24 +603,18 @@ export default async function DashboardPage({
         </section>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="metric-card">
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Total leads
-          </div>
-          <div className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
-            {totalLeads}
-          </div>
+      <section className="portal-stat-grid xl:!grid-cols-4">
+        <div className="portal-stat-card portal-stat-card--mint p-5">
+          <div className="portal-stat-label portal-stat-label--teal">Total leads</div>
+          <div className="portal-stat-value portal-stat-value--teal text-3xl">{totalLeads}</div>
           <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
             Combined hot and sales pipeline records.
           </p>
         </div>
 
-        <div className="metric-card">
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Hot leads
-          </div>
-          <div className="mt-3 text-3xl font-semibold text-sky-600 dark:text-sky-400">
+        <div className="portal-stat-card portal-stat-card--teal p-5">
+          <div className="portal-stat-label portal-stat-label--teal">Hot leads</div>
+          <div className="portal-stat-value portal-stat-value--teal text-3xl">
             {Number(hotCount?.value ?? 0)}
           </div>
           <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
@@ -628,11 +622,9 @@ export default async function DashboardPage({
           </p>
         </div>
 
-        <div className="metric-card">
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Sales leads
-          </div>
-          <div className="mt-3 text-3xl font-semibold text-violet-600 dark:text-violet-400">
+        <div className="portal-stat-card portal-stat-card--orange p-5">
+          <div className="portal-stat-label portal-stat-label--orange">Sales leads</div>
+          <div className="portal-stat-value portal-stat-value--orange text-3xl">
             {Number(saleCount?.value ?? 0)}
           </div>
           <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
@@ -640,17 +632,13 @@ export default async function DashboardPage({
           </p>
         </div>
 
-        <div className="metric-card">
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Open shifts
-          </div>
+        <div className="portal-stat-card portal-stat-card--gold p-5">
+          <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
           {isAdminViewer ? (
             <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
           ) : (
             <>
-              <div className="mt-3 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
-                {activeToday}
-              </div>
+              <div className="portal-stat-value portal-stat-value--gold text-3xl">{activeToday}</div>
               <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
                 Employees currently clocked in and not yet clocked out.
               </p>

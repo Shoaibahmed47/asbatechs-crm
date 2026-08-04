@@ -507,10 +507,10 @@ export default function ClientWorkPage() {
     id == null ? "—" : projects.find((p) => p.id === id)?.name ?? `#${id}`;
   const authorBadgeClass = (authorType?: string) => {
     if (authorType === "client") {
-      return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+      return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
     }
     if (authorType === "employee") {
-      return "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300";
+      return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
     }
     if (authorType === "admin") {
       return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
@@ -664,13 +664,13 @@ export default function ClientWorkPage() {
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition",
               dragActive
-                ? "border-sky-500/70 bg-sky-100 text-sky-800 dark:bg-sky-500/10 dark:text-sky-100"
+                ? "border-brand-500/70 bg-brand-100 text-brand-800 dark:bg-brand-500/10 dark:text-brand-100"
                 : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-950/50 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-900/60"
             )}
           >
             <Upload className="h-8 w-8 opacity-70" strokeWidth={1.5} />
             <p className="text-sm">
-              Drop files here or <span className="font-medium text-sky-400">choose files</span>
+              Drop files here or <span className="font-medium text-brand-400">choose files</span>
             </p>
             <p className="text-base text-slate-600 dark:text-slate-500">
               Images, PDF, MP4, WebM, QuickTime · max {MAX_FILES} files · up to 100MB each
@@ -740,13 +740,13 @@ export default function ClientWorkPage() {
             {updates.map((u) => (
               <li
                 key={u.id}
-                className="group relative rounded-xl border border-slate-200 bg-white transition hover:border-sky-300 hover:bg-sky-50/40 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-sky-500/35 dark:hover:bg-slate-900/60"
+                className="group relative rounded-xl border border-slate-200 bg-white transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-brand-500/35 dark:hover:bg-slate-900/60"
               >
                 <Link
                   href={`/client/work/${u.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+                  className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
                   aria-label={`View full update: ${u.title}. Opens in a new tab.`}
                 />
                 <div className="relative z-10 flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">

@@ -23,7 +23,7 @@ export default async function DesktopDownloadPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-16">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
           AsbaTechs CRM
         </p>
         <h1 className="mt-2 font-[var(--font-display)] text-3xl font-semibold text-slate-950 dark:text-white">
@@ -43,7 +43,7 @@ export default async function DesktopDownloadPage() {
 
       <a
         href={installerUrl}
-        className="inline-flex w-fit items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-base font-semibold text-white hover:bg-sky-700"
+        className="inline-flex w-fit items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white hover:bg-brand-700"
       >
         Download AsbaTechs CRM for Windows
       </a>
@@ -51,7 +51,7 @@ export default async function DesktopDownloadPage() {
       <p className="text-xs text-slate-400 dark:text-slate-500" data-deploy-marker="desktop-dl-v4">
         Or open Releases if the button fails:{" "}
         <a
-          className="font-medium text-sky-600 hover:underline"
+          className="font-medium text-brand-600 hover:underline"
           href="https://github.com/Shoaibahmed47/asbatechs-crm/releases/latest"
           target="_blank"
           rel="noreferrer"
@@ -67,7 +67,7 @@ export default async function DesktopDownloadPage() {
       </p>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-sky-600 hover:underline">
+        <Link href="/login" className="font-medium text-brand-600 hover:underline">
           Back to staff login
         </Link>
       </p>

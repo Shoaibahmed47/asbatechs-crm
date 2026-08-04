@@ -230,7 +230,7 @@ export function AttendanceDateRangeCalendar({
 
   const pickerBody = (
     <>
-      <div className="rounded-xl border border-sky-200/80 bg-sky-50/90 px-3 py-2.5 dark:border-sky-800/60 dark:bg-sky-950/40">
+      <div className="rounded-xl border border-brand-200/80 bg-brand-50/90 px-3 py-2.5 dark:border-brand-800/60 dark:bg-brand-950/40">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pick date range</p>
         <p className="mt-1 text-base leading-relaxed text-slate-600 dark:text-slate-400">
           {autoApply ? "1. Click start day · 2. Click end day (auto apply)" : "1. Click start day · 2. Click end day · 3. Apply range"}
@@ -293,7 +293,7 @@ export function AttendanceDateRangeCalendar({
             active_view: toDate(activeDate) ? [toDate(activeDate)!] : []
           }}
           modifiersClassNames={{
-            active_view: "ring-2 ring-sky-500 ring-offset-1 dark:ring-sky-400"
+            active_view: "ring-2 ring-brand-500 ring-offset-1 dark:ring-brand-400"
           }}
           captionLayout="dropdown-years"
           fromYear={2023}

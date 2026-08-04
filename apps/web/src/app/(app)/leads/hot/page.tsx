@@ -373,7 +373,7 @@ export default function HotLeadsPage() {
           type="button"
           className={cn(
             "inline-flex items-center gap-1 uppercase",
-            active ? "text-sky-600 dark:text-sky-400" : ""
+            active ? "text-brand-600 dark:text-brand-400" : ""
           )}
           onClick={() => handleSort(column)}
         >

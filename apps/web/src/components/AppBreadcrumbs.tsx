@@ -61,8 +61,8 @@ export function AppBreadcrumbs() {
           href="/dashboard"
           className={
             isCompact
-              ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-sky-600 dark:hover:text-sky-400"
-              : "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:border-sky-300 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-sky-600 dark:hover:text-sky-400"
+              ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-600 dark:hover:text-brand-400"
+              : "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-600 dark:hover:text-brand-400"
           }
           aria-label="Executive dashboard"
         >
@@ -89,7 +89,7 @@ export function AppBreadcrumbs() {
                     {crumb.href && !isLast ? (
                       <Link
                         href={crumb.href}
-                        className="rounded-lg px-2.5 py-1.5 text-base font-medium text-slate-600 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-sky-950/50 dark:hover:text-sky-300"
+                        className="rounded-lg px-2.5 py-1.5 text-base font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-700 dark:text-slate-400 dark:hover:bg-brand-950/50 dark:hover:text-brand-300"
                       >
                         {crumb.label}
                       </Link>
@@ -99,7 +99,7 @@ export function AppBreadcrumbs() {
                           isLast
                             ? isCompact
                               ? "text-base font-semibold tracking-tight text-slate-900 dark:text-white"
-                              : "rounded-lg bg-gradient-to-r from-sky-600/12 to-cyan-600/10 px-3 py-1.5 text-base font-semibold tracking-tight text-slate-900 dark:from-sky-400/15 dark:to-cyan-400/10 dark:text-white"
+                              : "rounded-lg bg-gradient-to-r from-brand-600/12 to-brand-600/10 px-3 py-1.5 text-base font-semibold tracking-tight text-slate-900 dark:from-brand-400/15 dark:to-brand-400/10 dark:text-white"
                             : "px-2.5 py-1.5 text-base font-medium text-slate-500 dark:text-slate-400"
                         }
                         aria-current={isLast ? "page" : undefined}

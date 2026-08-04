@@ -123,10 +123,10 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
     id == null ? "General" : projects.find((p) => p.id === id)?.name ?? `Project #${id}`;
   const authorBadgeClass = (authorType?: string) => {
     if (authorType === "client") {
-      return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+      return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
     }
     if (authorType === "employee") {
-      return "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300";
+      return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
     }
     if (authorType === "admin") {
       return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
@@ -164,7 +164,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
                   className={cn(
                     "flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm transition",
                     selectedId === p.id
-                      ? "bg-sky-200 font-semibold text-slate-950 ring-1 ring-sky-400 dark:bg-sky-500/15 dark:text-sky-100 dark:ring-sky-500/40"
+                      ? "bg-brand-200 font-semibold text-slate-950 ring-1 ring-brand-400 dark:bg-brand-500/15 dark:text-brand-100 dark:ring-brand-500/40"
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white"
                   )}
                 >
@@ -176,7 +176,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
         )}
         <Link
           href="/client/projects"
-          className="mt-4 inline-flex text-sm font-medium text-slate-600 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-400"
+          className="mt-4 inline-flex text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
         >
           Manage all projects →
         </Link>
@@ -211,7 +211,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
         {showAdd && (
           <form
             onSubmit={addProject}
-            className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 ring-1 ring-sky-300/60 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-sky-500/20"
+            className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 ring-1 ring-brand-300/60 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-brand-500/20"
           >
             <div className="text-base font-medium text-slate-800 dark:text-slate-200">New project</div>
             {error ? (
@@ -283,7 +283,7 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
             ) : !loading && updates.length === 0 ? (
               <p className="px-2 py-8 text-center text-base text-slate-600 dark:text-slate-500">
                 No updates yet.{" "}
-                <Link href="/client/work" className="font-medium text-sky-400 hover:underline">
+                <Link href="/client/work" className="font-medium text-brand-400 hover:underline">
                   Add your first
                 </Link>
                 .
@@ -293,13 +293,13 @@ export function ClientDashboard({ clientName }: { clientName: string | null }) {
                 {updates.map((u) => (
                   <li
                     key={u.id}
-                    className="group relative rounded-xl border border-slate-300 bg-slate-50 transition hover:border-sky-300 hover:bg-sky-50/40 dark:border-slate-800/80 dark:bg-slate-950/40 dark:hover:border-sky-500/35 dark:hover:bg-slate-900/50"
+                    className="group relative rounded-xl border border-slate-300 bg-slate-50 transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-slate-800/80 dark:bg-slate-950/40 dark:hover:border-brand-500/35 dark:hover:bg-slate-900/50"
                   >
                     <Link
                       href={`/client/work/${u.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+                      className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
                       aria-label={`View full update: ${u.title}. Opens in a new tab.`}
                     />
                     <div className="pointer-events-none relative z-10 px-4 py-3">

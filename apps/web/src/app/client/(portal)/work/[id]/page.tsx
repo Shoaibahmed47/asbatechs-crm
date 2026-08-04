@@ -34,7 +34,7 @@ function LegacyLinkCard({ href, label }: { href: string; label: string }) {
   }
   return (
     <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50">
-      <a href={href} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-400 hover:underline">
+      <a href={href} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-400 hover:underline">
         {label}
       </a>
     </div>
@@ -104,11 +104,11 @@ export default async function ClientWorkUpdateDetailPage({
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Link href="/client" className="text-slate-600 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-400">
+        <Link href="/client" className="text-slate-600 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400">
           ← Dashboard
         </Link>
         <span className="text-slate-600">/</span>
-        <Link href="/client/work" className="text-slate-600 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-400">
+        <Link href="/client/work" className="text-slate-600 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400">
           Work updates
         </Link>
       </div>
@@ -154,7 +154,7 @@ export default async function ClientWorkUpdateDetailPage({
                   href={row.gitRepoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 block break-all text-sm font-medium text-sky-600 underline-offset-2 hover:underline dark:text-sky-400"
+                  className="mt-2 block break-all text-sm font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
                 >
                   {row.gitRepoUrl}
                 </a>

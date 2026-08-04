@@ -31,10 +31,10 @@ type UpdateRow = {
 
 function authorBadgeClass(authorType?: string) {
   if (authorType === "client") {
-    return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+    return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
   }
   if (authorType === "employee") {
-    return "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300";
+    return "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300";
   }
   if (authorType === "admin") {
     return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
@@ -481,13 +481,13 @@ export default function InternalWorkUpdatesPage() {
                   <div className="flex items-center gap-4">
                     <Link
                       href={`/work-updates/${u.id}`}
-                      className="text-sm font-medium text-sky-600 hover:underline"
+                      className="text-sm font-medium text-brand-600 hover:underline"
                     >
                       Open
                     </Link>
                     <button
                       type="button"
-                      className="text-sm font-medium text-sky-600 hover:underline"
+                      className="text-sm font-medium text-brand-600 hover:underline"
                       onClick={() => {
                         setEditingUpdateId(u.id);
                         setClientId(String(u.clientId));

@@ -234,7 +234,7 @@ function AllLeadsPageContent() {
           type="button"
           className={cn(
             "inline-flex items-center gap-1 uppercase",
-            active ? "text-sky-600 dark:text-sky-400" : ""
+            active ? "text-brand-600 dark:text-brand-400" : ""
           )}
           onClick={() => handleSort(column)}
         >
@@ -484,7 +484,7 @@ function AllLeadsPageContent() {
               className={cn(
                 "rounded-full border px-3 py-1.5 text-sm font-semibold transition",
                 typeFilter === tab.value
-                  ? "border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-300"
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-300"
                   : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               )}
             >
@@ -528,11 +528,11 @@ function AllLeadsPageContent() {
 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Link href="/leads/hot" className="text-sky-700 hover:underline dark:text-sky-300">
+            <Link href="/leads/hot" className="text-brand-700 hover:underline dark:text-brand-300">
               + Add hot lead
             </Link>
             <span className="text-slate-300">|</span>
-            <Link href="/leads/sales" className="text-sky-700 hover:underline dark:text-sky-300">
+            <Link href="/leads/sales" className="text-brand-700 hover:underline dark:text-brand-300">
               + Add sales lead
             </Link>
           </div>

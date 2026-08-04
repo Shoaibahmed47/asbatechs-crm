@@ -74,7 +74,7 @@ function EmployeeNameCell({
   userName: string;
 }) {
   return (
-    <span className="font-medium text-sky-700 dark:text-sky-300">{userName}</span>
+    <span className="font-medium text-brand-700 dark:text-brand-300">{userName}</span>
   );
 }
 
@@ -183,7 +183,7 @@ export function AttendanceReportTables({
                       href={queryWithAgentState(agentFilterQueryBase, state, filterBasePath)}
                       className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
                         isActive
-                          ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
+                          ? "border-brand-400 bg-brand-50 text-brand-800 dark:border-brand-600 dark:bg-brand-950/40 dark:text-brand-300"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                       }`}
                     >
@@ -250,7 +250,7 @@ export function AttendanceReportTables({
                       className={
                         attendanceExempt
                           ? "text-slate-600 dark:text-slate-400"
-                          : "cursor-pointer hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:bg-slate-800/40"
+                          : "cursor-pointer hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:bg-slate-800/40"
                       }
                     >
                       <td className="whitespace-nowrap px-2 py-2">

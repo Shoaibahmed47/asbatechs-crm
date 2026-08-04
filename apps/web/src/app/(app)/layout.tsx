@@ -77,7 +77,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 pb-6 text-base leading-relaxed sm:px-5 xl:px-6 2xl:px-8">
+        <main className="portal-scroll flex-1 px-4 pb-6 text-base leading-relaxed sm:px-5 xl:px-6 2xl:px-8">
           <div className="surface-reveal min-w-0">
             <AppBreadcrumbs />
             {children}

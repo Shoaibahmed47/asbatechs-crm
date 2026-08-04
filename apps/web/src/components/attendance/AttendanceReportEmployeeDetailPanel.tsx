@@ -118,7 +118,7 @@ function formatDayHeading(iso: string): string {
 
 function DetailStatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 shadow-sm transition hover:border-sky-200/80 dark:border-slate-700/80 dark:bg-slate-900/70 dark:hover:border-sky-800/50">
+    <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 shadow-sm transition hover:border-brand-200/80 dark:border-slate-700/80 dark:bg-slate-900/70 dark:hover:border-brand-800/50">
       <div className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
@@ -141,10 +141,10 @@ function SectionCard({
   return (
     <section className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/50">
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200/80 bg-sky-50 text-sky-700 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-200/80 bg-brand-50 text-brand-700 dark:border-brand-800/60 dark:bg-brand-950/40 dark:text-brand-300">
           <Icon className="h-4 w-4" aria-hidden />
         </span>
-        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
           {title}
         </h3>
       </div>
@@ -254,7 +254,7 @@ function buildAttendanceReportDocumentHtml(params: {
   const statusKey = detail.attendanceStatus;
   const statusLabel = isPeriodReport ? "Period report" : attendanceStatusLabel(statusKey);
   const statusColor = isPeriodReport
-    ? "#0f3d67"
+    ? "#0f4c45"
     : statusKey === "active"
       ? "#047857"
       : statusKey === "break"
@@ -304,7 +304,7 @@ function buildAttendanceReportDocumentHtml(params: {
                   Math.round(period!.totals.totalWorkMinutes / period!.daysWithAttendance)
                 )
               : "—",
-          accent: "#0f3d67"
+          accent: "#0f4c45"
         }
       ]
     : [
@@ -317,7 +317,7 @@ function buildAttendanceReportDocumentHtml(params: {
         {
           label: "Total Hours",
           value: detail.totalHours != null ? `${detail.totalHours} h` : "—",
-          accent: "#0f3d67"
+          accent: "#0f4c45"
         }
       ];
 
@@ -325,10 +325,10 @@ function buildAttendanceReportDocumentHtml(params: {
 
   const dailySection = isPeriodReport
     ? `
-  <p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f3d67;">Daily attendance — ${escapeHtml(formatAttendanceRangeLabel(period!.from, period!.to))}</p>
+  <p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f4c45;">Daily attendance — ${escapeHtml(formatAttendanceRangeLabel(period!.from, period!.to))}</p>
   <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:9.5pt;border:1px solid #e2e8f0;table-layout:fixed;">
     <thead>
-      <tr style="background-color:#0f3d67;color:#ffffff;">
+      <tr style="background-color:#0f4c45;color:#ffffff;">
         <th width="12%" align="left" style="${DOC_TH}">Date</th>
         <th width="14%" align="left" style="${DOC_TH}">Clock in</th>
         <th width="14%" align="left" style="${DOC_TH}">Clock out</th>
@@ -346,7 +346,7 @@ function buildAttendanceReportDocumentHtml(params: {
     <tbody>${dailyRowsHtml}</tbody>
   </table>`
     : `
-  <p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f3d67;">Daily Metrics — ${escapeHtml(activeDate)}</p>
+  <p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f4c45;">Daily Metrics — ${escapeHtml(activeDate)}</p>
   ${metricsTableHtml}
   <p style="margin-top:12px;font-size:13px;color:#334155;background:#f1f5f9;padding:10px 14px;border:1px solid #e2e8f0;"><strong>Reason:</strong> ${escapeHtml(detail.attendanceReason)}</p>${
     detail.lateMinutes > 0
@@ -367,7 +367,7 @@ function buildAttendanceReportDocumentHtml(params: {
   }`;
 
   const periodMetricsBlock = isPeriodReport
-    ? `<p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f3d67;">Period totals</p>
+    ? `<p style="margin:20px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0f4c45;">Period totals</p>
   ${metricsTableHtml}
   <p style="margin-top:8px;font-size:12px;color:#64748b;">${period!.daysWithAttendance} day(s) with attendance · ${period!.daysAbsent} absent · up to ${MAX_ATTENDANCE_PERIOD_DAYS} days per export</p>`
     : "";
@@ -395,7 +395,7 @@ function buildAttendanceReportDocumentHtml(params: {
   <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">
     <tr>
       <td style="padding:0;">
-        <table width="100%" cellpadding="10" cellspacing="0" style="background-color:#0f3d67;table-layout:fixed;">
+        <table width="100%" cellpadding="10" cellspacing="0" style="background-color:#0f4c45;table-layout:fixed;">
           <tr>
             <td width="44" valign="middle" style="padding-right:8px;">
               <img src="${escapeHtml(logoUrl)}" alt="AsbaTechs CRM" width="36" height="36" style="display:block;width:36px;height:36px;border:0;" />
@@ -427,10 +427,10 @@ function buildAttendanceReportDocumentHtml(params: {
         ${periodMetricsBlock}
         ${dailySection}
 
-        <p style="margin:16px 0 6px;font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#0f3d67;">Break Sessions (${breakSessions.length})</p>
+        <p style="margin:16px 0 6px;font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#0f4c45;">Break Sessions (${breakSessions.length})</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:9.5pt;border:1px solid #e2e8f0;table-layout:fixed;">
           <thead>
-            <tr style="background-color:#0f3d67;color:#ffffff;">
+            <tr style="background-color:#0f4c45;color:#ffffff;">
               <th width="11%" align="left" style="${DOC_TH}">Date</th>
               <th width="12%" align="left" style="${DOC_TH}">Start</th>
               <th width="12%" align="left" style="${DOC_TH}">End</th>
@@ -812,11 +812,11 @@ export function AttendanceReportEmployeeDetailPanel({
           />
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-1 gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-200/90 bg-sky-50 text-sky-700 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/50 dark:text-sky-300">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-200/90 bg-brand-50 text-brand-700 shadow-sm dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
                 <UserCircle className="h-6 w-6" aria-hidden />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">
                   Attendance detail
                 </p>
                 <h2
@@ -833,7 +833,7 @@ export function AttendanceReportEmployeeDetailPanel({
                     {formatDayHeading(activeDate)}
                   </span>
                   {isMultiDayRange ? (
-                    <span className="rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 font-medium text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-200">
+                    <span className="rounded-full border border-brand-200/80 bg-brand-50 px-2.5 py-1 font-medium text-brand-800 dark:border-brand-800/60 dark:bg-brand-950/40 dark:text-brand-200">
                       Breaks · {formatAttendanceRangeLabel(dateFrom, dateTo)}
                     </span>
                   ) : null}
@@ -844,7 +844,7 @@ export function AttendanceReportEmployeeDetailPanel({
               type="button"
               onClick={handleClose}
               aria-label="Close attendance detail"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white/90 text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white/90 text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -854,8 +854,8 @@ export function AttendanceReportEmployeeDetailPanel({
         <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
           {loading ? (
             <div className="flex min-h-[18rem] items-center justify-center">
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-sky-200/70 bg-sky-50/50 px-8 py-7 dark:border-sky-900/50 dark:bg-sky-950/25">
-                <Loader2 className="h-10 w-10 animate-spin text-sky-600 dark:text-sky-400" />
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-brand-200/70 bg-brand-50/50 px-8 py-7 dark:border-brand-900/50 dark:bg-brand-950/25">
+                <Loader2 className="h-10 w-10 animate-spin text-brand-600 dark:text-brand-400" />
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Loading attendance…
                 </p>
@@ -1060,12 +1060,12 @@ export function AttendanceReportEmployeeDetailPanel({
               {detail.hasLog || detail.absentWithoutClockIn ? (
                 <SectionCard icon={AlertCircle} title="Punctuality">
                   {detail.lateMinutes > 0 ? (
-                    <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 p-3 dark:border-sky-800/60 dark:bg-sky-950/20">
-                      <p className="text-sm font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+                    <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 p-3 dark:border-brand-800/60 dark:bg-brand-950/20">
+                      <p className="text-sm font-semibold uppercase tracking-wide text-brand-800 dark:text-brand-300">
                         Late arrival
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="inline-flex rounded-full bg-sky-500/15 px-3 py-1 text-sm font-semibold text-sky-900 dark:text-sky-200">
+                        <span className="inline-flex rounded-full bg-brand-500/15 px-3 py-1 text-sm font-semibold text-brand-900 dark:text-brand-200">
                           {formatAttendanceDurationReadable(detail.lateMinutes)} late
                         </span>
                         {detail.expectedCheckInLabel ? (
@@ -1223,8 +1223,8 @@ export function AttendanceReportEmployeeDetailPanel({
                           <tr
                             key={row.date}
                             className={cn(
-                              "cursor-pointer transition hover:bg-sky-50/60 dark:hover:bg-sky-950/20",
-                              row.date === activeDate && "bg-sky-50/80 dark:bg-sky-950/30",
+                              "cursor-pointer transition hover:bg-brand-50/60 dark:hover:bg-brand-950/20",
+                              row.date === activeDate && "bg-brand-50/80 dark:bg-brand-950/30",
                               !row.hasLog && "text-slate-400 italic"
                             )}
                             onClick={() => setActiveDate(row.date)}

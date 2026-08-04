@@ -211,7 +211,7 @@ export function EmployeeDirectoryPanel({
         className={cn(
           "inline-flex items-center gap-1 font-medium uppercase tracking-wide",
           active
-            ? "text-sky-600 dark:text-sky-400"
+            ? "text-brand-600 dark:text-brand-400"
             : "text-slate-500 dark:text-slate-400"
         )}
         onClick={() => handleSort(key)}
@@ -261,7 +261,7 @@ export function EmployeeDirectoryPanel({
       <div className="data-card overflow-hidden p-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 dark:border-slate-800/80 dark:from-slate-950/40 dark:to-slate-900/20 sm:px-5">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
               Directory filters
             </p>
             {hasActiveFilters ? (

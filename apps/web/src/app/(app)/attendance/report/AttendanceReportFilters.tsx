@@ -273,7 +273,7 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
                 type="checkbox"
                 checked={alertsOnly}
                 onChange={(e) => setAlertsOnly(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
               Alerts only
             </label>

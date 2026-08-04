@@ -30,10 +30,10 @@ function normalizedActorType(actorType: string): string {
 function authorBadgeClass(actorType: string) {
   const t = normalizedActorType(actorType);
   if (t === "client") {
-    return "bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200";
+    return "bg-brand-100 text-brand-800 dark:bg-brand-900/50 dark:text-brand-200";
   }
   if (t === "employee") {
-    return "bg-violet-100 text-violet-800 dark:bg-violet-900/45 dark:text-violet-200";
+    return "bg-brand-100 text-brand-800 dark:bg-brand-900/45 dark:text-brand-200";
   }
   if (t === "admin") {
     return "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100";

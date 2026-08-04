@@ -245,10 +245,10 @@ export function AttendanceEmployeeScheduleModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-dialog-title"
-        className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-sky-200/90 bg-white p-5 shadow-2xl dark:border-sky-800/80 dark:bg-slate-950"
+        className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-brand-200/90 bg-white p-5 shadow-2xl dark:border-brand-800/80 dark:bg-slate-950"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300">
             <Clock className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
@@ -279,7 +279,7 @@ export function AttendanceEmployeeScheduleModal({
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Active today
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-sky-800 dark:text-sky-300">
+                <p className="mt-1 text-lg font-semibold tabular-nums text-brand-800 dark:text-brand-300">
                   {schedule.isWorkingDayToday ? (
                     <>
                       {schedule.effectiveExpectedCheckInLabel}
@@ -312,7 +312,7 @@ export function AttendanceEmployeeScheduleModal({
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
                 weeklyScheduleEnabled
-                  ? "border-sky-300/80 bg-sky-50/80 dark:border-sky-700/70 dark:bg-sky-950/35"
+                  ? "border-brand-300/80 bg-brand-50/80 dark:border-brand-700/70 dark:bg-brand-950/35"
                   : "border-slate-200/90 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/40"
               }`}
             >
@@ -321,7 +321,7 @@ export function AttendanceEmployeeScheduleModal({
                 checked={weeklyScheduleEnabled}
                 onChange={(e) => handleWeeklyModeChange(e.target.checked)}
                 disabled={saving}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
               <span className="min-w-0">
                 <span className="text-base font-medium text-slate-900 dark:text-slate-100">
@@ -403,7 +403,7 @@ export function AttendanceEmployeeScheduleModal({
                                 })
                               )
                             }
-                            className="h-4 w-4 rounded border-slate-300 text-sky-600"
+                            className="h-4 w-4 rounded border-slate-300 text-brand-600"
                           />
                           On
                         </label>
@@ -459,7 +459,7 @@ export function AttendanceEmployeeScheduleModal({
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
                 useOfficeDefault
-                  ? "border-sky-300/80 bg-sky-50/80 dark:border-sky-700/70 dark:bg-sky-950/35"
+                  ? "border-brand-300/80 bg-brand-50/80 dark:border-brand-700/70 dark:bg-brand-950/35"
                   : "border-slate-200/90 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/40"
               }`}
             >
@@ -468,7 +468,7 @@ export function AttendanceEmployeeScheduleModal({
                 checked={useOfficeDefault}
                 onChange={(e) => handleOfficeDefaultChange(e.target.checked)}
                 disabled={saving}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
               <span className="min-w-0">
                 <span className="text-base font-medium text-slate-900 dark:text-slate-100">
@@ -485,7 +485,7 @@ export function AttendanceEmployeeScheduleModal({
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Office schedule
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-sky-800 dark:text-sky-300">
+                <p className="mt-1 text-lg font-semibold tabular-nums text-brand-800 dark:text-brand-300">
                   {officeCheckInLabel} → {officeShiftEndLabel}
                   {schedule?.shiftEndsNextDay ? (
                     <span className="text-base font-medium text-slate-500 dark:text-slate-400">
@@ -541,7 +541,7 @@ export function AttendanceEmployeeScheduleModal({
                   checked={applyImmediately}
                   onChange={(e) => setApplyImmediately(e.target.checked)}
                   disabled={saving}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
                 <span className="min-w-0">
                   <span className="text-base font-medium text-slate-900 dark:text-slate-100">

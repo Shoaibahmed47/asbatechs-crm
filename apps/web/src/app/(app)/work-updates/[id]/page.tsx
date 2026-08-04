@@ -64,7 +64,7 @@ export default async function InternalWorkUpdateDetail({
 
   return (
     <div className="space-y-6">
-      <Link href="/work-updates" className="text-sm text-slate-500 hover:text-sky-600">
+      <Link href="/work-updates" className="text-sm text-slate-500 hover:text-brand-600">
         ← Back to work updates
       </Link>
       <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
@@ -112,7 +112,7 @@ export default async function InternalWorkUpdateDetail({
                   href={row.gitRepoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 block break-all text-sm font-medium text-sky-600 underline-offset-2 hover:underline dark:text-sky-400"
+                  className="mt-2 block break-all text-sm font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
                 >
                   {row.gitRepoUrl}
                 </a>

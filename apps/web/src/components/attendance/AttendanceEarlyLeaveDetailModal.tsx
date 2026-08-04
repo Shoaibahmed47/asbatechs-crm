@@ -31,10 +31,10 @@ export function AttendanceEarlyLeaveDetailModal({ detail, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-lg rounded-2xl border border-sky-200/90 bg-white p-5 shadow-2xl dark:border-sky-800/80 dark:bg-slate-950"
+        className="relative z-10 w-full max-w-lg rounded-2xl border border-brand-200/90 bg-white p-5 shadow-2xl dark:border-brand-800/80 dark:bg-slate-950"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300">
             <Clock className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
@@ -62,7 +62,7 @@ export function AttendanceEarlyLeaveDetailModal({ detail, onClose }: Props) {
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-slate-500 dark:text-slate-400">Left early by</dt>
-            <dd className="font-semibold text-sky-800 dark:text-sky-300">
+            <dd className="font-semibold text-brand-800 dark:text-brand-300">
               {formatAttendanceDurationReadable(detail.earlyLeaveMinutes)}
             </dd>
           </div>

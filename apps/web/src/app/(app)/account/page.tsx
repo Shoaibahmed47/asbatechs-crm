@@ -38,7 +38,7 @@ export default async function AccountPage() {
   return (
     <div className="space-y-6">
       <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
-        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-300">
           Your profile
         </div>
         <h1 className="page-title mt-3">Account</h1>
@@ -94,7 +94,7 @@ export default async function AccountPage() {
         <div className="mt-8">
           <Link
             href="/dashboard"
-            className="text-sm font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+            className="text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
           >
             ← Back to dashboard
           </Link>

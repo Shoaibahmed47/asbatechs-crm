@@ -41,7 +41,7 @@ export default async function AdminClientsSettingsPage() {
   return (
     <div className="space-y-8">
       <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
-        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
+        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-300">
           Administration
         </div>
         <h1 className="page-title mt-3">Client portal</h1>

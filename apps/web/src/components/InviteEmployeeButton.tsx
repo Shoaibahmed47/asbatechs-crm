@@ -173,7 +173,7 @@ export function InviteEmployeeButton() {
             >
             <div className="flex items-start justify-between border-b border-slate-200/80 px-6 py-5 dark:border-slate-800">
               <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
                   Employee onboarding
                 </div>
                 <h2

@@ -155,11 +155,11 @@ export default function EmployeeInviteSignupPage() {
 
   return (
     <div className="app-shell flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_34%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,color-mix(in srgb, var(--brand-teal-light) 18%, transparent),transparent_34%)]" />
       <div className="relative grid w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.12)] md:grid-cols-[1.05fr_0.95fr]">
-        <aside className="hidden bg-[linear-gradient(160deg,#0f172a_0%,#0b1f3a_55%,#0f3d67_100%)] p-10 text-slate-50 md:flex md:flex-col md:justify-between">
+        <aside className="hidden bg-[linear-gradient(160deg,var(--brand-teal)_0%,#0a3d38_55%,var(--brand-teal-light)_100%)] p-10 text-slate-50 md:flex md:flex-col md:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.22em] text-sky-100">
+            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.22em] text-brand-100">
               Operations platform
             </div>
             <h2 className="mt-6 text-5xl font-semibold tracking-tight">AsbaTechs CRM</h2>
@@ -170,7 +170,7 @@ export default function EmployeeInviteSignupPage() {
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <div className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-100/90">
+              <div className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-100/90">
                 Built for teams
               </div>
               <p className="mt-3 text-base leading-relaxed text-slate-100">
@@ -187,7 +187,7 @@ export default function EmployeeInviteSignupPage() {
         <section className="p-7 sm:p-8">
           <div className="mb-8">
             <div className="mx-auto flex max-w-sm items-center gap-2 rounded-full bg-slate-100 p-1 text-sm font-semibold">
-              <span className="flex-1 rounded-full bg-white px-4 py-2 text-center text-sky-700 shadow-sm">
+              <span className="flex-1 rounded-full bg-white px-4 py-2 text-center text-brand-700 shadow-sm">
                 Employee Portal
               </span>
               <span className="flex-1 rounded-full px-4 py-2 text-center text-slate-500">Client Portal</span>

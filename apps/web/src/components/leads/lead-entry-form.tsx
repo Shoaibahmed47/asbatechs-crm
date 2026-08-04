@@ -128,7 +128,7 @@ export function LeadEntryForm({
         <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{description}</p>
       ) : null}
       {formHint ? (
-        <p className="mt-2 rounded-md border border-sky-200/80 bg-sky-50/80 px-2.5 py-2 text-sm text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-100">
+        <p className="mt-2 rounded-md border border-brand-200/80 bg-brand-50/80 px-2.5 py-2 text-sm text-brand-900 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-100">
           {formHint}
         </p>
       ) : null}

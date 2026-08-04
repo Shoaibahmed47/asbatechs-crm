@@ -521,16 +521,16 @@ export function AdminOverviewClient({
   const sectionVisible = (panel: PanelKey) => !activePanel || activePanel === panel;
 
   const cardClass =
-    "data-card px-4 py-3 text-left transition hover:border-sky-300 hover:bg-sky-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:border-sky-700 dark:hover:bg-sky-950/20";
+    "data-card px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:border-brand-700 dark:hover:bg-brand-950/20";
 
   const adminPanelSectionClass =
-    "rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/85 via-white to-cyan-50/35 p-5 shadow-sm dark:border-sky-800/55 dark:from-sky-950/30 dark:via-slate-950 dark:to-cyan-950/15 sm:p-6";
+    "rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/85 via-white to-brand-50/35 p-5 shadow-sm dark:border-brand-800/55 dark:from-brand-950/30 dark:via-slate-950 dark:to-brand-950/15 sm:p-6";
 
   const adminPanelLabelClass =
-    "mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300";
+    "mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300";
 
   const adminPanelLinkClass =
-    "inline-flex items-center rounded-xl border border-sky-200/90 bg-white/95 px-4 py-2.5 text-sm font-semibold text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 dark:border-sky-800/60 dark:bg-slate-900/85 dark:text-sky-200 dark:hover:border-sky-600 dark:hover:bg-sky-950/40";
+    "inline-flex items-center rounded-xl border border-brand-200/90 bg-white/95 px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 dark:border-brand-800/60 dark:bg-slate-900/85 dark:text-brand-200 dark:hover:border-brand-600 dark:hover:bg-brand-950/40";
 
   return (
     <div className="space-y-6">
@@ -610,7 +610,7 @@ export function AdminOverviewClient({
           </Button>
         </div>
         {activePanel ? (
-          <p className="mt-3 rounded-xl border border-sky-200/80 bg-sky-50/70 px-3 py-2 text-sm text-sky-900 dark:border-sky-800/50 dark:bg-sky-950/35 dark:text-sky-200">
+          <p className="mt-3 rounded-xl border border-brand-200/80 bg-brand-50/70 px-3 py-2 text-sm text-brand-900 dark:border-brand-800/50 dark:bg-brand-950/35 dark:text-brand-200">
             Focused on <span className="font-semibold">{panelLabels[activePanel]}</span> only.
             Other tables are hidden until you click <span className="font-semibold">Show all sections</span>{" "}
             or the same summary card again.
@@ -657,7 +657,7 @@ export function AdminOverviewClient({
             before late arrival is recorded.
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+            <label className="flex flex-col gap-2 rounded-xl border border-brand-100/90 bg-white/80 p-3 dark:border-brand-900/40 dark:bg-slate-900/50">
               <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Expected check-in
               </span>
@@ -672,7 +672,7 @@ export function AdminOverviewClient({
                 {formatOfficeTimeLabel(officeCheckInTime)}
               </span>
             </label>
-            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+            <label className="flex flex-col gap-2 rounded-xl border border-brand-100/90 bg-white/80 p-3 dark:border-brand-900/40 dark:bg-slate-900/50">
               <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Shift end
               </span>
@@ -690,7 +690,7 @@ export function AdminOverviewClient({
                   : ""}
               </span>
             </label>
-            <label className="flex flex-col gap-2 rounded-xl border border-sky-100/90 bg-white/80 p-3 dark:border-sky-900/40 dark:bg-slate-900/50">
+            <label className="flex flex-col gap-2 rounded-xl border border-brand-100/90 bg-white/80 p-3 dark:border-brand-900/40 dark:bg-slate-900/50">
               <span className="text-base font-medium text-slate-700 dark:text-slate-300">
                 Late grace (minutes)
               </span>
@@ -762,7 +762,7 @@ export function AdminOverviewClient({
                       onClick={() => setAgentStateFilter(state)}
                       className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
                         isActive
-                          ? "border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
+                          ? "border-brand-400 bg-brand-50 text-brand-800 dark:border-brand-600 dark:bg-brand-950/40 dark:text-brand-300"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                       }`}
                     >
@@ -865,7 +865,7 @@ export function AdminOverviewClient({
           <button
             key={item.label}
             type="button"
-            className={`${cardClass} ${isFocused ? "border-sky-400 bg-sky-50/60 ring-2 ring-sky-300/80 dark:border-sky-600 dark:bg-sky-950/30 dark:ring-sky-700/80" : ""}`}
+            className={`${cardClass} ${isFocused ? "border-brand-400 bg-brand-50/60 ring-2 ring-brand-300/80 dark:border-brand-600 dark:bg-brand-950/30 dark:ring-brand-700/80" : ""}`}
             onClick={() => focusPanel(item.panel)}
             aria-pressed={isFocused}
             title={isFocused ? "Click again to show all sections" : `Show only ${panelLabels[item.panel]}`}

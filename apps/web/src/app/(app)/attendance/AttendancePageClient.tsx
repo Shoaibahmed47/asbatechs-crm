@@ -169,17 +169,17 @@ function AttendanceTabCloseReturnedNotice({
     <div
       role="status"
       aria-live="polite"
-      className="flex gap-3 rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-sky-800/60 dark:from-sky-950/25 dark:via-slate-950 dark:to-slate-950"
+      className="flex gap-3 rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-brand-800/60 dark:from-brand-950/25 dark:via-slate-950 dark:to-slate-950"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/80 bg-white text-sky-600 dark:border-sky-800/70 dark:bg-sky-950/50 dark:text-sky-300">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-200/80 bg-white text-brand-600 dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
         <PanelTop className="h-5 w-5" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold leading-snug text-sky-800 dark:text-sky-200">
+          <span className="text-base font-semibold leading-snug text-brand-800 dark:text-brand-200">
             Attendance tab reopened
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200/80 bg-sky-50/90 px-3 py-1 text-base font-semibold leading-snug text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-200">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200/80 bg-brand-50/90 px-3 py-1 text-base font-semibold leading-snug text-brand-800 dark:border-brand-800/60 dark:bg-brand-950/40 dark:text-brand-200">
             <AlertCircle className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
             Shared with admin
           </span>
@@ -207,17 +207,17 @@ function AttendanceAwayNotice({
     <div
       role="status"
       aria-live="polite"
-      className="flex gap-3 rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-sky-800/60 dark:from-sky-950/25 dark:via-slate-950 dark:to-slate-950"
+      className="flex gap-3 rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-brand-800/60 dark:from-brand-950/25 dark:via-slate-950 dark:to-slate-950"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/80 bg-white text-sky-600 dark:border-sky-800/70 dark:bg-sky-950/50 dark:text-sky-300">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-200/80 bg-white text-brand-600 dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
         <Icon className="h-5 w-5" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold leading-snug text-sky-800 dark:text-sky-200">
+          <span className="text-base font-semibold leading-snug text-brand-800 dark:text-brand-200">
             {meta.label}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200/80 bg-sky-50/90 px-3 py-1 text-base font-semibold leading-snug text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-200">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200/80 bg-brand-50/90 px-3 py-1 text-base font-semibold leading-snug text-brand-800 dark:border-brand-800/60 dark:bg-brand-950/40 dark:text-brand-200">
             <AlertCircle className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
             Admin notified
           </span>
@@ -256,7 +256,7 @@ function AttendanceStatTile({
         {hint ? (
           <button
             type="button"
-            className="inline-flex shrink-0 rounded-full text-slate-400 transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 dark:text-slate-500 dark:hover:text-sky-400"
+            className="inline-flex shrink-0 rounded-full text-slate-400 transition hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:text-slate-500 dark:hover:text-brand-400"
             aria-label={`About ${label}`}
             aria-expanded={hintOpen}
             aria-controls={hintId}
@@ -1372,7 +1372,7 @@ export default function AttendancePageClient({
     return (
       <div className="space-y-5">
         <div>
-          <div className="glass-chip mb-3 inline-flex text-sky-700 dark:text-sky-200">
+          <div className="glass-chip mb-3 inline-flex text-brand-700 dark:text-brand-200">
             Time & attendance
           </div>
           <h1 className="page-title">Attendance</h1>
@@ -1388,7 +1388,7 @@ export default function AttendancePageClient({
   return (
     <div className="space-y-5">
       <div>
-        <div className="glass-chip mb-3 inline-flex text-sky-700 dark:text-sky-200">
+        <div className="glass-chip mb-3 inline-flex text-brand-700 dark:text-brand-200">
           Time & attendance
         </div>
         <h1 className="page-title">Attendance</h1>
@@ -1428,12 +1428,12 @@ export default function AttendancePageClient({
       ) : null}
 
       {isEmployeeViewer && lateExplanationTestMode ? (
-        <div className="flex gap-3 rounded-2xl border border-sky-200/90 bg-gradient-to-r from-sky-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-sky-800/60 dark:from-sky-950/25 dark:via-slate-950 dark:to-slate-950">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/80 bg-white text-sky-600 dark:border-sky-800/70 dark:bg-sky-950/50 dark:text-sky-300">
+        <div className="flex gap-3 rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-white to-white px-4 py-4 shadow-sm dark:border-brand-800/60 dark:from-brand-950/25 dark:via-slate-950 dark:to-slate-950">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-200/80 bg-white text-brand-600 dark:border-brand-800/70 dark:bg-brand-950/50 dark:text-brand-300">
             <Info className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0">
-            <p className="text-base font-semibold leading-snug text-sky-800 dark:text-sky-200">
+            <p className="text-base font-semibold leading-snug text-brand-800 dark:text-brand-200">
               Testing note — not a notification
             </p>
             <p className="mt-2 text-base leading-relaxed text-slate-700 dark:text-slate-300">
@@ -1565,7 +1565,7 @@ export default function AttendancePageClient({
         <div className="data-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300">
+              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-300">
                 Desktop app monitoring
               </div>
               <p className="text-base font-medium leading-relaxed text-slate-900 dark:text-slate-100">
@@ -1616,7 +1616,7 @@ export default function AttendancePageClient({
         <div className="data-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300">
+              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-300">
                 Background monitoring setup
               </div>
               <p className="text-base font-medium leading-relaxed text-slate-900 dark:text-slate-100">
@@ -1720,8 +1720,8 @@ export default function AttendancePageClient({
             </div>
           ) : null}
           {installCommand ? (
-            <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
-              <p className="text-sm font-semibold uppercase text-sky-700 dark:text-sky-300">
+            <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/80 p-3 dark:border-brand-900/50 dark:bg-brand-950/25">
+              <p className="text-sm font-semibold uppercase text-brand-700 dark:text-brand-300">
                 One-click install command
               </p>
               <p className="mt-1 text-base text-slate-700 dark:text-slate-300">
@@ -1753,7 +1753,7 @@ export default function AttendancePageClient({
       {isEmployeeViewer ? (
       <>
       {!isViewingToday && !canManageLiveShift ? (
-        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-300">
+        <p className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:border-brand-900/60 dark:bg-brand-950/35 dark:text-brand-300">
           Viewing {selectedDate}. Clock in, breaks, and live timers apply only to today — use
           Today or pick today in the calendar for active actions.
         </p>
@@ -1765,7 +1765,7 @@ export default function AttendancePageClient({
         </p>
       ) : null}
       {isMultiDayRange ? (
-        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-300">
+        <p className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:border-brand-900/60 dark:bg-brand-950/35 dark:text-brand-300">
           Summary below is for <strong>{selectedDate}</strong>. Breaks list shows all sessions
           from {dateFrom} to {dateTo}
           {rangeBreaksLoading ? " (loadingâ€¦)" : ""}.
@@ -1775,7 +1775,7 @@ export default function AttendancePageClient({
         <div className="data-card flex min-h-[22rem] flex-col p-4">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div className="space-y-1.5">
-              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300">
+              <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-300">
                 Live status
               </div>
               <div className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">

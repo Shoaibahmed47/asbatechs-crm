@@ -28,8 +28,8 @@ export type DashboardChartPayload = {
   monthlyNewLeads: { month: string; label: string; count: number }[];
 };
 
-const PIE_COLORS = ["#2563eb", "#0f766e"];
-const BAR_COLORS = ["#0f172a", "#1e293b", "#334155", "#0f172a", "#1e3a8a", "#0369a1"];
+const PIE_COLORS = ["#0f4c45", "#e86a17"];
+const BAR_COLORS = ["#0f4c45", "#1a7a6d", "#2d9b8a", "#e86a17", "#c9a227", "#2a8f7e"];
 
 /* Recharts can initialize at -1x-1 before ResizeObserver settles. */
 const CHART_AREA = {
@@ -251,9 +251,9 @@ export function DashboardCharts({
                     type="monotone"
                     dataKey="count"
                     name="New leads"
-                    stroke="#2563eb"
+                    stroke="#1a7a6d"
                     strokeWidth={3}
-                    dot={{ r: 3.5, fill: "#2563eb" }}
+                    dot={{ r: 3.5, fill: "#1a7a6d" }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>
@@ -278,7 +278,7 @@ export function DashboardCharts({
               </div>
 
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/75 dark:bg-slate-800/70">
-                <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-500" style={{ width: `${attendanceRate}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-500" style={{ width: `${attendanceRate}%` }} />
               </div>
 
               <div className="grid w-full gap-3 sm:grid-cols-2">
@@ -303,7 +303,7 @@ export function DashboardCharts({
             </div>
             <Link
               href="/attendance"
-              className="mx-auto inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-600"
+              className="mx-auto inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
             >
               Open my attendance
             </Link>

@@ -28,7 +28,7 @@ export default async function ClientPortalLayout({ children }: { children: React
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">
+            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-400">
               AsbaTechs
             </div>
             <p className="text-base font-semibold text-slate-900 dark:text-white">Client portal</p>
