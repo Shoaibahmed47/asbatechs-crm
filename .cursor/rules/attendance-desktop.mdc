@@ -1,0 +1,28 @@
+---
+description: Attendance desktop monitoring thresholds and deploy notes for agents
+alwaysApply: true
+---
+
+# Attendance + Desktop CRM (agent constraints)
+
+## Policies (source of truth in code)
+
+- `apps/web/src/lib/attendance-policy.ts`
+  - `ATTENDANCE_TAB_CLOSE_ENABLED = false` (browser tab-close compliance off)
+  - Laptop sleep detect (web note threshold): 6 minutes
+  - Cursor idle: disabled
+- `apps/desktop/src/shared/config.ts`
+  - Laptop sleep/lock **detect delay**: 2 minutes (requires new desktop installer for employees)
+
+## Product behavior
+
+- Sleep and Lock are the same unscheduled cause: `sleep`.
+- Official/manual Break open → do not open Sleep/Lock away on top.
+- Desktop window close while shift open hides to tray; monitoring continues (not tab-close).
+
+## Delivery
+
+- Web-only changes: push `main` → Vercel.
+- Electron shell / desktop monitor thresholds: rebuild via **Desktop Release** workflow; do not claim auto-update is complete unless `DESKTOP_UPDATE_URL` / GitHub provider is fully wired and verified.
+- Employee install page must keep a working CTA (middleware HTML fallback + GitHub Releases asset name with **dots**: `AsbaTechs.CRM.Setup.0.1.0.exe`).
+- When production “looks old”, compare the host under test (`*.vercel.app` vs custom domain) — stale custom DNS is a common cause.

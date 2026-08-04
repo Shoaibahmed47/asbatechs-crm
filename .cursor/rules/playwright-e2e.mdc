@@ -1,0 +1,33 @@
+---
+description: Playwright e2e conventions and when to run them for AsbaTechs CRM
+globs: e2e/**/*.{ts,js},playwright.config.ts
+alwaysApply: false
+---
+
+# Playwright e2e
+
+## Commands
+
+- `npm run test:e2e:install` — install Chromium browsers
+- `npm run test:e2e` — full e2e suite
+- `npm run test:e2e:desktop` — desktop download smoke only
+
+## Base URL
+
+Override with `PLAYWRIGHT_BASE_URL`. Prefer:
+
+1. Local during development: `http://localhost:3000`
+2. Current Vercel production when verifying deploy: `https://asbatechs-crm-web.vercel.app`
+
+Avoid assuming custom DNS hosts are on the latest commit unless Domains mapping is verified.
+
+## Spec rules
+
+- Prefer `getByRole` / `getByTestId` over fragile CSS.
+- Desktop download CTA: `data-testid="desktop-download-btn"`.
+- Do not assert on secrets or env-only content.
+- Skip gracefully if a route is 404 (not yet deployed) only for optional API routes; core download page should not show “Installer URL is not configured”.
+
+## After changes
+
+When editing `/download/desktop`, desktop installer URL helpers, middleware download HTML, or `/api/desktop/installer`, run `npm run test:e2e:desktop` against local and/or production base URL before merge.

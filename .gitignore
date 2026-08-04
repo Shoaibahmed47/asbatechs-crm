@@ -45,3 +45,10 @@ apps/desktop-agent/**/publish/
 
 # Local user uploads
 apps/web/public/uploads/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.playwright-mcp/
