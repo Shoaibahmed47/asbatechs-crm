@@ -1,3 +1,6 @@
+"use client";
+
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 type BrandMarkProps = {
@@ -11,7 +14,8 @@ type BrandMarkProps = {
  * AsbaTechs monogram — deep teal disc + teal→orange “AT” (matches CRM shell/theme).
  */
 export function BrandMark({ className, size = 40, title = "AsbaTechs" }: BrandMarkProps) {
-  const gradientId = "brand-at-grad";
+  const reactId = useId().replace(/:/g, "");
+  const gradientId = `brand-at-${reactId}`;
   return (
     <svg
       width={size}
@@ -32,14 +36,7 @@ export function BrandMark({ className, size = 40, title = "AsbaTechs" }: BrandMa
         </linearGradient>
       </defs>
       <circle cx="20" cy="20" r="20" fill="#0f4c45" />
-      <circle
-        cx="20"
-        cy="20"
-        r="19"
-        stroke="color-mix(in srgb, #2d9b8a 45%, transparent)"
-        strokeWidth="1"
-        fill="none"
-      />
+      <circle cx="20" cy="20" r="18.5" stroke="#1a7a6d" strokeOpacity="0.45" strokeWidth="1" fill="none" />
       <text
         x="20"
         y="21"
