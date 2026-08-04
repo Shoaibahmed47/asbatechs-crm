@@ -162,7 +162,12 @@ export async function POST(req: Request) {
       }
 
       if (!user.supabaseAuthId) {
-        await linkSupabaseAuthId(user.id, supabaseResult.authUserId);
+        try {
+          await linkSupabaseAuthId(user.id, supabaseResult.authUserId);
+        } catch (linkErr) {
+          // Session still valid via CRM JWT; linking is best-effort.
+          console.error("[auth/login] linkSupabaseAuthId failed", linkErr);
+        }
       }
     } else {
       const ok = await verifyPassword(password, user.passwordHash);
@@ -170,6 +175,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
       }
 
+      // Prefer linking Supabase Auth for invites/storage; never block CRM password login
+      // when service role / Auth is missing (that previously produced a bare 500 error).
       const linked = await ensureSupabaseIdentityForLogin(
         {
           id: user.id,
@@ -180,12 +187,9 @@ export async function POST(req: Request) {
       );
 
       if (!linked) {
-        return NextResponse.json(
-          {
-            error:
-              "This account exists in the CRM, but Supabase rejected the sign-in. Use Forgot password to finish the migration."
-          },
-          { status: 401 }
+        console.warn(
+          "[auth/login] Supabase identity not linked for user; continuing with CRM session",
+          { userId: user.id, email: user.email, supabaseReason: supabaseResult.reason }
         );
       }
     }

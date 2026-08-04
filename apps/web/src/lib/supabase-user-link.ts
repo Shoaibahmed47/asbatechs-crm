@@ -43,45 +43,55 @@ export async function linkSupabaseAuthId(userId: number, supabaseAuthId: string)
     .where(eq(schema.users.id, userId));
 }
 
+/**
+ * Best-effort Supabase Auth user create/link for CRM password login.
+ * Never throws — login must keep working when Supabase is misconfigured or down.
+ */
 export async function ensureSupabaseIdentityForLogin(user: CrmUser, password: string) {
-  const adminClient = createSupabaseAdminClient();
-  const publicClient = createSupabaseServerClient();
+  try {
+    const adminClient = createSupabaseAdminClient();
+    const publicClient = createSupabaseServerClient();
 
-  const { data: created, error: createError } = await adminClient.auth.admin.createUser({
-    email: user.email,
-    password,
-    email_confirm: true
-  });
+    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+      email: user.email,
+      password,
+      email_confirm: true
+    });
 
-  if (!createError && created.user?.id) {
-    await linkSupabaseAuthId(user.id, created.user.id);
+    if (!createError && created.user?.id) {
+      await linkSupabaseAuthId(user.id, created.user.id);
+      return {
+        authUserId: created.user.id,
+        source: "created" as const
+      };
+    }
+
+    if (createError && !isAlreadyRegisteredError(createError)) {
+      console.error("[supabase-user-link] admin createUser failed", createError);
+      return null;
+    }
+
+    const { data: signedIn, error: signInError } = await publicClient.auth.signInWithPassword({
+      email: user.email,
+      password
+    });
+
+    if (signInError || !signedIn.user?.id) {
+      return null;
+    }
+
+    if (!user.supabaseAuthId) {
+      await linkSupabaseAuthId(user.id, signedIn.user.id);
+    }
+
     return {
-      authUserId: created.user.id,
-      source: "created" as const
+      authUserId: signedIn.user.id,
+      source: "existing" as const
     };
-  }
-
-  if (createError && !isAlreadyRegisteredError(createError)) {
-    throw createError;
-  }
-
-  const { data: signedIn, error: signInError } = await publicClient.auth.signInWithPassword({
-    email: user.email,
-    password
-  });
-
-  if (signInError || !signedIn.user?.id) {
+  } catch (err) {
+    console.error("[supabase-user-link] ensureSupabaseIdentityForLogin failed", err);
     return null;
   }
-
-  if (!user.supabaseAuthId) {
-    await linkSupabaseAuthId(user.id, signedIn.user.id);
-  }
-
-  return {
-    authUserId: signedIn.user.id,
-    source: "existing" as const
-  };
 }
 
 export async function ensureSupabaseIdentityForRecovery(user: CrmUser) {

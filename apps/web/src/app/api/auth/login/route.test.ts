@@ -79,4 +79,32 @@ describe("auth login route", () => {
     expect(data.token).toBe("jwt-token");
     expect(res.headers.get("set-cookie")).toContain("crm_token=");
   });
+
+  it("still signs CRM users in when Supabase identity link fails", async () => {
+    const link = jest.requireMock("@/lib/supabase-user-link") as {
+      ensureSupabaseIdentityForLogin: jest.Mock;
+    };
+    link.ensureSupabaseIdentityForLogin.mockResolvedValueOnce(null);
+
+    auth.findUserByEmail.mockResolvedValueOnce({
+      id: 1,
+      name: "Admin",
+      email: "admin@crm.com",
+      role: "admin",
+      departmentId: null,
+      passwordHash: "hash"
+    });
+    auth.verifyPassword.mockResolvedValueOnce(true);
+    auth.signAuthToken.mockResolvedValueOnce("jwt-token-fallback");
+
+    const req = new Request("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@crm.com", password: "admin123" })
+    });
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.token).toBe("jwt-token-fallback");
+  });
 });
