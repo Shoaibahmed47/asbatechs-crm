@@ -40,7 +40,9 @@ test.describe("Dashboard UI (authenticated)", () => {
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 
-    await expect(page.getByText("AsbaTechs").first()).toBeVisible({ timeout: 20_000 });
+    const desktopSidebar = page.getByTestId("app-sidebar-rail");
+    await expect(desktopSidebar).toBeVisible({ timeout: 20_000 });
+    await expect(desktopSidebar.getByText("AsbaTechs CRM")).toBeVisible();
 
     const sidebarNav = page
       .getByTestId("app-sidebar-nav")
@@ -86,11 +88,37 @@ test.describe("Dashboard UI (authenticated)", () => {
     expect(layout.overflow).toBe(false);
     expect(layout.brandTeal.length).toBeGreaterThan(0);
 
+    await expect(desktopSidebar).toHaveAttribute("data-collapsed", "false");
+    await expect(desktopSidebar.getByText("Daily focus")).toBeVisible();
+
+    const collapseToggle = page.getByTestId("sidebar-collapse-toggle");
+    await expect(collapseToggle).toBeVisible();
+    await collapseToggle.click();
+    await expect(desktopSidebar).toHaveAttribute("data-collapsed", "true", {
+      timeout: 5_000
+    });
+    await expect
+      .poll(async () => {
+        const box = await desktopSidebar.boundingBox();
+        return box ? Math.round(box.width) : 0;
+      })
+      .toBeLessThanOrEqual(80);
+    await expect(desktopSidebar.getByText("Daily focus")).toHaveCount(0);
+    await expect(
+      desktopSidebar.getByRole("link", { name: /Executive Dashboard/i })
+    ).toBeVisible();
+
+    await collapseToggle.click();
+    await expect(desktopSidebar).toHaveAttribute("data-collapsed", "false", {
+      timeout: 5_000
+    });
+    await expect(desktopSidebar.getByText("Daily focus")).toBeVisible();
+
     // Tablet: fixed sidebar hidden; header mobile menu should remain
     await page.setViewportSize({ width: 1100, height: 800 });
     await page.waitForTimeout(250);
     const tablet = await page.evaluate(() => {
-      const aside = document.querySelector("aside");
+      const aside = document.querySelector('[data-testid="app-sidebar-rail"]');
       const display = aside ? getComputedStyle(aside).display : "none";
       return { sideDisplay: display };
     });

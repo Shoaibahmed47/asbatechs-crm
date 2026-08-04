@@ -19,6 +19,7 @@ import {
   isAdminRole,
   isManagerRole
 } from "@/lib/rbac";
+import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon?: LucideIcon };
 
@@ -64,13 +65,21 @@ export function filterNavItems(
   });
 }
 
-export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
+type AppSidebarNavProps = {
+  userRole?: string | null;
+  collapsed?: boolean;
+};
+
+export function AppSidebarNav({ userRole, collapsed = false }: AppSidebarNavProps) {
   const pathname = usePathname();
   const role = userRole ?? undefined;
 
   return (
     <nav
-      className="portal-scroll min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-3"
+      className={cn(
+        "portal-scroll min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain py-3",
+        collapsed ? "px-1.5" : "px-2.5"
+      )}
       aria-label="Main navigation"
       data-testid="app-sidebar-nav"
     >
@@ -80,8 +89,12 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
 
         return (
           <div key={section.label}>
-            <div className="app-section-label">{section.label}</div>
-            <div className="space-y-0.5">
+            {!collapsed ? (
+              <div className="app-section-label">{section.label}</div>
+            ) : (
+              <div className="sr-only">{section.label}</div>
+            )}
+            <div className={cn("space-y-0.5", collapsed && "flex flex-col items-center")}>
               {items.map((item) => {
                 const active =
                   pathname === item.href ||
@@ -93,14 +106,24 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`app-nav-link ${active ? "app-nav-link-active" : ""}`}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={cn(
+                      "app-nav-link",
+                      active && "app-nav-link-active",
+                      collapsed && "!justify-center !gap-0 !px-0 h-10 w-10 !rounded-xl mx-auto"
+                    )}
                   >
                     {item.icon ? (
-                      <item.icon className="h-[18px] w-[18px] shrink-0 opacity-90" aria-hidden strokeWidth={1.75} />
+                      <item.icon
+                        className="h-[18px] w-[18px] shrink-0 opacity-90"
+                        aria-hidden
+                        strokeWidth={1.75}
+                      />
                     ) : (
                       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
                     )}
-                    <span className="truncate">{item.label}</span>
+                    {!collapsed ? <span className="truncate">{item.label}</span> : null}
                   </Link>
                 );
               })}
