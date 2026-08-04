@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "@/components/BrandMark";
 
 const MENU_WIDTH_PX = 272;
 
@@ -236,31 +236,27 @@ export function AppHeaderUser() {
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white/85 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/85">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--brand-teal-light)_22%,transparent)] bg-white/90 px-2 py-1.5 shadow-sm dark:border-[color-mix(in_srgb,var(--brand-teal)_35%,transparent)] dark:bg-slate-900/85">
           <button
             ref={triggerRef}
             type="button"
             className={cn(
               "flex items-center gap-2 rounded-xl px-2 py-1 text-left transition",
-              "hover:bg-slate-100/80 dark:hover:bg-slate-800/80",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-slate-500/50 dark:focus-visible:ring-offset-slate-900"
+              "hover:bg-[color-mix(in_srgb,var(--teal-60)_70%,transparent)] dark:hover:bg-slate-800/80",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--brand-teal-light)_40%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
             )}
             aria-label={me ? "Open account menu" : "Account menu"}
             aria-expanded={accountOpen}
             aria-haspopup="menu"
             onClick={() => setAccountOpen((o) => !o)}
           >
-            <Image
-              src="/brand-icon.png"
-              alt=""
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200/80 dark:ring-slate-600"
-              aria-hidden
+            <BrandMark
+              size={40}
+              className="h-10 w-10 rounded-full shadow-sm ring-1 ring-[color-mix(in_srgb,var(--brand-teal-light)_28%,transparent)]"
             />
             <ChevronDown
               className={cn(
-                "h-4 w-4 shrink-0 text-slate-500 transition-transform dark:text-slate-400",
+                "h-4 w-4 shrink-0 text-[var(--brand-teal-light)] transition-transform dark:text-[var(--brand-teal)]",
                 accountOpen && "rotate-180"
               )}
               aria-hidden
