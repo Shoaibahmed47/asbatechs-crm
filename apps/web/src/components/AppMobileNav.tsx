@@ -76,19 +76,22 @@ export function AppMobileNav({ userRole }: AppMobileNavProps) {
             onClick={() => setIsOpen(false)}
           />
 
-          <aside className="app-panel drawer-enter-left absolute inset-y-0 left-0 z-10 flex h-full w-[92vw] max-w-[380px] flex-col overflow-hidden border-r border-slate-200 p-4 shadow-2xl dark:border-slate-800">
-            <div className="mb-4 flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-600 dark:text-brand-300">
-                  AsbaTechs
-                </div>
-                <div className="mt-2 font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white">
-                  CRM Workspace
+          <aside className="apple-sidebar drawer-enter-left absolute inset-y-0 left-0 z-10 flex h-full w-[min(92vw,300px)] flex-col overflow-hidden shadow-2xl">
+            <div className="mb-0 flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.04] px-4 py-3.5 dark:border-white/[0.06]">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-teal)] text-xs font-extrabold tracking-tight text-white">
+                  AT
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold text-slate-950 dark:text-white">
+                    AsbaTechs CRM
+                  </div>
+                  <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">Workspace</div>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-black/[0.04] hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
                 onClick={() => setIsOpen(false)}
                 aria-label="Close navigation menu"
               >

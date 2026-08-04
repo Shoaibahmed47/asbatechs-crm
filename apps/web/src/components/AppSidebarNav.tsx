@@ -70,7 +70,7 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
 
   return (
     <nav
-      className="portal-scroll mt-3 min-h-0 flex-1 space-y-3.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-0.5"
+      className="portal-scroll min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-3"
       aria-label="Main navigation"
       data-testid="app-sidebar-nav"
     >
@@ -96,9 +96,9 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
                     className={`app-nav-link ${active ? "app-nav-link-active" : ""}`}
                   >
                     {item.icon ? (
-                      <item.icon className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
+                      <item.icon className="h-[18px] w-[18px] shrink-0 opacity-90" aria-hidden strokeWidth={1.75} />
                     ) : (
-                      <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
                     )}
                     <span className="truncate">{item.label}</span>
                   </Link>
