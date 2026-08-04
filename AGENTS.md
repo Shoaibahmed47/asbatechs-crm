@@ -24,16 +24,22 @@ Monorepo: `apps/web`, `apps/desktop`, `packages/*`. pnpm-style workspaces via ro
 
 ### After every meaningful code change (default delivery pipeline)
 
-When the user asked for a feature/fix/UI work (not pure Q&A), finish with:
+**Order is mandatory:** Playwright (or unit) → build → commit → push.
 
-1. **Verify** — run the smallest relevant checks:
-   - Web UI / middleware / download: `PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e:desktop` and/or `npm --workspace apps/web test`
-   - If `npm run build` is feasible and unrelated noise is low, run `npm run build` (or workspace web build)
-2. **Commit** — stage only intended files; skip secrets and noise (`next-env.d.ts` unless required)
-3. **Push** — `git push origin HEAD` (or current branch) so Vercel / CI can pick up `main`
+When the user asked for a feature/fix/UI/API work (not pure Q&A), finish with:
+
+1. **Playwright / tests**
+   - Default: `npm run test:e2e` (public pages + API health + desktop download)
+   - Targeted: `npm run test:e2e:api` and/or `npm run test:e2e:desktop`
+   - Local: `PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e`
+   - Prefer production verify host: `https://asbatechs-crm-web.vercel.app` (stale custom domains can 404 newer routes)
+   - Server logic: also `npm --workspace apps/web test` when relevant
+2. **Build** — `npm run build` or `npm --workspace apps/web run build` (must pass for web changes)
+3. **Commit** — stage only intended files; skip secrets and noise (`next-env.d.ts`, `test-results/`)
+4. **Push** — `git push origin HEAD` so Vercel / CI can pick up `main`
 
 If the user only asked a question or said “do not commit/push”, skip that step.
-If hooks fail, fix and create a **new** commit (do not amend pushed commits).
+If Playwright, build, or hooks fail: fix, re-run, then create a **new** commit (do not amend pushed commits).
 
 Exception: desktop native package changes still need **Desktop Release** Action for the `.exe`; web push alone does not update employee installers.
 
@@ -58,14 +64,18 @@ Exception: desktop native package changes still need **Desktop Release** Action 
 
 ```bash
 npm run test:e2e:install          # chromium once
-PLAYWRIGHT_BASE_URL=https://asbatechs-crm-web.vercel.app npm run test:e2e:desktop
+npm run test:e2e                  # full suite (API health + desktop download + login shell)
+npm run test:e2e:api              # public API smoke only
+npm run test:e2e:desktop          # desktop installer page + redirect
+PLAYWRIGHT_BASE_URL=https://asbatechs-crm-web.vercel.app npm run test:e2e
 # or local:
-PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e:desktop
+PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
 ```
 
-- Config: `playwright.config.ts`, specs in `e2e/`.
+- Config: `playwright.config.ts`, specs in `e2e/` (`api-health.spec.ts`, `desktop-download.spec.ts`).
 - Default `PLAYWRIGHT_BASE_URL` should target a host that has the **latest** deploy (Vercel production or local), not a stale custom domain.
-- After user-facing web changes to download/attendance public pages, run desktop e2e smoke before considering done.
+- Production APIs should return JSON (not HTML error pages). Protected routes without auth → `401` JSON. Public policy/auth/me → `200` JSON.
+- After user-facing web or API changes, run full `test:e2e` **before** build/push.
 - Unit tests: `npm --workspace apps/web test` (Jest). Middleware download case lives in `apps/web/src/middleware.test.ts`.
 
 ## GitHub Actions

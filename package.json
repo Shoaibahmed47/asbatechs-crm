@@ -30,6 +30,7 @@
         "db:clear": "npm --workspace packages/database run db:reset",
         "db:supabase:seed-push": "npm run db:push && npm run db:seed",
         "test:e2e": "playwright test",
+        "test:e2e:api": "playwright test e2e/api-health.spec.ts",
         "test:e2e:desktop": "playwright test e2e/desktop-download.spec.ts",
         "test:e2e:install": "playwright install chromium"
     },

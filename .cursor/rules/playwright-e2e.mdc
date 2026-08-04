@@ -9,7 +9,8 @@ alwaysApply: false
 ## Commands
 
 - `npm run test:e2e:install` — install Chromium browsers
-- `npm run test:e2e` — full e2e suite
+- `npm run test:e2e` — full e2e suite (API health + desktop download + login page)
+- `npm run test:e2e:api` — public API smoke only
 - `npm run test:e2e:desktop` — desktop download smoke only
 
 ## Base URL
@@ -19,15 +20,16 @@ Override with `PLAYWRIGHT_BASE_URL`. Prefer:
 1. Local during development: `http://localhost:3000`
 2. Current Vercel production when verifying deploy: `https://asbatechs-crm-web.vercel.app`
 
-Avoid assuming custom DNS hosts are on the latest commit unless Domains mapping is verified.
+Avoid assuming custom DNS hosts are on the latest commit unless Domains mapping is verified. Stale hosts often 404 `/api/desktop/installer` and serve older attendance policy JSON.
 
 ## Spec rules
 
 - Prefer `getByRole` / `getByTestId` over fragile CSS.
 - Desktop download CTA: `data-testid="desktop-download-btn"`.
 - Do not assert on secrets or env-only content.
-- Skip gracefully if a route is 404 (not yet deployed) only for optional API routes; core download page should not show “Installer URL is not configured”.
+- API specs: assert status + `Content-Type: application/json` where expected; never accept 5xx for happy-path public APIs.
+- Skip gracefully if installer API is 404 **only** on known-stale hosts; core download page on production should not show “Installer URL is not configured”.
 
-## After changes
+## Delivery order (with agent-delivery)
 
-When editing `/download/desktop`, desktop installer URL helpers, middleware download HTML, or `/api/desktop/installer`, run `npm run test:e2e:desktop` against local and/or production base URL before merge.
+After web/API changes: **Playwright → build → commit → push**. See `.cursor/rules/agent-delivery.mdc`.
