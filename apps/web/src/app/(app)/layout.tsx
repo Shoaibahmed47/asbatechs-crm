@@ -27,23 +27,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <BodyPointerEventsGuard />
       </Suspense>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--brand-teal-light)_14%,transparent),transparent_28%),radial-gradient(circle_at_right,color-mix(in_srgb,var(--brand-orange)_10%,transparent),transparent_24%)]" />
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[280px] p-4 xl:block 2xl:w-[304px] 2xl:p-5">
-        <div className="app-panel surface-reveal flex h-full min-h-0 flex-col overflow-hidden rounded-[30px] px-4 py-5 2xl:px-5 2xl:py-6">
-          <div className="shrink-0 border-b border-slate-200/70 pb-5 dark:border-slate-800/80 2xl:pb-6">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[280px] p-3.5 xl:block 2xl:w-[304px] 2xl:p-5">
+        <div className="app-panel surface-reveal flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] px-3.5 py-4 2xl:rounded-[30px] 2xl:px-5 2xl:py-6">
+          <div className="shrink-0 border-b border-[color-mix(in_srgb,var(--brand-teal-light)_18%,transparent)] pb-4 dark:border-slate-800/80 2xl:pb-6">
             <div className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--brand-teal-light)] dark:text-[var(--brand-teal)]">
               AsbaTechs
             </div>
-            <div className="mt-3 font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white">
+            <div className="mt-2 font-[var(--font-display)] text-xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-white 2xl:text-2xl">
               CRM Workspace
             </div>
-            <p className="mt-2 text-base leading-relaxed text-slate-500 dark:text-slate-400">
-              Operational oversight for leads, attendance, and internal team management.
+            <p className="mt-1.5 text-sm leading-snug text-slate-500 dark:text-slate-400 2xl:text-base 2xl:leading-relaxed">
+              Leads, attendance, and team ops in one place.
             </p>
           </div>
 
           <AppSidebarNav userRole={session?.role} />
 
-          <div className="mt-4 shrink-0 border-t border-slate-200/60 pt-4 dark:border-slate-800/80">
+          <div className="mt-3 shrink-0 border-t border-[color-mix(in_srgb,var(--brand-teal-light)_14%,transparent)] pt-3 dark:border-slate-800/80 2xl:mt-4 2xl:pt-4">
             <DailyFocusCard />
           </div>
         </div>
@@ -53,7 +53,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-10 px-4 pb-3 pt-4 sm:px-5 xl:px-6 2xl:px-8">
           <div className="app-panel surface-reveal flex flex-col gap-4 rounded-[24px] px-4 py-5 sm:flex-row sm:items-start sm:justify-between 2xl:px-6 2xl:py-6">
             <div className="min-w-0 flex-1">
-              <div className="mb-4 lg:hidden">
+              <div className="mb-4 xl:hidden">
                 <AppMobileNav userRole={session?.role} />
               </div>
               {welcomeProfile && session ? (

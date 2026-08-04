@@ -603,7 +603,7 @@ export default async function DashboardPage({
         </section>
       ) : null}
 
-      <section className="portal-stat-grid xl:!grid-cols-4">
+      <section className="portal-stat-grid" data-testid="dashboard-stat-cards">
         <div className="portal-stat-card portal-stat-card--mint p-5">
           <div className="portal-stat-label portal-stat-label--teal">Total leads</div>
           <div className="portal-stat-value portal-stat-value--teal text-3xl">{totalLeads}</div>

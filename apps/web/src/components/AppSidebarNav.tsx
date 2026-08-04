@@ -70,8 +70,9 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
 
   return (
     <nav
-      className="mt-5 min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto overscroll-contain pr-0.5 2xl:mt-6"
+      className="portal-scroll mt-4 min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 2xl:mt-5 2xl:space-y-6"
       aria-label="Main navigation"
+      data-testid="app-sidebar-nav"
     >
       {navSections.map((section) => {
         const items = filterNavItems(section.items, role);
