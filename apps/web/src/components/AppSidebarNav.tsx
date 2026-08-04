@@ -70,7 +70,7 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
 
   return (
     <nav
-      className="portal-scroll mt-4 min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 2xl:mt-5 2xl:space-y-6"
+      className="portal-scroll mt-3 min-h-0 flex-1 space-y-3.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-0.5"
       aria-label="Main navigation"
       data-testid="app-sidebar-nav"
     >
@@ -81,7 +81,7 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
         return (
           <div key={section.label}>
             <div className="app-section-label">{section.label}</div>
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {items.map((item) => {
                 const active =
                   pathname === item.href ||
@@ -96,11 +96,11 @@ export function AppSidebarNav({ userRole }: { userRole?: string | null }) {
                     className={`app-nav-link ${active ? "app-nav-link-active" : ""}`}
                   >
                     {item.icon ? (
-                      <item.icon className="h-5 w-5 shrink-0 opacity-85" aria-hidden />
+                      <item.icon className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
                     ) : (
-                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-60" />
+                      <span className="h-2 w-2 rounded-full bg-current opacity-60" />
                     )}
-                    <span>{item.label}</span>
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 );
               })}

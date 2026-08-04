@@ -158,19 +158,22 @@ export function AttendanceReportTables({
   return (
     <>
       {showAgentHealth && agentHealth ? (
-        <section className="data-card overflow-hidden p-0">
-          <div className="border-b border-slate-600/90 bg-slate-100/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/85">
-            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Desktop agent
+        <section className="data-card overflow-hidden !p-0">
+          <div className="border-b border-[color-mix(in_srgb,var(--brand-teal-light)_18%,transparent)] bg-[color-mix(in_srgb,var(--teal-60)_75%,white)] px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85 sm:px-4 sm:py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                  Desktop agent
+                </div>
+                <h2 className="mt-0.5 text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
+                  Agent health
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                  Install/running status + live attendance. Double-click a row for details.
+                </p>
+              </div>
             </div>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
-              Agent health (all employees)
-            </h2>
-            <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-              Shows whether the desktop agent is installed or running, plus live attendance status.
-              Click any employee row for full attendance reasons.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {(["all", ...AGENT_HEALTH_FILTER_OPTIONS] as const).map((state) => {
                   const isActive = agentStateFilter === state;
                   const count =
@@ -181,7 +184,7 @@ export function AttendanceReportTables({
                     <Link
                       key={state}
                       href={queryWithAgentState(agentFilterQueryBase, state, filterBasePath)}
-                      className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
+                      className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition ${
                         isActive
                           ? "border-brand-400 bg-brand-50 text-brand-800 dark:border-brand-600 dark:bg-brand-950/40 dark:text-brand-300"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -194,32 +197,32 @@ export function AttendanceReportTables({
               )}
             </div>
           </div>
-          <div className="max-h-[min(72vh,40rem)] overflow-auto">
-            <table className="w-full min-w-[48rem] text-left text-sm">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
+          <div className="crm-table-shell">
+            <table className="crm-table min-w-[48rem] text-left">
+              <thead>
                 <tr>
-                  <th className="px-2 py-2">Name</th>
-                  <th className="px-2 py-2">Email</th>
-                  <th className="px-2 py-2">Department</th>
-                  <th className="px-2 py-2">Schedule</th>
-                  <th className="px-2 py-2">Agent state</th>
-                  <th className="px-2 py-2">Last seen</th>
-                  <th className="px-2 py-2">Shift</th>
-                  <th className="px-2 py-2">Attendance</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Dept</th>
+                  <th>Schedule</th>
+                  <th>Agent</th>
+                  <th>Last seen</th>
+                  <th>Shift</th>
+                  <th>Status</th>
                   <th
-                    className="px-2 py-2 text-right"
+                    className="text-right"
                     title="Sleep minutes count only when laptop lock/sleep is detected during an open shift."
                   >
                     Sleep
                   </th>
-                  <th className="px-2 py-2">Reason</th>
-                  <th className="px-2 py-2 text-right">Actions</th>
+                  <th>Reason</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {agentHealth.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                       No matching employees for current agent filters.
                     </td>
                   </tr>
@@ -250,25 +253,25 @@ export function AttendanceReportTables({
                       className={
                         attendanceExempt
                           ? "text-slate-600 dark:text-slate-400"
-                          : "cursor-pointer hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:bg-slate-800/40"
+                          : "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
                       }
                     >
-                      <td className="whitespace-nowrap px-2 py-2">
+                      <td className="whitespace-nowrap">
                         <EmployeeNameCell userName={row.userName} />
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-600 dark:text-slate-400">
+                      <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">
                         {row.userEmail}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-600 dark:text-slate-400">
+                      <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">
                         {row.departmentName ?? "-"}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2">
+                      <td className="whitespace-nowrap">
                         {attendanceExempt ? (
                           "—"
                         ) : (
                           <button
                             type="button"
-                            className="rounded-md border border-slate-300 px-2 py-0.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                            className="rounded-md border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                             onMouseDown={(event) => event.stopPropagation()}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -292,12 +295,12 @@ export function AttendanceReportTables({
                           </button>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2">
+                      <td className="whitespace-nowrap">
                         {attendanceExempt ? (
                           "—"
                         ) : (
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide ${toneForDisplayAgentState(
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${toneForDisplayAgentState(
                             row.state
                           )}`}
                         >
@@ -305,48 +308,48 @@ export function AttendanceReportTables({
                         </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                      <td className="whitespace-nowrap text-slate-700 dark:text-slate-300">
                         {attendanceExempt ? (
                           "—"
                         ) : (
                           <>
                             {formatAge(row.lastSeenAgeSeconds)}
                             {row.needsAttention ? (
-                              <span className="ml-2 rounded-full bg-rose-500/15 px-2 py-0.5 text-sm font-semibold uppercase text-rose-700 dark:text-rose-300">
+                              <span className="ml-1.5 rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase text-rose-700 dark:text-rose-300">
                                 Alert
                               </span>
                             ) : null}
                           </>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                      <td className="whitespace-nowrap text-slate-700 dark:text-slate-300">
                         {attendanceExempt ? "—" : row.openShift ? "Open" : "Closed"}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-300">
+                      <td className="whitespace-nowrap text-slate-700 dark:text-slate-300">
                         {attendanceExempt
                           ? "—"
                           : labelForAttendanceStatus(row.attendanceStatus)}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                      <td className="whitespace-nowrap text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {attendanceExempt ? "—" : formatMinutes(row.sleepMinutes)}
                       </td>
-                      <td className="max-w-[24rem] px-2 py-2 text-slate-700 dark:text-slate-300">
+                      <td className="max-w-[14rem] truncate text-slate-700 dark:text-slate-300" title={attendanceExempt ? undefined : row.attendanceReason}>
                         {attendanceExempt ? "—" : row.attendanceReason}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right">
+                      <td className="whitespace-nowrap text-right">
                         {attendanceExempt ? (
                           "—"
                         ) : (
                         <button
                           type="button"
-                          className="rounded-md border border-slate-300 px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                          className="rounded-md border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                           onClick={(event) => {
                             event.stopPropagation();
                             void issueInstallCommand(row.userId);
                           }}
                           disabled={issuingForUserId === row.userId}
                         >
-                          {issuingForUserId === row.userId ? "Issuing..." : "Re-issue install"}
+                          {issuingForUserId === row.userId ? "…" : "Re-issue"}
                         </button>
                         )}
                       </td>

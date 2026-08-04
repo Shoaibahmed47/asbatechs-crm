@@ -201,16 +201,16 @@ export function AttendanceReportFilters(props: AttendanceReportFiltersProps) {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/50">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-700/70 dark:bg-slate-900/50 sm:p-3.5">
+      <div className="flex flex-wrap items-end gap-2.5">
         <div>
-          <label className="block text-base font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          <label className="block text-[0.65rem] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
             Date range
           </label>
           <select
             value={period}
             onChange={(e) => onChangePeriod(e.target.value)}
-            className="form-input mt-1 min-h-[2.75rem] min-w-[8.5rem] py-2 leading-5"
+            className="form-input mt-1 min-h-[2.25rem] min-w-[8rem] py-1.5 text-sm leading-5"
           >
             {RANGE_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>

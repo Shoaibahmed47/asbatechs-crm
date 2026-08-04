@@ -94,30 +94,29 @@ export function DashboardCharts({
   );
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-3 sm:space-y-4">
       <div>
-        <h2 className="font-[var(--font-display)] text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+        <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
           Performance analytics
         </h2>
-        <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
-          Revenue and pipeline activity
-          {showTeamAttendanceOverview ? ", plus staffing visibility, " : " "}
-          in a clearer executive format.
+        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+          Revenue and pipeline
+          {showTeamAttendanceOverview ? " · staffing" : ""}
         </p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="data-card surface-reveal">
-          <div className="flex items-start justify-between gap-4">
+      <div className="grid gap-3 xl:grid-cols-2">
+        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Lead mix</h3>
-              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
-                Relative split between active hot and sales lead records.
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Hot vs sales split
               </p>
             </div>
-            <div className="glass-chip text-slate-600 dark:text-slate-300">Pipeline</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Pipeline</div>
           </div>
-          <div className="relative mt-4 h-[280px] w-full min-w-0">
+          <div className="relative mt-3 h-[220px] w-full min-w-0 sm:h-[240px]">
             {leadMixTotal === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
                 <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />
@@ -166,24 +165,24 @@ export function DashboardCharts({
           </div>
         </div>
 
-        <div className="data-card surface-reveal">
-          <div className="flex items-start justify-between gap-4">
+        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Sales performance</h3>
-              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Monthly booked revenue for the last six months.</p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Last 6 months revenue</p>
             </div>
-            <div className="glass-chip text-slate-600 dark:text-slate-300">Revenue</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Revenue</div>
           </div>
-          <div className="mt-3 flex items-end justify-between gap-4 rounded-2xl border border-slate-200/75 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="mt-2 flex items-end justify-between gap-3 rounded-xl border border-slate-200/75 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
             <div>
-              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Booked total</div>
-              <div className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">
+              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Booked total</div>
+              <div className="mt-0.5 text-lg font-semibold text-slate-950 dark:text-white">
                 {data.totalSalesAmount.toLocaleString(undefined, { style: "currency", currency: "USD" })}
               </div>
             </div>
-            <div className="text-base text-slate-500 dark:text-slate-400">6-month window</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">6-mo</div>
           </div>
-          <div className="relative mt-4 h-[340px] w-full min-w-0">
+          <div className="relative mt-3 h-[240px] w-full min-w-0 sm:h-[260px]">
             {!hasMonthlySales ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
                 <p className="text-base font-medium text-slate-700 dark:text-slate-200">No revenue in this window</p>
@@ -219,16 +218,16 @@ export function DashboardCharts({
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <div className="data-card surface-reveal">
-          <div className="flex items-start justify-between gap-4">
+      <div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
+        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Pipeline activity</h3>
-              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Newly created lead records month over month.</p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">New leads by month</p>
             </div>
-            <div className="glass-chip text-slate-600 dark:text-slate-300">Trend</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Trend</div>
           </div>
-          <div className="relative mt-4 h-[320px] w-full min-w-0">
+          <div className="relative mt-3 h-[240px] w-full min-w-0 sm:h-[260px]">
             {!hasMonthlyNewLeads ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
                 <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />

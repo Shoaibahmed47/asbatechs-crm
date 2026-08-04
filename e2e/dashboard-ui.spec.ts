@@ -81,8 +81,8 @@ test.describe("Dashboard UI (authenticated)", () => {
       };
     });
 
-    expect(layout.sideW).toBeGreaterThanOrEqual(250);
-    expect(layout.mainX).toBeGreaterThanOrEqual(250);
+    expect(layout.sideW).toBeGreaterThanOrEqual(240);
+    expect(layout.mainX).toBeGreaterThanOrEqual(240);
     expect(layout.overflow).toBe(false);
     expect(layout.brandTeal.length).toBeGreaterThan(0);
 

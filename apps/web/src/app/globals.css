@@ -285,7 +285,7 @@ textarea,
   }
 
   .app-nav-link {
-    @apply flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-base font-medium leading-snug transition-all duration-200;
+    @apply flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium leading-snug transition-all duration-200;
     color: hsl(var(--foreground-muted));
   }
 
@@ -315,7 +315,7 @@ textarea,
   }
 
   .app-section-label {
-    @apply mb-2.5 px-3 text-sm font-semibold uppercase tracking-[0.14em] leading-snug;
+    @apply mb-1.5 px-2.5 text-[0.7rem] font-semibold uppercase tracking-[0.14em] leading-snug;
     color: hsl(var(--foreground-muted));
   }
 
@@ -359,10 +359,67 @@ textarea,
   }
 
   .data-card {
-    @apply rounded-2xl p-6 transition-shadow duration-300;
+    @apply rounded-xl p-4 transition-shadow duration-300 sm:rounded-2xl sm:p-5;
     background-color: hsl(var(--card) / 0.94);
     border: 1px solid hsl(var(--border) / 0.9);
     box-shadow: var(--shadow-card), inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+  }
+
+  /** Dense data tables (attendance / directory) */
+  .crm-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .crm-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground-muted));
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--teal-60) 88%, white),
+      color-mix(in srgb, var(--teal-80) 70%, white)
+    );
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-teal-light) 22%, transparent);
+    white-space: nowrap;
+  }
+
+  .dark .crm-table thead th {
+    background: linear-gradient(180deg, var(--teal-80), hsl(var(--card)));
+    border-bottom-color: hsl(var(--border));
+  }
+
+  .crm-table tbody td {
+    padding: 0.45rem 0.625rem;
+    vertical-align: middle;
+    border-bottom: 1px solid hsl(var(--border) / 0.55);
+  }
+
+  .crm-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .crm-table tbody tr:hover td {
+    background: color-mix(in srgb, var(--teal-60) 55%, transparent);
+  }
+
+  .dark .crm-table tbody tr:hover td {
+    background: color-mix(in srgb, var(--teal-100) 35%, transparent);
+  }
+
+  .crm-table-shell {
+    max-height: min(62vh, 36rem);
+    overflow: auto;
+    border-radius: 0 0 0.75rem 0.75rem;
   }
 
   .dark .data-card {

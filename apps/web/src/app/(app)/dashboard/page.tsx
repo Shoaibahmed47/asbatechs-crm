@@ -372,74 +372,97 @@ export default async function DashboardPage({
     dashboardLoadErrors.length > 0 ? dashboardLoadErrors.join(" ") : null;
 
   const dashboardBody = (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-5">
       {dashboardLoadError ? (
         <div
-          className="rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-4 text-base leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+          className="rounded-xl border border-amber-200/90 bg-amber-50/90 px-3 py-3 text-sm leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
           role="alert"
         >
           <p className="font-semibold">Some dashboard data could not be loaded</p>
           <p className="mt-1">{dashboardLoadError}</p>
-          <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/90">
-            This is usually a temporary database connection issue. Check your internet, confirm
-            Supabase is active, then refresh. If it keeps happening, verify{" "}
-            <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">DATABASE_URL</code>{" "}
-            in <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">apps/web/.env</code>.
-          </p>
         </div>
       ) : null}
-      <section className="app-panel rounded-[24px] px-4 py-5 sm:rounded-[28px] sm:px-8 sm:py-7">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="glass-chip inline-flex text-brand-700 dark:text-brand-200">
+
+      {/* KPI row first — denser ops view */}
+      <section className="portal-stat-grid" data-testid="dashboard-stat-cards">
+        <div className="portal-stat-card portal-stat-card--mint p-3.5 sm:p-4">
+          <div className="portal-stat-label portal-stat-label--teal">Total leads</div>
+          <div className="portal-stat-value portal-stat-value--teal text-2xl sm:text-3xl">{totalLeads}</div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Hot + sales pipeline</p>
+        </div>
+        <div className="portal-stat-card portal-stat-card--teal p-3.5 sm:p-4">
+          <div className="portal-stat-label portal-stat-label--teal">Hot leads</div>
+          <div className="portal-stat-value portal-stat-value--teal text-2xl sm:text-3xl">
+            {Number(hotCount?.value ?? 0)}
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Priority follow-ups</p>
+        </div>
+        <div className="portal-stat-card portal-stat-card--orange p-3.5 sm:p-4">
+          <div className="portal-stat-label portal-stat-label--orange">Sales leads</div>
+          <div className="portal-stat-value portal-stat-value--orange text-2xl sm:text-3xl">
+            {Number(saleCount?.value ?? 0)}
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Closing / revenue</p>
+        </div>
+        <div className="portal-stat-card portal-stat-card--gold p-3.5 sm:p-4">
+          <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
+          {isAdminViewer ? (
+            <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
+          ) : (
+            <>
+              <div className="portal-stat-value portal-stat-value--gold text-2xl sm:text-3xl">{activeToday}</div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Currently clocked in</p>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className="app-panel rounded-[18px] px-3 py-3.5 sm:rounded-[20px] sm:px-5 sm:py-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:justify-between">
+          <div className="min-w-0 lg:max-w-sm">
+            <div className="glass-chip inline-flex !px-2.5 !py-1 text-[0.65rem] text-brand-700 dark:text-brand-200">
               Executive overview
             </div>
-            <p className="page-subtitle mt-4">
-              Track lead pipeline health, revenue momentum
-              {isAdminViewer ? ", and live team attendance " : " "}
-              from one professional operations view.
+            <p className="mt-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
+              Pipeline, revenue
+              {isAdminViewer ? ", and live attendance" : ""} in one view.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                Total team members
+          <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
+            <div className="app-panel-muted rounded-xl px-3 py-2.5">
+              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Team members
               </div>
-              <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+              <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
                 {totalUsers}
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
+              <div className="mt-1.5 h-1 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
                 <div className="h-full w-3/5 rounded-full bg-brand-500/85" />
               </div>
             </div>
-            <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {isAdminViewer ? "Team attendance (today)" : "Attendance"}
+            <div className="app-panel-muted rounded-xl px-3 py-2.5">
+              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {isAdminViewer ? "Attendance today" : "Attendance"}
               </div>
               {isAdminViewer && liveAttendanceToday ? (
                 <DashboardLiveAttendanceSummary initial={initialLiveAttendanceCounts} />
               ) : (
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-                  Clock in, breaks, and your hours are on the{" "}
-                  <span className="font-medium text-slate-800 dark:text-slate-200">Attendance</span>{" "}
-                  page. Live team status is available to administrators only.
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                  Use the Attendance page for clock-in and breaks.
                 </p>
               )}
-              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
-                <div className="h-full w-1/2 rounded-full bg-emerald-500/80" />
-              </div>
             </div>
-            <div className="app-panel-muted rounded-2xl px-4 py-3">
-              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <div className="app-panel-muted rounded-xl px-3 py-2.5">
+              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                 Revenue booked
               </div>
-              <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+              <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
                 {totalSalesAmount.toLocaleString(undefined, {
                   style: "currency",
                   currency: "USD"
                 })}
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
+              <div className="mt-1.5 h-1 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
                 <div className="h-full w-2/3 rounded-full bg-brand-500/80" />
               </div>
             </div>
@@ -448,54 +471,53 @@ export default async function DashboardPage({
       </section>
 
       {isAdminViewer ? (
-        <section className="space-y-5">
-          <div className="app-panel overflow-hidden rounded-[28px]">
-            <div className="relative border-b border-slate-200/70 px-6 py-6 dark:border-slate-800/80 sm:px-8">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.75),transparent)] dark:bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_34%)]" />
-              <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-300">
+        <section className="space-y-3">
+          <div className="app-panel overflow-hidden rounded-[18px] sm:rounded-[20px]">
+            <div className="relative border-b border-[color-mix(in_srgb,var(--brand-teal-light)_16%,transparent)] px-3 py-3 dark:border-slate-800/80 sm:px-5 sm:py-3.5">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--brand-teal-light)_14%,transparent),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.7),transparent)] dark:bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--brand-teal)_20%,transparent),transparent_36%)]" />
+              <div className="relative flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
                     Attendance command center
                   </div>
-                  <h2 className="mt-3 font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                  <h2 className="mt-1 font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
                     Team attendance monitor
                   </h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-                    Monitor clock-in, clock-out, breaks, live activity, agent health,
-                    sleep/inactive signals, and employee reasons from the Executive Dashboard.
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600 dark:text-slate-400 sm:text-sm">
+                    Clock-in, breaks, agent health, sleep — double-click a row for detail.
                   </p>
                 </div>
                 <DashboardLiveAttendanceCommandCards initial={initialLiveAttendanceCounts} />
               </div>
             </div>
 
-            <div className="space-y-5 px-4 py-5 sm:px-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="space-y-3 px-3 py-3 sm:px-4 sm:py-3.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 {reportMode === "daily" ? (
                   <>
                     <Link
                       href={`/dashboard?date=${reportPrev}`}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                     >
                       Previous day
                     </Link>
                     <Link
                       href={`/dashboard?date=${reportNext}`}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                     >
                       Next day
                     </Link>
                     {reportDate !== today ? (
                       <Link
                         href="/dashboard"
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
                       >
                         Today
                       </Link>
                     ) : null}
                   </>
                 ) : (
-                  <div className="rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+                  <div className="rounded-lg border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
                     Range:{" "}
                     <span className="text-slate-900 dark:text-white">
                       {new Date(normalizedFrom + "T12:00:00").toLocaleDateString()} -{" "}
@@ -503,13 +525,13 @@ export default async function DashboardPage({
                     </span>
                   </div>
                 )}
-                <div className="text-base font-medium text-slate-600 dark:text-slate-400 sm:ml-auto">
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 sm:ml-auto sm:text-sm">
                   Date:{" "}
                   <span className="text-slate-900 dark:text-white">
                     {new Date(reportDate + "T12:00:00").toLocaleDateString(undefined, {
-                      weekday: "long",
+                      weekday: "short",
                       year: "numeric",
-                      month: "long",
+                      month: "short",
                       day: "numeric"
                     })}
                   </span>
@@ -518,7 +540,7 @@ export default async function DashboardPage({
 
               <Suspense
                 fallback={
-                  <div className="h-24 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-900/50" />
+                  <div className="h-16 animate-pulse rounded-xl border border-slate-200/80 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-900/50" />
                 }
               >
                 <AttendanceReportFilters
@@ -540,7 +562,7 @@ export default async function DashboardPage({
           </div>
 
           {attendanceLoadError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
               <strong className="font-semibold">Attendance data failed to load.</strong>{" "}
               <span className="opacity-90">{attendanceLoadError}</span>
             </div>
@@ -548,7 +570,7 @@ export default async function DashboardPage({
 
           <Suspense
             fallback={
-              <div className="data-card px-4 py-8 text-center text-sm text-slate-500">
+              <div className="data-card px-4 py-6 text-center text-sm text-slate-500">
                 Loading attendance monitor...
               </div>
             }
@@ -567,32 +589,32 @@ export default async function DashboardPage({
 
       {session?.role === "employee" ? (
         <section className="data-card">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               Assigned client projects
             </h2>
-            <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
-              These are the client projects assigned to your account by admin.
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              Projects assigned to your account.
             </p>
           </div>
           {assignedClientProjects.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">
+            <p className="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700">
               No client project assigned yet.
             </p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {assignedClientProjects.map((item) => (
                 <article
                   key={item.assignmentId}
-                  className="rounded-xl border border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+                  className="rounded-lg border border-slate-200/80 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/70"
                 >
-                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                     {item.clientName}
                   </p>
-                  <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
                     {item.projectName}
                   </p>
-                  <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Assigned{" "}
                     {item.assignedAt ? new Date(item.assignedAt).toLocaleDateString() : "recently"}
                   </p>
@@ -602,50 +624,6 @@ export default async function DashboardPage({
           )}
         </section>
       ) : null}
-
-      <section className="portal-stat-grid" data-testid="dashboard-stat-cards">
-        <div className="portal-stat-card portal-stat-card--mint p-5">
-          <div className="portal-stat-label portal-stat-label--teal">Total leads</div>
-          <div className="portal-stat-value portal-stat-value--teal text-3xl">{totalLeads}</div>
-          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-            Combined hot and sales pipeline records.
-          </p>
-        </div>
-
-        <div className="portal-stat-card portal-stat-card--teal p-5">
-          <div className="portal-stat-label portal-stat-label--teal">Hot leads</div>
-          <div className="portal-stat-value portal-stat-value--teal text-3xl">
-            {Number(hotCount?.value ?? 0)}
-          </div>
-          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-            Prioritized follow-up opportunities awaiting action.
-          </p>
-        </div>
-
-        <div className="portal-stat-card portal-stat-card--orange p-5">
-          <div className="portal-stat-label portal-stat-label--orange">Sales leads</div>
-          <div className="portal-stat-value portal-stat-value--orange text-3xl">
-            {Number(saleCount?.value ?? 0)}
-          </div>
-          <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-            Records mapped to closing and revenue tracking.
-          </p>
-        </div>
-
-        <div className="portal-stat-card portal-stat-card--gold p-5">
-          <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
-          {isAdminViewer ? (
-            <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
-          ) : (
-            <>
-              <div className="portal-stat-value portal-stat-value--gold text-3xl">{activeToday}</div>
-              <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-                Employees currently clocked in and not yet clocked out.
-              </p>
-            </>
-          )}
-        </div>
-      </section>
 
       <DashboardChartsLazy
         showTeamAttendanceOverview={isAdminViewer}

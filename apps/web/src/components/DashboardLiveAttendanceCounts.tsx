@@ -106,14 +106,14 @@ export function DashboardLiveAttendanceSummary({
   const counts = useLiveAttendanceCounts(initial);
 
   return (
-    <div className="mt-2 space-y-1 text-sm">
-      <div className="flex flex-wrap gap-x-3 gap-y-1 font-semibold">
+    <div className="mt-1 space-y-0.5 text-sm">
+      <div className="flex flex-wrap gap-x-2 gap-y-0.5 font-semibold">
         <span className="text-emerald-600 dark:text-emerald-400">{counts.active} active</span>
         <span className="text-amber-700 dark:text-amber-400">{counts.onBreak} break</span>
-        <span className="text-slate-500 dark:text-slate-400">{counts.offline} offline</span>
+        <span className="text-slate-500 dark:text-slate-400">{counts.offline} off</span>
       </div>
-      <div className="text-base text-slate-500 dark:text-slate-400">
-        {counts.openShifts} with an open shift (incl. break)
+      <div className="text-xs text-slate-500 dark:text-slate-400">
+        {counts.openShifts} open shift{counts.openShifts === 1 ? "" : "s"}
       </div>
     </div>
   );
@@ -127,28 +127,28 @@ export function DashboardLiveAttendanceCommandCards({
   const counts = useLiveAttendanceCounts(initial);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[30rem]">
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+    <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[22rem]">
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
           Active
         </p>
-        <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
+        <p className="mt-1 text-xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
           {counts.active}
         </p>
       </div>
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-300">
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-amber-800 dark:text-amber-300">
           Break
         </p>
-        <p className="mt-2 text-2xl font-semibold text-amber-800 dark:text-amber-300">
+        <p className="mt-1 text-xl font-semibold tabular-nums text-amber-800 dark:text-amber-300">
           {counts.onBreak}
         </p>
       </div>
-      <div className="rounded-2xl border border-slate-300/70 bg-slate-100/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-          Open shifts
+      <div className="rounded-xl border border-slate-300/70 bg-slate-100/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/70">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          Open
         </p>
-        <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+        <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900 dark:text-white">
           {counts.openShifts}
         </p>
       </div>
@@ -170,12 +170,10 @@ export function DashboardLiveOpenShiftsMetric({
 
   return (
     <>
-      <div className="mt-3 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
+      <div className="portal-stat-value portal-stat-value--gold mt-1 text-2xl font-semibold tabular-nums sm:text-3xl">
         {counts.openShifts}
       </div>
-      <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-        Employees currently clocked in and not yet clocked out.
-      </p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Currently clocked in</p>
     </>
   );
 }
