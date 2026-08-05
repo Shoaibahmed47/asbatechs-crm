@@ -3,20 +3,34 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
+  Chart as ChartJS,
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
   Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
+  type ChartData,
+  type ChartOptions,
+  type TooltipItem
+} from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { LineChart as LineChartIcon } from "lucide-react";
+
+ChartJS.register(
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip
+);
 
 export type DashboardChartPayload = {
   hotLeads: number;
@@ -28,19 +42,32 @@ export type DashboardChartPayload = {
   monthlyNewLeads: { month: string; label: string; count: number }[];
 };
 
-const PIE_COLORS = ["#0f4c45", "#e86a17"];
-const BAR_COLORS = ["#0f4c45", "#1a7a6d", "#2d9b8a", "#e86a17", "#c9a227", "#2a8f7e"];
-
-const CHART_AREA = {
-  pie: { width: 560, height: 280 },
-  bar: { width: 560, height: 340 },
-  line: { width: 560, height: 320 }
+const BRAND = {
+  teal: "#0f4c45",
+  tealLight: "#1a7a6d",
+  tealLighter: "#2d9b8a",
+  orange: "#e86a17",
+  gold: "#c9a227",
+  mint: "#2a8f7e"
 } as const;
+
+const BAR_COLORS = [
+  BRAND.teal,
+  BRAND.tealLight,
+  BRAND.tealLighter,
+  BRAND.orange,
+  BRAND.gold,
+  BRAND.mint
+];
 
 function currencyShort(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
   return `$${value.toFixed(0)}`;
+}
+
+function currencyFull(value: number) {
+  return value.toLocaleString(undefined, { style: "currency", currency: "USD" });
 }
 
 export function DashboardCharts({
@@ -50,47 +77,241 @@ export function DashboardCharts({
   data: DashboardChartPayload;
   showTeamAttendanceOverview?: boolean;
 }) {
-  const leadMix = [
-    { name: "Hot leads", value: data.hotLeads },
-    { name: "Sales leads", value: data.saleLeads }
-  ];
-
   const leadMixTotal = data.hotLeads + data.saleLeads;
   const hasMonthlySales = data.monthlySales.some((r) => r.amount > 0);
   const hasMonthlyNewLeads = data.monthlyNewLeads.some((r) => r.count > 0);
   const attendanceRate =
     data.totalUsers > 0 ? Math.round((data.activeToday / data.totalUsers) * 100) : 0;
+  const attendanceIdle = Math.max(0, 100 - attendanceRate);
+
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
     const applyTheme = () => setIsDark(root.classList.contains("dark"));
     applyTheme();
-
     const observer = new MutationObserver(applyTheme);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
 
-  const chartAxis = useMemo(
-    () => ({ fill: isDark ? "#9ecfc5" : "#3d5c56", fontSize: 11 }),
-    [isDark]
-  );
-  const gridStroke = isDark ? "#1f5249" : "#d4ebe6";
-  const tooltipStyle = useMemo(
+  const axisColor = isDark ? "#9ecfc5" : "#3d5c56";
+  const gridColor = isDark ? "rgba(31, 82, 73, 0.55)" : "rgba(212, 235, 230, 0.9)";
+  const tooltipBg = isDark ? "rgba(15, 34, 31, 0.97)" : "rgba(255, 255, 255, 0.98)";
+  const tooltipBorder = isDark
+    ? "rgba(45, 155, 138, 0.35)"
+    : "rgba(26, 122, 109, 0.18)";
+
+  const doughnutData: ChartData<"doughnut"> = useMemo(
     () => ({
-      borderRadius: 14,
-      border: isDark
-        ? "1px solid color-mix(in srgb, #2d9b8a 35%, transparent)"
-        : "1px solid color-mix(in srgb, #1a7a6d 18%, transparent)",
-      background: isDark ? "rgba(15, 34, 31, 0.97)" : "rgba(255, 255, 255, 0.98)",
-      color: isDark ? "#e2e8f0" : "#0f172a",
-      boxShadow: isDark
-        ? "0 20px 38px rgba(2, 20, 18, 0.52)"
-        : "0 18px 36px rgba(15, 76, 69, 0.12)",
-      fontSize: 12
+      labels: ["Hot leads", "Sales leads"],
+      datasets: [
+        {
+          data: [data.hotLeads, data.saleLeads],
+          backgroundColor: [BRAND.teal, BRAND.orange],
+          borderColor: isDark ? "#163530" : "#ffffff",
+          borderWidth: 3,
+          hoverOffset: 6
+        }
+      ]
     }),
-    [isDark]
+    [data.hotLeads, data.saleLeads, isDark]
+  );
+
+  const doughnutOptions: ChartOptions<"doughnut"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "68%",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: isDark ? "#e2e8f0" : "#0f172a",
+          bodyColor: isDark ? "#e2e8f0" : "#0f172a",
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (ctx: TooltipItem<"doughnut">) => {
+              const v = typeof ctx.parsed === "number" ? ctx.parsed : 0;
+              return ` ${ctx.label}: ${v}`;
+            }
+          }
+        }
+      }
+    }),
+    [isDark, tooltipBg, tooltipBorder]
+  );
+
+  const barData: ChartData<"bar"> = useMemo(
+    () => ({
+      labels: data.monthlySales.map((r) => r.label),
+      datasets: [
+        {
+          label: "Revenue",
+          data: data.monthlySales.map((r) => r.amount),
+          backgroundColor: data.monthlySales.map(
+            (_, i) => BAR_COLORS[i % BAR_COLORS.length]
+          ),
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 42
+        }
+      ]
+    }),
+    [data.monthlySales]
+  );
+
+  const barOptions: ChartOptions<"bar"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: isDark ? "#e2e8f0" : "#0f172a",
+          bodyColor: isDark ? "#e2e8f0" : "#0f172a",
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            title: (items) => {
+              const i = items[0]?.dataIndex ?? 0;
+              return data.monthlySales[i]?.month ?? "";
+            },
+            label: (ctx: TooltipItem<"bar">) => {
+              const v = typeof ctx.parsed.y === "number" ? ctx.parsed.y : 0;
+              return ` Revenue: ${currencyFull(v)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: axisColor, font: { size: 11 } },
+          border: { color: gridColor }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: {
+            color: axisColor,
+            font: { size: 11 },
+            callback: (value) => currencyShort(Number(value))
+          },
+          border: { display: false }
+        }
+      }
+    }),
+    [axisColor, data.monthlySales, gridColor, isDark, tooltipBg, tooltipBorder]
+  );
+
+  const lineData: ChartData<"line"> = useMemo(
+    () => ({
+      labels: data.monthlyNewLeads.map((r) => r.label),
+      datasets: [
+        {
+          label: "New leads",
+          data: data.monthlyNewLeads.map((r) => r.count),
+          borderColor: BRAND.tealLight,
+          backgroundColor: "rgba(26, 122, 109, 0.12)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3.5,
+          pointHoverRadius: 5,
+          pointBackgroundColor: BRAND.tealLight,
+          borderWidth: 3
+        }
+      ]
+    }),
+    [data.monthlyNewLeads]
+  );
+
+  const lineOptions: ChartOptions<"line"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: isDark ? "#e2e8f0" : "#0f172a",
+          bodyColor: isDark ? "#e2e8f0" : "#0f172a",
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (ctx: TooltipItem<"line">) => {
+              const v = typeof ctx.parsed.y === "number" ? ctx.parsed.y : 0;
+              return ` New leads: ${v}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: axisColor, font: { size: 11 } },
+          border: { color: gridColor }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: axisColor,
+            font: { size: 11 },
+            precision: 0,
+            stepSize: 1
+          },
+          grid: { color: gridColor },
+          border: { display: false }
+        }
+      }
+    }),
+    [axisColor, gridColor, isDark, tooltipBg, tooltipBorder]
+  );
+
+  const attendanceData: ChartData<"doughnut"> = useMemo(
+    () => ({
+      labels: ["Active", "Other"],
+      datasets: [
+        {
+          data: [attendanceRate, attendanceIdle],
+          backgroundColor: [BRAND.tealLight, isDark ? "#1a443d" : "#d4ebe6"],
+          borderWidth: 0,
+          hoverOffset: 2
+        }
+      ]
+    }),
+    [attendanceIdle, attendanceRate, isDark]
+  );
+
+  const attendanceOptions: ChartOptions<"doughnut"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "78%",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: isDark ? "#e2e8f0" : "#0f172a",
+          bodyColor: isDark ? "#e2e8f0" : "#0f172a",
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (ctx: TooltipItem<"doughnut">) => {
+              const v = typeof ctx.parsed === "number" ? ctx.parsed : 0;
+              return ` ${ctx.label}: ${v}%`;
+            }
+          }
+        }
+      }
+    }),
+    [isDark, tooltipBg, tooltipBorder]
   );
 
   return (
@@ -127,36 +348,7 @@ export function DashboardCharts({
               </div>
             ) : (
               <>
-                <ResponsiveContainer
-                  width="100%"
-                  height="100%"
-                  minWidth={0}
-                  initialDimension={CHART_AREA.pie}
-                >
-                  <PieChart>
-                    <Pie
-                      data={leadMix}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={68}
-                      outerRadius={98}
-                      paddingAngle={3}
-                    >
-                      {leadMix.map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [
-                        typeof value === "number" ? value : Number(value),
-                        "Leads"
-                      ]}
-                      contentStyle={tooltipStyle}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <Doughnut data={doughnutData} options={doughnutOptions} />
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="rounded-full border border-slate-200/80 bg-[var(--mix-surface)]/90 px-5 py-3 text-center shadow-sm dark:border-slate-700">
                     <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -171,12 +363,15 @@ export function DashboardCharts({
             )}
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {leadMix.map((item, index) => (
+            {[
+              { name: "Hot leads", value: data.hotLeads, color: BRAND.teal },
+              { name: "Sales leads", value: data.saleLeads, color: BRAND.orange }
+            ].map((item) => (
               <div key={item.name} className="dash-metric">
                 <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: PIE_COLORS[index] }}
+                    style={{ backgroundColor: item.color }}
                   />
                   {item.name}
                 </div>
@@ -200,10 +395,7 @@ export function DashboardCharts({
             <div>
               <div className="dash-metric-label">Booked total</div>
               <div className="dash-metric-value text-lg">
-                {data.totalSalesAmount.toLocaleString(undefined, {
-                  style: "currency",
-                  currency: "USD"
-                })}
+                {currencyFull(data.totalSalesAmount)}
               </div>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">6-mo</div>
@@ -219,44 +411,7 @@ export function DashboardCharts({
                 </p>
               </div>
             ) : (
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={0}
-                initialDimension={CHART_AREA.bar}
-              >
-                <BarChart data={data.monthlySales} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tick={chartAxis}
-                    tickLine={false}
-                    axisLine={{ stroke: gridStroke }}
-                  />
-                  <YAxis
-                    tickFormatter={currencyShort}
-                    tick={chartAxis}
-                    tickLine={false}
-                    axisLine={false}
-                    width={48}
-                  />
-                  <Tooltip
-                    formatter={(value) => {
-                      const n = typeof value === "number" ? value : Number(value);
-                      return Number.isFinite(n)
-                        ? n.toLocaleString(undefined, { style: "currency", currency: "USD" })
-                        : String(value ?? "");
-                    }}
-                    labelFormatter={(_, payload) => String(payload?.[0]?.payload?.month ?? "")}
-                    contentStyle={tooltipStyle}
-                  />
-                  <Bar dataKey="amount" name="Revenue" fill="#1a7a6d" radius={[6, 6, 0, 0]}>
-                    {data.monthlySales.map((row, index) => (
-                      <Cell key={row.month} fill={BAR_COLORS[index % BAR_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <Bar data={barData} options={barOptions} />
             )}
           </div>
         </div>
@@ -285,48 +440,7 @@ export function DashboardCharts({
                 </p>
               </div>
             ) : (
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={0}
-                initialDimension={CHART_AREA.line}
-              >
-                <LineChart
-                  data={data.monthlyNewLeads}
-                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tick={chartAxis}
-                    tickLine={false}
-                    axisLine={{ stroke: gridStroke }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={chartAxis}
-                    tickLine={false}
-                    axisLine={false}
-                    width={36}
-                  />
-                  <Tooltip
-                    formatter={(value) => [
-                      typeof value === "number" ? value : Number(value),
-                      "New leads"
-                    ]}
-                    contentStyle={tooltipStyle}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    name="New leads"
-                    stroke="#1a7a6d"
-                    strokeWidth={3}
-                    dot={{ r: 3.5, fill: "#1a7a6d" }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Line data={lineData} options={lineOptions} />
             )}
           </div>
         </div>
@@ -341,13 +455,16 @@ export function DashboardCharts({
             </div>
 
             <div className="mt-6 flex flex-col items-center justify-center gap-4">
-              <div className="relative flex h-44 w-44 items-center justify-center rounded-full border-[12px] border-[color-mix(in_srgb,var(--teal-100)_80%,transparent)] bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--mix-surface)_96%,transparent),color-mix(in_srgb,var(--teal-60)_55%,transparent))] dark:border-[color-mix(in_srgb,var(--teal-100)_70%,transparent)]">
-                <div className="text-center">
-                  <div className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                    {attendanceRate}%
-                  </div>
-                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Active
+              <div className="relative h-44 w-44">
+                <Doughnut data={attendanceData} options={attendanceOptions} />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                      {attendanceRate}%
+                    </div>
+                    <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      Active
+                    </div>
                   </div>
                 </div>
               </div>

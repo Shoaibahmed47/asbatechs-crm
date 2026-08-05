@@ -11,7 +11,7 @@ dotenv.config({ path: path.join(monorepoRoot, ".env.local"), override: true });
 const nextConfig = {
   experimental: {
     proxyClientMaxBodySize: "100mb",
-    optimizePackageImports: ["lucide-react", "recharts"]
+    optimizePackageImports: ["lucide-react", "chart.js", "react-chartjs-2"]
   }
 };
 
