@@ -50,6 +50,16 @@ describe("Dashboard UI (Cypress)", () => {
         .getPropertyValue("--brand-teal")
         .trim();
       expect(brandTeal.length, "brand teal token").to.be.greaterThan(0);
+
+      const shell = doc.querySelector(
+        '[data-testid="agent-health-table-shell"]'
+      ) as HTMLElement | null;
+      if (shell && doc.defaultView!.innerWidth >= 1440) {
+        expect(
+          shell.scrollWidth <= shell.clientWidth + 4,
+          "agent table should not force horizontal scroll on desktop"
+        ).to.eq(true);
+      }
     });
 
     cy.get('[data-testid="sidebar-collapse-toggle"]').scrollIntoView().should("be.visible").click();

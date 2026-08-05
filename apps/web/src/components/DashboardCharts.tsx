@@ -31,7 +31,6 @@ export type DashboardChartPayload = {
 const PIE_COLORS = ["#0f4c45", "#e86a17"];
 const BAR_COLORS = ["#0f4c45", "#1a7a6d", "#2d9b8a", "#e86a17", "#c9a227", "#2a8f7e"];
 
-/* Recharts can initialize at -1x-1 before ResizeObserver settles. */
 const CHART_AREA = {
   pie: { width: 560, height: 280 },
   bar: { width: 560, height: 340 },
@@ -59,7 +58,8 @@ export function DashboardCharts({
   const leadMixTotal = data.hotLeads + data.saleLeads;
   const hasMonthlySales = data.monthlySales.some((r) => r.amount > 0);
   const hasMonthlyNewLeads = data.monthlyNewLeads.some((r) => r.count > 0);
-  const attendanceRate = data.totalUsers > 0 ? Math.round((data.activeToday / data.totalUsers) * 100) : 0;
+  const attendanceRate =
+    data.totalUsers > 0 ? Math.round((data.activeToday / data.totalUsers) * 100) : 0;
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -81,13 +81,13 @@ export function DashboardCharts({
     () => ({
       borderRadius: 14,
       border: isDark
-        ? "1px solid rgba(100, 116, 139, 0.45)"
-        : "1px solid rgba(148, 163, 184, 0.24)",
-      background: isDark ? "rgba(15, 23, 42, 0.97)" : "rgba(255, 255, 255, 0.98)",
+        ? "1px solid color-mix(in srgb, #2d9b8a 35%, transparent)"
+        : "1px solid color-mix(in srgb, #1a7a6d 18%, transparent)",
+      background: isDark ? "rgba(15, 34, 31, 0.97)" : "rgba(255, 255, 255, 0.98)",
       color: isDark ? "#e2e8f0" : "#0f172a",
       boxShadow: isDark
-        ? "0 20px 38px rgba(2, 6, 23, 0.52)"
-        : "0 18px 36px rgba(15, 23, 42, 0.14)",
+        ? "0 20px 38px rgba(2, 20, 18, 0.52)"
+        : "0 18px 36px rgba(15, 76, 69, 0.12)",
       fontSize: 12
     }),
     [isDark]
@@ -95,119 +95,151 @@ export function DashboardCharts({
 
   return (
     <section className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
-            Performance analytics
-          </h2>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-            Revenue overview and order-style lead distribution
-            {showTeamAttendanceOverview ? " · staffing" : ""}
-          </p>
-        </div>
+      <div>
+        <h2 className="dash-title-lg">Performance analytics</h2>
+        <p className="dash-subtitle mt-0.5">
+          Lead distribution, revenue, and pipeline activity
+          {showTeamAttendanceOverview ? " · staffing" : ""}
+        </p>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <div className="data-card surface-reveal !p-4 sm:!p-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="dash-card dash-card-pad surface-reveal">
+          <div className="dash-card-header">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white md:text-xl">
-                Lead distribution
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-                Hot vs sales pipeline mix
-              </p>
+              <h3 className="dash-title">Lead distribution</h3>
+              <p className="dash-subtitle">Hot vs sales pipeline mix</p>
             </div>
             <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">
               Pipeline
             </div>
           </div>
-          <div className="relative mt-3 h-[220px] w-full min-w-0 sm:h-[240px]">
+          <div className="dash-chart-slot">
             {leadMixTotal === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
-                <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No leads to chart yet</p>
-                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                  The dashboard is working. Add hot or sales leads under <span className="font-semibold">Operations</span> and this chart will show the mix.
+              <div className="dash-empty">
+                <LineChartIcon className="mb-1 h-5 w-5 opacity-70" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No leads to chart yet
+                </p>
+                <p className="max-w-sm text-sm leading-relaxed">
+                  Add hot or sales leads under Operations and this chart will show the mix.
                 </p>
               </div>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_AREA.pie}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  initialDimension={CHART_AREA.pie}
+                >
                   <PieChart>
-                    <Pie data={leadMix} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={68} outerRadius={98} paddingAngle={3}>
+                    <Pie
+                      data={leadMix}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={68}
+                      outerRadius={98}
+                      paddingAngle={3}
+                    >
                       {leadMix.map((entry, index) => (
                         <Cell key={entry.name} fill={PIE_COLORS[index]} />
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value) => [typeof value === "number" ? value : Number(value), "Leads"]}
+                      formatter={(value) => [
+                        typeof value === "number" ? value : Number(value),
+                        "Leads"
+                      ]}
                       contentStyle={tooltipStyle}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="rounded-full border border-slate-200/80 bg-white/90 px-5 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/85">
-                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total</div>
-                    <div className="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{leadMixTotal}</div>
+                  <div className="rounded-full border border-slate-200/80 bg-[var(--mix-surface)]/90 px-5 py-3 text-center shadow-sm dark:border-slate-700">
+                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      Total
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">
+                      {leadMixTotal}
+                    </div>
                   </div>
                 </div>
               </>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {leadMix.map((item, index) => (
-              <div
-                key={item.name}
-                className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
-              >
-                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
+              <div key={item.name} className="dash-metric">
+                <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: PIE_COLORS[index] }}
+                  />
                   {item.name}
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{item.value}</div>
+                <div className="dash-metric-value text-2xl">{item.value}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="data-card surface-reveal !p-4 sm:!p-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="dash-card dash-card-pad surface-reveal">
+          <div className="dash-card-header">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white md:text-xl">
-                Revenue overview
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-                Last 6 months booked sales
-              </p>
+              <h3 className="dash-title">Revenue overview</h3>
+              <p className="dash-subtitle">Last 6 months booked sales</p>
             </div>
             <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">
               Revenue
             </div>
           </div>
-          <div className="mt-2 flex items-end justify-between gap-3 rounded-xl border border-slate-200/75 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="dash-metric mt-2 flex items-end justify-between gap-3">
             <div>
-              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Booked total</div>
-              <div className="mt-0.5 text-lg font-semibold text-slate-950 dark:text-white">
-                {data.totalSalesAmount.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+              <div className="dash-metric-label">Booked total</div>
+              <div className="dash-metric-value text-lg">
+                {data.totalSalesAmount.toLocaleString(undefined, {
+                  style: "currency",
+                  currency: "USD"
+                })}
               </div>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">6-mo</div>
           </div>
-          <div className="relative mt-3 h-[240px] w-full min-w-0 sm:h-[260px]">
+          <div className="dash-chart-slot dash-chart-slot--tall">
             {!hasMonthlySales ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
-                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No revenue in this window</p>
-                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                  Sale leads with amounts in the last six months appear here. Totals above still include all-time booked revenue.
+              <div className="dash-empty">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No revenue in this window
+                </p>
+                <p className="max-w-sm text-sm leading-relaxed">
+                  Sale leads with amounts in the last six months appear here.
                 </p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_AREA.bar}>
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                initialDimension={CHART_AREA.bar}
+              >
                 <BarChart data={data.monthlySales} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                  <XAxis dataKey="label" tick={chartAxis} tickLine={false} axisLine={{ stroke: gridStroke }} />
-                  <YAxis tickFormatter={currencyShort} tick={chartAxis} tickLine={false} axisLine={false} width={48} />
+                  <XAxis
+                    dataKey="label"
+                    tick={chartAxis}
+                    tickLine={false}
+                    axisLine={{ stroke: gridStroke }}
+                  />
+                  <YAxis
+                    tickFormatter={currencyShort}
+                    tick={chartAxis}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                  />
                   <Tooltip
                     formatter={(value) => {
                       const n = typeof value === "number" ? value : Number(value);
@@ -231,31 +263,57 @@ export function DashboardCharts({
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
-        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div className="dash-card dash-card-pad surface-reveal">
+          <div className="dash-card-header">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Pipeline activity</h3>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">New leads by month</p>
+              <h3 className="dash-title">Pipeline activity</h3>
+              <p className="dash-subtitle">New leads by month</p>
             </div>
-            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Trend</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">
+              Trend
+            </div>
           </div>
-          <div className="relative mt-3 h-[240px] w-full min-w-0 sm:h-[260px]">
+          <div className="dash-chart-slot dash-chart-slot--tall">
             {!hasMonthlyNewLeads ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
-                <LineChartIcon className="mb-1 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                <p className="text-base font-medium text-slate-700 dark:text-slate-200">No new leads this period</p>
-                <p className="max-w-sm text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                  When leads are created, monthly counts will show here. The axis still shows the last six months for context.
+              <div className="dash-empty">
+                <LineChartIcon className="mb-1 h-5 w-5 opacity-70" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  No new leads this period
+                </p>
+                <p className="max-w-sm text-sm leading-relaxed">
+                  When leads are created, monthly counts will show here.
                 </p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_AREA.line}>
-                <LineChart data={data.monthlyNewLeads} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                initialDimension={CHART_AREA.line}
+              >
+                <LineChart
+                  data={data.monthlyNewLeads}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                  <XAxis dataKey="label" tick={chartAxis} tickLine={false} axisLine={{ stroke: gridStroke }} />
-                  <YAxis allowDecimals={false} tick={chartAxis} tickLine={false} axisLine={false} width={36} />
+                  <XAxis
+                    dataKey="label"
+                    tick={chartAxis}
+                    tickLine={false}
+                    axisLine={{ stroke: gridStroke }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={chartAxis}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                  />
                   <Tooltip
-                    formatter={(value) => [typeof value === "number" ? value : Number(value), "New leads"]}
+                    formatter={(value) => [
+                      typeof value === "number" ? value : Number(value),
+                      "New leads"
+                    ]}
                     contentStyle={tooltipStyle}
                   />
                   <Line
@@ -274,47 +332,56 @@ export function DashboardCharts({
         </div>
 
         {showTeamAttendanceOverview ? (
-          <div className="data-card surface-reveal flex flex-col justify-between">
+          <div className="dash-card dash-card-pad surface-reveal flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Team attendance today</h3>
-              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">Share of users with an active open shift right now.</p>
+              <h3 className="dash-title">Team attendance today</h3>
+              <p className="dash-subtitle mt-1">
+                Share of users with an active open shift right now.
+              </p>
             </div>
 
-            <div className="mt-8 flex flex-col items-center justify-center gap-5">
-              <div className="relative flex h-52 w-52 items-center justify-center rounded-full border-[14px] border-slate-100 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.94))] dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.85),rgba(15,23,42,0.95))]">
+            <div className="mt-6 flex flex-col items-center justify-center gap-4">
+              <div className="relative flex h-44 w-44 items-center justify-center rounded-full border-[12px] border-[color-mix(in_srgb,var(--teal-100)_80%,transparent)] bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--mix-surface)_96%,transparent),color-mix(in_srgb,var(--teal-60)_55%,transparent))] dark:border-[color-mix(in_srgb,var(--teal-100)_70%,transparent)]">
                 <div className="text-center">
-                  <div className="text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">{attendanceRate}%</div>
-                  <div className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Active</div>
+                  <div className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                    {attendanceRate}%
+                  </div>
+                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    Active
+                  </div>
                 </div>
               </div>
 
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/75 dark:bg-slate-800/70">
-                <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-500" style={{ width: `${attendanceRate}%` }} />
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--brand-teal-light)] to-[var(--brand-orange)]"
+                  style={{ width: `${attendanceRate}%` }}
+                />
               </div>
 
-              <div className="grid w-full gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Open shifts</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{data.activeToday}</div>
+              <div className="grid w-full gap-2 sm:grid-cols-2">
+                <div className="dash-metric text-center">
+                  <div className="dash-metric-label">Open shifts</div>
+                  <div className="dash-metric-value text-2xl">{data.activeToday}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-center dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total users</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{data.totalUsers}</div>
+                <div className="dash-metric text-center">
+                  <div className="dash-metric-label">Total users</div>
+                  <div className="dash-metric-value text-2xl">{data.totalUsers}</div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="data-card surface-reveal flex flex-col justify-center gap-4 px-6 py-10 text-center">
+          <div className="dash-card dash-card-pad surface-reveal flex flex-col justify-center gap-4 text-center">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Attendance</h3>
-              <p className="mt-2 text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                Organization-wide attendance and live team presence are limited to administrator accounts so employee dashboards stay focused on their own work.
+              <h3 className="dash-title">Attendance</h3>
+              <p className="dash-subtitle mt-2">
+                Organization-wide attendance is limited to administrator accounts.
               </p>
             </div>
             <Link
               href="/attendance"
-              className="mx-auto inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600"
+              className="mx-auto inline-flex rounded-xl border border-slate-200 bg-[var(--mix-surface)] px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:text-slate-200 dark:hover:border-brand-600"
             >
               Open my attendance
             </Link>

@@ -158,17 +158,13 @@ export function AttendanceReportTables({
   return (
     <>
       {showAgentHealth && agentHealth ? (
-        <section className="data-card overflow-hidden !p-0">
+        <section className="dash-card overflow-hidden !rounded-[18px] sm:!rounded-[20px]">
           <div className="border-b border-[color-mix(in_srgb,var(--brand-teal-light)_18%,transparent)] bg-[color-mix(in_srgb,var(--teal-60)_75%,var(--mix-surface))] px-3 py-2.5 dark:border-slate-700 dark:bg-[color-mix(in_srgb,var(--teal-80)_70%,hsl(var(--card)))] sm:px-4 sm:py-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <div className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                  Desktop agent
-                </div>
-                <h2 className="mt-0.5 font-[var(--font-display)] text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
-                  Agent health
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                <div className="dash-kicker">Desktop agent</div>
+                <h2 className="dash-title mt-0.5">Agent health</h2>
+                <p className="dash-subtitle mt-0.5">
                   Install/running status + live attendance. Double-click a row for details.
                 </p>
               </div>
@@ -197,26 +193,41 @@ export function AttendanceReportTables({
               )}
             </div>
           </div>
-          <div className="crm-table-shell" data-testid="agent-health-table-shell">
-            <table className="crm-table min-w-[48rem] text-left" data-testid="agent-health-table">
+          <div
+            className="crm-table-shell crm-table-shell--fit"
+            data-testid="agent-health-table-shell"
+          >
+            <table
+              className="crm-table crm-table--fit text-left"
+              data-testid="agent-health-table"
+            >
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Dept</th>
-                  <th>Schedule</th>
-                  <th>Agent</th>
-                  <th>Last seen</th>
-                  <th>Shift</th>
-                  <th>Status</th>
+                  <th scope="col">Name</th>
+                  <th scope="col" className="hidden 2xl:table-cell">
+                    Email
+                  </th>
+                  <th scope="col" className="hidden xl:table-cell">
+                    Dept
+                  </th>
+                  <th scope="col">Schedule</th>
+                  <th scope="col">Agent</th>
+                  <th scope="col">Last seen</th>
+                  <th scope="col">Shift</th>
+                  <th scope="col">Status</th>
                   <th
+                    scope="col"
                     className="text-right"
                     title="Sleep minutes count only when laptop lock/sleep is detected during an open shift."
                   >
                     Sleep
                   </th>
-                  <th>Reason</th>
-                  <th className="text-right">Actions</th>
+                  <th scope="col" className="hidden 2xl:table-cell">
+                    Reason
+                  </th>
+                  <th scope="col" className="text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -256,13 +267,13 @@ export function AttendanceReportTables({
                           : "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
                       }
                     >
-                      <td className="whitespace-nowrap">
+                      <td className="max-w-[10rem] truncate whitespace-nowrap sm:max-w-[14rem]">
                         <EmployeeNameCell userName={row.userName} />
                       </td>
-                      <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">
+                      <td className="hidden max-w-[12rem] truncate whitespace-nowrap text-slate-600 2xl:table-cell dark:text-slate-400">
                         {row.userEmail}
                       </td>
-                      <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">
+                      <td className="hidden whitespace-nowrap text-slate-600 xl:table-cell dark:text-slate-400">
                         {row.departmentName ?? "-"}
                       </td>
                       <td className="whitespace-nowrap">
@@ -333,7 +344,10 @@ export function AttendanceReportTables({
                       <td className="whitespace-nowrap text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {attendanceExempt ? "—" : formatMinutes(row.sleepMinutes)}
                       </td>
-                      <td className="max-w-[14rem] truncate text-slate-700 dark:text-slate-300" title={attendanceExempt ? undefined : row.attendanceReason}>
+                      <td
+                        className="hidden max-w-[12rem] truncate 2xl:table-cell"
+                        title={attendanceExempt ? undefined : row.attendanceReason}
+                      >
                         {attendanceExempt ? "—" : row.attendanceReason}
                       </td>
                       <td className="whitespace-nowrap text-right">

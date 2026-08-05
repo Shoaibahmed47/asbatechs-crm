@@ -467,6 +467,84 @@ textarea,
     box-shadow: var(--shadow-card), var(--shadow-inset);
   }
 
+  /* Dashboard section cards — Executive overview, charts, attendance panels */
+  .dash-card {
+    @apply rounded-[18px] sm:rounded-[20px];
+    background: linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--card-muted) / 0.94));
+    border: 1px solid color-mix(in srgb, var(--brand-teal-light) 14%, hsl(var(--border)));
+    box-shadow: var(--shadow-card), var(--shadow-inset);
+    backdrop-filter: blur(12px);
+  }
+
+  .dark .dash-card {
+    border-color: color-mix(in srgb, var(--brand-teal-lighter) 16%, hsl(var(--border)));
+  }
+
+  .dash-card-pad {
+    @apply px-3 py-3.5 sm:px-5 sm:py-4;
+  }
+
+  .dash-card-header {
+    @apply flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3;
+  }
+
+  .dash-kicker {
+    @apply text-[0.65rem] font-semibold uppercase tracking-[0.14em];
+    color: var(--brand-fg-soft);
+  }
+
+  .dark .dash-kicker {
+    color: var(--brand-fg);
+  }
+
+  .dash-title {
+    font-family: var(--font-display-stack);
+    @apply text-base font-semibold tracking-tight sm:text-lg;
+    color: hsl(var(--foreground));
+  }
+
+  .dash-title-lg {
+    font-family: var(--font-display-stack);
+    @apply text-lg font-semibold tracking-tight sm:text-xl;
+    color: hsl(var(--foreground));
+  }
+
+  .dash-subtitle {
+    @apply text-xs leading-5 sm:text-sm;
+    color: hsl(var(--foreground-muted));
+  }
+
+  .dash-metric {
+    @apply rounded-xl px-3 py-2.5;
+    background-color: hsl(var(--card-muted) / 0.9);
+    border: 1px solid hsl(var(--border) / 0.85);
+  }
+
+  .dash-metric-label {
+    @apply text-[0.65rem] font-semibold uppercase tracking-[0.12em];
+    color: hsl(var(--foreground-muted));
+  }
+
+  .dash-metric-value {
+    @apply mt-1 text-xl font-semibold tabular-nums;
+    color: hsl(var(--foreground));
+  }
+
+  .dash-chart-slot {
+    @apply relative mt-3 h-[220px] w-full min-w-0 sm:h-[240px];
+  }
+
+  .dash-chart-slot--tall {
+    @apply h-[240px] sm:h-[260px];
+  }
+
+  .dash-empty {
+    @apply flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 text-center;
+    border-color: hsl(var(--border));
+    background: color-mix(in srgb, var(--teal-60) 40%, transparent);
+    color: hsl(var(--foreground-muted));
+  }
+
   /** Dense data tables (attendance / directory) */
   .crm-table {
     width: 100%;
@@ -474,6 +552,12 @@ textarea,
     border-spacing: 0;
     font-size: 0.8125rem;
     line-height: 1.4;
+  }
+
+  /* Fit desktop dashboards — avoid forced min-width / needless x-scroll */
+  .crm-table--fit {
+    min-width: 0;
+    table-layout: auto;
   }
 
   .crm-table thead th {
@@ -525,6 +609,12 @@ textarea,
     overflow: auto;
     border-radius: 0 0 0.75rem 0.75rem;
     background: hsl(var(--card) / 0.96);
+  }
+
+  /* Scroll vertically; x-scroll only if content truly overflows */
+  .crm-table-shell--fit {
+    overflow-x: auto;
+    overflow-y: auto;
   }
 
   .dark .crm-table-shell {

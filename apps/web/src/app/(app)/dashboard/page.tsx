@@ -448,30 +448,24 @@ export default async function DashboardPage({
         )}
       </section>
 
-      <section className="app-panel rounded-[18px] px-3 py-3.5 sm:rounded-[20px] sm:px-5 sm:py-4">
+      <section className="dash-card dash-card-pad">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:justify-between">
           <div className="min-w-0 lg:max-w-sm">
-            <div className="glass-chip inline-flex !px-2.5 !py-1 text-[0.65rem] text-brand-700 dark:text-brand-200">
-              Executive overview
-            </div>
-            <p className="mt-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
+            <div className="dash-kicker">Executive overview</div>
+            <p className="dash-subtitle mt-2">
               Team size, attendance snapshot, and booked revenue in one strip.
             </p>
           </div>
           <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
-            <div className="app-panel-muted rounded-xl px-3 py-2.5">
-              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                Team members
-              </div>
-              <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
-                {totalUsers}
-              </div>
+            <div className="dash-metric">
+              <div className="dash-metric-label">Team members</div>
+              <div className="dash-metric-value">{totalUsers}</div>
               <div className="mt-1.5 h-1 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
                 <div className="h-full w-3/5 rounded-full bg-brand-500/85" />
               </div>
             </div>
-            <div className="app-panel-muted rounded-xl px-3 py-2.5">
-              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <div className="dash-metric">
+              <div className="dash-metric-label">
                 {isAdminViewer ? "Attendance today" : "Attendance"}
               </div>
               {isAdminViewer && liveAttendanceToday ? (
@@ -482,11 +476,9 @@ export default async function DashboardPage({
                 </p>
               )}
             </div>
-            <div className="app-panel-muted rounded-xl px-3 py-2.5">
-              <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                Revenue booked
-              </div>
-              <div className="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
+            <div className="dash-metric">
+              <div className="dash-metric-label">Revenue booked</div>
+              <div className="dash-metric-value">
                 {totalSalesAmount.toLocaleString(undefined, {
                   style: "currency",
                   currency: "USD"
@@ -502,18 +494,14 @@ export default async function DashboardPage({
 
       {isAdminViewer ? (
         <section className="space-y-3">
-          <div className="app-panel overflow-hidden rounded-[18px] sm:rounded-[20px]">
+          <div className="dash-card overflow-hidden">
             <div className="relative border-b border-[color-mix(in_srgb,var(--brand-teal-light)_16%,transparent)] px-3 py-3 dark:border-slate-800/80 sm:px-5 sm:py-3.5">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--brand-teal-light)_14%,transparent),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.7),transparent)] dark:bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--brand-teal)_20%,transparent),transparent_36%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--brand-teal-light)_12%,transparent),transparent_36%)]" />
               <div className="relative flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
                 <div className="min-w-0">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
-                    Attendance command center
-                  </div>
-                  <h2 className="mt-1 font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
-                    Team attendance monitor
-                  </h2>
-                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600 dark:text-slate-400 sm:text-sm">
+                  <div className="dash-kicker">Attendance command center</div>
+                  <h2 className="dash-title-lg mt-1">Team attendance monitor</h2>
+                  <p className="dash-subtitle mt-1 max-w-2xl">
                     Clock-in, breaks, agent health, sleep — double-click a row for detail.
                   </p>
                 </div>
