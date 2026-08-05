@@ -1,4 +1,5 @@
 import "@/app/globals.css";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { Manrope, Space_Grotesk } from "next/font/google";
@@ -17,6 +18,18 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   display: "swap"
 });
+
+export const metadata: Metadata = {
+  title: {
+    default: "AsbaTechs CRM",
+    template: "%s · AsbaTechs CRM"
+  },
+  description: "AsbaTechs internal CRM workspace",
+  icons: {
+    icon: [{ url: "/brand-icon.png", type: "image/png" }],
+    apple: [{ url: "/brand-icon.png", type: "image/png" }]
+  }
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
