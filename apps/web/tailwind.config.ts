@@ -42,6 +42,11 @@ const config: Config = {
           "0 10px 15px -3px rgba(15,76,69,0.1), 0 4px 6px -2px rgba(15,76,69,0.05)",
         brand: "0 10px 25px rgba(15, 76, 69, 0.22)",
         "brand-soft": "0 12px 36px rgba(15, 76, 69, 0.12)"
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)"],
+        display: ["var(--font-display-stack)"],
+        mono: ["var(--font-mono-stack)"]
       }
     }
   },

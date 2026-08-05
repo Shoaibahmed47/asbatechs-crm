@@ -4,47 +4,66 @@
 
 /**
  * AsbaTechs CRM — global design system
- * Apple-inspired surfaces + brand tokens. Components use existing classes
- * (.app-panel, .data-card, .form-input, …). No business logic here.
+ * Light + dark themes, brand colors, and fonts live here.
+ * Components use existing classes (.app-panel, .data-card, .form-input, …).
+ * UI tokens only — no business logic.
  */
 
 @layer base {
   :root {
     color-scheme: light;
 
-    /* Semantic theme (HSL channels for Tailwind / hsl(var(--x))) */
-    --background: 168 28% 97%;
-    --background-muted: 168 24% 94%;
-    --foreground: 170 35% 12%;
-    --foreground-muted: 170 12% 40%;
+    /* —— Fonts (Next.js injects --font-body / --font-display on <body>) —— */
+    --font-sans: var(--font-body), "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Helvetica Neue", Arial, sans-serif;
+    --font-display-stack: var(--font-display), "Space Grotesk", var(--font-sans);
+    --font-mono-stack: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+
+    /* —— Semantic surfaces (HSL channels → hsl(var(--x))) —— */
+    --background: 168 32% 97%;
+    --background-muted: 168 26% 94%;
+    --foreground: 172 38% 11%;
+    --foreground-muted: 170 12% 38%;
     --card: 0 0% 100%;
-    --card-muted: 168 30% 98%;
-    --border: 168 20% 88%;
-    --border-strong: 168 16% 78%;
-    /* Brand teal — focus rings, date picker, semantic primary */
+    --card-muted: 168 28% 98%;
+    --border: 168 18% 88%;
+    --border-strong: 168 14% 76%;
+    --ring: 174 58% 32%;
+
+    /* Brand teal as semantic primary (focus / RDP / form rings) */
     --primary: 174 58% 32%;
     --primary-foreground: 0 0% 100%;
-    --accent: 174 58% 38%;
-    --success: 160 84% 39%;
-    --warning: 32 92% 48%;
-    --danger: 0 72% 51%;
-    --shadow-soft: 0 28px 70px rgba(15, 76, 69, 0.12);
-    --shadow-card: 0 12px 36px rgba(15, 76, 69, 0.08);
+    --accent: 174 52% 36%;
+    --success: 160 72% 36%;
+    --warning: 32 90% 46%;
+    --danger: 0 72% 48%;
 
-    /* Brand palette — fills stay deep; --brand-fg is for text/icons on surfaces */
+    --shadow-soft: 0 28px 70px rgba(15, 76, 69, 0.11);
+    --shadow-card: 0 12px 36px rgba(15, 76, 69, 0.07);
+    --shadow-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+
+    /* —— Brand fills (stable across themes) —— */
     --brand-teal: #0f4c45;
     --brand-teal-light: #1a7a6d;
     --brand-teal-lighter: #2d9b8a;
     --brand-fg: #0f4c45;
+    --brand-fg-soft: #1a7a6d;
     --brand-orange: #e86a17;
     --brand-orange-light: #f4843a;
     --brand-gold: #c9a227;
+
+    /* —— Wash / tint scales —— */
     --teal-60: #e8f5f2;
     --teal-80: #d4ebe6;
     --teal-100: #b8ddd5;
     --teal-150: #9ecfc5;
     --teal-500: #2a8f7e;
+    --orange-60: #fff4eb;
     --orange-100: #ffe8d6;
+    --gold-60: #fff8e8;
+    --gold-100: #ffe9c2;
+    --mix-surface: #ffffff;
 
     --apple-gray: #8e8e93;
     --apple-light-gray: #f2f2f7;
@@ -53,39 +72,49 @@
 
   .dark {
     color-scheme: dark;
-    /* Teal-tinted shell (not cool sky/blue) */
-    --background: 170 22% 8%;
-    --background-muted: 170 20% 11%;
-    --foreground: 165 20% 96%;
-    --foreground-muted: 165 10% 70%;
-    --card: 170 24% 11%;
-    --card-muted: 170 20% 14%;
-    --border: 170 14% 22%;
-    --border-strong: 170 12% 28%;
+
+    /* Teal-tinted night shell — matched to BrandMark, not sky/cyan */
+    --background: 172 24% 7%;
+    --background-muted: 172 22% 9%;
+    --foreground: 160 18% 96%;
+    --foreground-muted: 165 10% 68%;
+    --card: 172 22% 10%;
+    --card-muted: 172 18% 13%;
+    --border: 168 14% 20%;
+    --border-strong: 168 12% 28%;
+    --ring: 168 42% 46%;
+
     --primary: 168 42% 46%;
     --primary-foreground: 0 0% 100%;
-    --accent: 168 45% 48%;
-    --success: 160 70% 45%;
-    --warning: 32 92% 58%;
-    --danger: 0 84% 67%;
-    --shadow-soft: 0 30px 90px rgba(2, 20, 18, 0.55);
-    --shadow-card: 0 16px 48px rgba(2, 20, 18, 0.42);
+    --accent: 168 40% 50%;
+    --success: 158 58% 48%;
+    --warning: 32 92% 56%;
+    --danger: 0 78% 64%;
 
-    /* Keep deep fills for buttons / BrandMark parity; lighten only text accent */
+    --shadow-soft: 0 28px 80px rgba(0, 12, 10, 0.55);
+    --shadow-card: 0 14px 40px rgba(0, 12, 10, 0.4);
+    --shadow-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+
+    /* Deep fills stay BrandMark-true; fg tokens lighten for readable accents */
     --brand-teal: #0f4c45;
     --brand-teal-light: #1a7a6d;
     --brand-teal-lighter: #2d9b8a;
-    --brand-fg: #7fd4c4;
+    --brand-fg: #8edccb;
+    --brand-fg-soft: #6bc4b4;
     --brand-orange: #f4843a;
     --brand-orange-light: #ff9a5c;
     --brand-gold: #e0c35a;
-    --teal-60: #132a28;
-    --teal-80: #163530;
-    --teal-100: #1a443d;
-    /* Soft accent readable as text (dark:text-brand-300) while still usable for borders */
+
+    --teal-60: #0f221f;
+    --teal-80: #14302c;
+    --teal-100: #1a3f39;
     --teal-150: #6bc4b4;
     --teal-500: #3db8a0;
+    --orange-60: #2a1a10;
     --orange-100: #3d2414;
+    --gold-60: #2a2410;
+    --gold-100: #3a3014;
+    --mix-surface: hsl(172 22% 10%);
   }
 
   * {
@@ -98,19 +127,42 @@
   }
 
   body {
-    font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
     font-size: 1rem;
     line-height: 1.625;
     background:
-      radial-gradient(circle at 6% -4%, color-mix(in srgb, var(--brand-teal-light) 16%, transparent), transparent 24%),
-      radial-gradient(circle at 92% 2%, color-mix(in srgb, var(--brand-orange) 10%, transparent), transparent 22%),
-      linear-gradient(180deg, hsl(var(--background-muted)) 0%, hsl(var(--background)) 34%, hsl(var(--background)) 100%);
+      radial-gradient(
+        circle at 6% -4%,
+        color-mix(in srgb, var(--brand-teal-light) var(--glow-teal, 14%), transparent),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 92% 2%,
+        color-mix(in srgb, var(--brand-orange) var(--glow-orange, 9%), transparent),
+        transparent 24%
+      ),
+      linear-gradient(
+        180deg,
+        hsl(var(--background-muted)) 0%,
+        hsl(var(--background)) 36%,
+        hsl(var(--background)) 100%
+      );
     color: hsl(var(--foreground));
     min-height: 100vh;
   }
 
+  .dark body {
+    --glow-teal: 10%;
+    --glow-orange: 7%;
+  }
+
   ::selection {
     background: color-mix(in srgb, var(--brand-teal-light) 28%, transparent);
+    color: hsl(var(--foreground));
+  }
+
+  .dark ::selection {
+    background: color-mix(in srgb, var(--brand-fg) 32%, transparent);
   }
 }
 
@@ -204,7 +256,7 @@ textarea,
 /* CRM main shell scroll surfaces */
 .portal-scroll {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--brand-teal-light) 70%, white)
+  scrollbar-color: color-mix(in srgb, var(--brand-teal-light) 70%, var(--mix-surface))
     color-mix(in srgb, var(--teal-80) 55%, transparent);
 }
 
@@ -216,8 +268,8 @@ textarea,
 .portal-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--brand-teal-light) 85%, white) 0%,
-    color-mix(in srgb, var(--brand-orange) 65%, white) 100%
+    color-mix(in srgb, var(--brand-teal-light) 85%, var(--mix-surface)) 0%,
+    color-mix(in srgb, var(--brand-orange) 65%, var(--mix-surface)) 100%
   );
   border-radius: 999px;
 }
@@ -273,22 +325,21 @@ textarea,
 
   .app-shell {
     @apply relative min-h-screen;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
-      "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   /* Apple-style frosted rail (from AppleLayout reference pattern) */
   .apple-sidebar {
     background: color-mix(in srgb, hsl(var(--card)) 78%, transparent);
     border-right: 1px solid color-mix(in srgb, var(--brand-teal) 12%, transparent);
-    box-shadow: 1px 0 0 color-mix(in srgb, white 40%, transparent);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--mix-surface) 40%, transparent);
     backdrop-filter: saturate(180%) blur(22px);
     -webkit-backdrop-filter: saturate(180%) blur(22px);
   }
 
   .dark .apple-sidebar {
-    background: color-mix(in srgb, hsl(var(--card)) 88%, transparent);
-    border-right-color: color-mix(in srgb, var(--brand-teal-lighter) 22%, hsl(var(--border)));
+    background: color-mix(in srgb, hsl(var(--card)) 90%, transparent);
+    border-right-color: color-mix(in srgb, var(--brand-teal-lighter) 20%, hsl(var(--border)));
     box-shadow: none;
   }
 
@@ -308,8 +359,8 @@ textarea,
   }
 
   .dark .apple-topbar {
-    background: color-mix(in srgb, hsl(var(--card)) 82%, transparent);
-    border-bottom-color: color-mix(in srgb, var(--brand-teal-lighter) 18%, hsl(var(--border)));
+    background: color-mix(in srgb, hsl(var(--card)) 86%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--brand-teal-lighter) 16%, hsl(var(--border)));
   }
 
   .app-panel {
@@ -344,7 +395,7 @@ textarea,
   }
 
   .app-nav-link-active {
-    background: color-mix(in srgb, var(--teal-100) 75%, white);
+    background: color-mix(in srgb, var(--teal-100) 75%, var(--mix-surface));
     color: var(--brand-fg);
     border: none;
     box-shadow: none;
@@ -352,13 +403,13 @@ textarea,
   }
 
   .dark .app-nav-link-active {
-    background: color-mix(in srgb, var(--teal-100) 55%, transparent);
+    background: color-mix(in srgb, var(--teal-100) 70%, transparent);
     color: var(--brand-fg);
   }
 
   .app-nav-link-active svg {
     opacity: 1;
-    color: var(--brand-teal-light);
+    color: var(--brand-fg-soft);
   }
 
   .dark .app-nav-link-active svg {
@@ -371,7 +422,7 @@ textarea,
   }
 
   .page-title {
-    font-family: var(--font-display), var(--font-body), sans-serif;
+    font-family: var(--font-display-stack);
     @apply text-[2rem] font-semibold leading-tight tracking-tight sm:text-[2.25rem];
     color: hsl(var(--foreground));
   }
@@ -413,7 +464,7 @@ textarea,
     @apply rounded-xl p-4 transition-shadow duration-300 sm:rounded-2xl sm:p-5;
     background-color: hsl(var(--card) / 0.94);
     border: 1px solid hsl(var(--border) / 0.9);
-    box-shadow: var(--shadow-card), inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+    box-shadow: var(--shadow-card), var(--shadow-inset);
   }
 
   /** Dense data tables (attendance / directory) */
@@ -437,8 +488,8 @@ textarea,
     color: hsl(var(--foreground-muted));
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--teal-60) 88%, white),
-      color-mix(in srgb, var(--teal-80) 70%, white)
+      color-mix(in srgb, var(--teal-60) 88%, var(--mix-surface)),
+      color-mix(in srgb, var(--teal-80) 70%, var(--mix-surface))
     );
     border-bottom: 1px solid color-mix(in srgb, var(--brand-teal-light) 22%, transparent);
     white-space: nowrap;
@@ -447,6 +498,7 @@ textarea,
   .dark .crm-table thead th {
     background: linear-gradient(180deg, var(--teal-80), hsl(var(--card)));
     border-bottom-color: hsl(var(--border));
+    color: hsl(var(--foreground-muted));
   }
 
   .crm-table tbody td {
@@ -474,15 +526,15 @@ textarea,
   }
 
   .dark .data-card {
-    box-shadow: var(--shadow-card), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    box-shadow: var(--shadow-card), var(--shadow-inset);
   }
 
   .data-card:hover {
-    box-shadow: var(--shadow-soft), inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+    box-shadow: var(--shadow-soft), var(--shadow-inset);
   }
 
   .dark .data-card:hover {
-    box-shadow: var(--shadow-soft), inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+    box-shadow: var(--shadow-soft), var(--shadow-inset);
   }
 
   .form-input {
@@ -490,7 +542,7 @@ textarea,
     background-color: hsl(var(--card) / 0.96);
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));
-    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--brand-teal) 6%, transparent);
   }
 
   .form-input::placeholder {
@@ -498,8 +550,8 @@ textarea,
   }
 
   .form-input:focus {
-    border-color: hsl(var(--primary) / 0.55);
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.14);
+    border-color: hsl(var(--ring) / 0.55);
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.14);
   }
 
   /** Login/signup cards stay light — inputs must stay dark text on white (dark mode safe). */
@@ -552,8 +604,8 @@ textarea,
   }
 
   .form-input-compact:focus {
-    border-color: hsl(var(--primary) / 0.55);
-    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.12);
+    border-color: hsl(var(--ring) / 0.55);
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.12);
   }
 
   .glass-chip {
@@ -590,7 +642,7 @@ textarea,
     overflow: hidden;
     border-radius: 1rem;
     border: 1px solid transparent;
-    box-shadow: 0 1px 3px rgba(15, 76, 69, 0.06);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--brand-teal) 10%, transparent);
     backdrop-filter: blur(8px);
     transition:
       transform 0.2s ease,
@@ -601,11 +653,25 @@ textarea,
 
   .portal-stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(15, 76, 69, 0.12);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-teal) 16%, transparent);
+  }
+
+  .dark .portal-stat-card {
+    border-color: color-mix(in srgb, var(--brand-teal-lighter) 12%, hsl(var(--border)));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .portal-stat-card:hover {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
   .portal-stat-card--teal {
-    background: linear-gradient(145deg, var(--teal-100) 0%, var(--teal-80) 45%, white 100%);
+    background: linear-gradient(
+      145deg,
+      var(--teal-100) 0%,
+      var(--teal-80) 45%,
+      var(--mix-surface) 100%
+    );
   }
 
   .portal-stat-card--teal:hover {
@@ -613,30 +679,60 @@ textarea,
   }
 
   .portal-stat-card--teal-deep {
-    background: linear-gradient(145deg, var(--teal-150) 0%, var(--teal-100) 45%, white 100%);
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--teal-150) 55%, var(--teal-100)) 0%,
+      var(--teal-100) 45%,
+      var(--mix-surface) 100%
+    );
   }
 
   .portal-stat-card--orange {
-    background: linear-gradient(145deg, var(--orange-100) 0%, #ffe8d6 45%, white 100%);
+    background: linear-gradient(
+      145deg,
+      var(--orange-100) 0%,
+      var(--orange-60) 45%,
+      var(--mix-surface) 100%
+    );
   }
 
   .portal-stat-card--gold {
-    background: linear-gradient(145deg, #fff4e0 0%, #ffe9c2 45%, white 100%);
+    background: linear-gradient(
+      145deg,
+      var(--gold-60) 0%,
+      var(--gold-100) 45%,
+      var(--mix-surface) 100%
+    );
   }
 
   .portal-stat-card--mint {
-    background: linear-gradient(145deg, var(--teal-80) 0%, var(--teal-60) 40%, white 100%);
+    background: linear-gradient(
+      145deg,
+      var(--teal-80) 0%,
+      var(--teal-60) 40%,
+      var(--mix-surface) 100%
+    );
   }
 
   .dark .portal-stat-card--teal,
   .dark .portal-stat-card--teal-deep,
   .dark .portal-stat-card--mint {
-    background: linear-gradient(145deg, var(--teal-80) 0%, hsl(var(--card)) 60%, hsl(var(--card-muted)) 100%);
+    background: linear-gradient(
+      145deg,
+      var(--teal-80) 0%,
+      hsl(var(--card)) 58%,
+      hsl(var(--card-muted)) 100%
+    );
   }
 
   .dark .portal-stat-card--orange,
   .dark .portal-stat-card--gold {
-    background: linear-gradient(145deg, var(--orange-100) 0%, hsl(var(--card)) 55%, hsl(var(--card-muted)) 100%);
+    background: linear-gradient(
+      145deg,
+      var(--orange-100) 0%,
+      hsl(var(--card)) 55%,
+      hsl(var(--card-muted)) 100%
+    );
   }
 
   .portal-stat-label {
@@ -688,8 +784,8 @@ textarea,
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 1px 3px rgba(15, 76, 69, 0.08);
+    background: color-mix(in srgb, var(--mix-surface) 82%, transparent);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--brand-teal) 10%, transparent);
   }
 
   .dark .portal-stat-icon {
@@ -700,7 +796,7 @@ textarea,
   .portal-stat-icon-svg {
     width: 1.125rem;
     height: 1.125rem;
-    color: var(--brand-teal-light);
+    color: var(--brand-fg-soft);
   }
 
   .dark .portal-stat-icon-svg {
@@ -726,12 +822,12 @@ textarea,
   }
 
   .dark .link-brand:hover {
-    color: #a8e8dc;
+    color: color-mix(in srgb, var(--brand-fg) 70%, white);
   }
 
   .chip-brand {
     border: 1px solid color-mix(in srgb, var(--brand-teal-light) 28%, transparent);
-    background: color-mix(in srgb, var(--teal-80) 75%, hsl(var(--card)));
+    background: color-mix(in srgb, var(--teal-80) 75%, var(--mix-surface));
     color: var(--brand-fg);
     @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold;
   }
@@ -841,8 +937,20 @@ textarea,
     display: none;
   }
 
+  .font-display {
+    font-family: var(--font-display-stack);
+  }
+
+  .font-body {
+    font-family: var(--font-sans);
+  }
+
   .text-brand-teal {
     color: var(--brand-teal);
+  }
+
+  .text-brand-fg {
+    color: var(--brand-fg);
   }
 
   .text-brand-orange {
