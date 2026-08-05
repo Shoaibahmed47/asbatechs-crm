@@ -479,8 +479,8 @@ textarea,
   .crm-table thead th {
     position: sticky;
     top: 0;
-    z-index: 1;
-    padding: 0.5rem 0.625rem;
+    z-index: 2;
+    padding: 0.55rem 0.75rem;
     font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -502,9 +502,10 @@ textarea,
   }
 
   .crm-table tbody td {
-    padding: 0.45rem 0.625rem;
+    padding: 0.5rem 0.75rem;
     vertical-align: middle;
     border-bottom: 1px solid hsl(var(--border) / 0.55);
+    color: hsl(var(--foreground));
   }
 
   .crm-table tbody tr:last-child td {
@@ -516,13 +517,18 @@ textarea,
   }
 
   .dark .crm-table tbody tr:hover td {
-    background: color-mix(in srgb, var(--teal-100) 35%, transparent);
+    background: color-mix(in srgb, var(--teal-100) 40%, transparent);
   }
 
   .crm-table-shell {
     max-height: min(62vh, 36rem);
     overflow: auto;
     border-radius: 0 0 0.75rem 0.75rem;
+    background: hsl(var(--card) / 0.96);
+  }
+
+  .dark .crm-table-shell {
+    background: hsl(var(--card) / 0.98);
   }
 
   .dark .data-card {
