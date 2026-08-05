@@ -159,13 +159,13 @@ export function AttendanceReportTables({
     <>
       {showAgentHealth && agentHealth ? (
         <section className="data-card overflow-hidden !p-0">
-          <div className="border-b border-[color-mix(in_srgb,var(--brand-teal-light)_18%,transparent)] bg-[color-mix(in_srgb,var(--teal-60)_75%,white)] px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/85 sm:px-4 sm:py-3">
+          <div className="border-b border-[color-mix(in_srgb,var(--brand-teal-light)_18%,transparent)] bg-[color-mix(in_srgb,var(--teal-60)_75%,var(--mix-surface))] px-3 py-2.5 dark:border-slate-700 dark:bg-[color-mix(in_srgb,var(--teal-80)_70%,hsl(var(--card)))] sm:px-4 sm:py-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                   Desktop agent
                 </div>
-                <h2 className="mt-0.5 text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
+                <h2 className="mt-0.5 font-[var(--font-display)] text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
                   Agent health
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
@@ -173,7 +173,7 @@ export function AttendanceReportTables({
                 </p>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5" data-testid="agent-health-filters">
               {(["all", ...AGENT_HEALTH_FILTER_OPTIONS] as const).map((state) => {
                   const isActive = agentStateFilter === state;
                   const count =
@@ -187,7 +187,7 @@ export function AttendanceReportTables({
                       className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition ${
                         isActive
                           ? "border-brand-400 bg-brand-50 text-brand-800 dark:border-brand-600 dark:bg-brand-950/40 dark:text-brand-300"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                          : "border-slate-200 bg-[var(--mix-surface)] text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                       }`}
                     >
                       {state === "all" ? "All" : labelForDisplayAgentState(state)} ({count})
@@ -197,8 +197,8 @@ export function AttendanceReportTables({
               )}
             </div>
           </div>
-          <div className="crm-table-shell">
-            <table className="crm-table min-w-[48rem] text-left">
+          <div className="crm-table-shell" data-testid="agent-health-table-shell">
+            <table className="crm-table min-w-[48rem] text-left" data-testid="agent-health-table">
               <thead>
                 <tr>
                   <th>Name</th>
