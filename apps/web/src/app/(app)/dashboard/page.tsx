@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Briefcase, Flame, TrendingUp, Gauge } from "lucide-react";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
@@ -8,6 +9,7 @@ import { isAdminRole } from "@/lib/rbac";
 import { getLocalDateString } from "@/lib/attendance-date";
 import { getAttendanceStatusForDate } from "@/lib/attendance-status-today";
 import { DashboardChartsLazy } from "@/components/DashboardChartsLazy";
+import { DashboardStatCard } from "@/components/ui/DashboardStatCard";
 import {
   DashboardLiveAttendanceCommandCards,
   DashboardLiveAttendanceSummary,
@@ -383,38 +385,67 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      {/* KPI row first — denser ops view */}
+      {/* Kalie-style overview header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-3xl">
+            Dashboard overview
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 md:text-base">
+            Welcome back — pipeline, revenue
+            {isAdminViewer ? ", and live attendance" : ""} at a glance.
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-200/90 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 sm:self-auto md:text-sm">
+          <TrendingUp className="h-4 w-4" aria-hidden />
+          <span>Live</span>
+        </div>
+      </div>
+
+      {/* KPI row — icon cards (Kalie StatCard pattern, brand tones) */}
       <section className="portal-stat-grid" data-testid="dashboard-stat-cards">
-        <div className="portal-stat-card portal-stat-card--mint p-3.5 sm:p-4">
-          <div className="portal-stat-label portal-stat-label--teal">Total leads</div>
-          <div className="portal-stat-value portal-stat-value--teal text-2xl sm:text-3xl">{totalLeads}</div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Hot + sales pipeline</p>
-        </div>
-        <div className="portal-stat-card portal-stat-card--teal p-3.5 sm:p-4">
-          <div className="portal-stat-label portal-stat-label--teal">Hot leads</div>
-          <div className="portal-stat-value portal-stat-value--teal text-2xl sm:text-3xl">
-            {Number(hotCount?.value ?? 0)}
+        <DashboardStatCard
+          title="Total leads"
+          value={totalLeads}
+          description="Hot + sales pipeline"
+          tone="mint"
+          icon={<Briefcase className="portal-stat-icon-svg" />}
+        />
+        <DashboardStatCard
+          title="Hot leads"
+          value={Number(hotCount?.value ?? 0)}
+          description="Priority follow-ups"
+          tone="teal"
+          icon={<Flame className="portal-stat-icon-svg" />}
+        />
+        <DashboardStatCard
+          title="Sales leads"
+          value={Number(saleCount?.value ?? 0)}
+          description="Closing / revenue"
+          tone="orange"
+          icon={<TrendingUp className="portal-stat-icon-svg" />}
+        />
+        {isAdminViewer ? (
+          <div className="portal-stat-card portal-stat-card--gold p-3.5 sm:p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
+                <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
+              </div>
+              <div className="portal-stat-icon shrink-0 text-[var(--brand-fg)]" aria-hidden>
+                <Gauge className="portal-stat-icon-svg" />
+              </div>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Priority follow-ups</p>
-        </div>
-        <div className="portal-stat-card portal-stat-card--orange p-3.5 sm:p-4">
-          <div className="portal-stat-label portal-stat-label--orange">Sales leads</div>
-          <div className="portal-stat-value portal-stat-value--orange text-2xl sm:text-3xl">
-            {Number(saleCount?.value ?? 0)}
-          </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Closing / revenue</p>
-        </div>
-        <div className="portal-stat-card portal-stat-card--gold p-3.5 sm:p-4">
-          <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
-          {isAdminViewer ? (
-            <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
-          ) : (
-            <>
-              <div className="portal-stat-value portal-stat-value--gold text-2xl sm:text-3xl">{activeToday}</div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Currently clocked in</p>
-            </>
-          )}
-        </div>
+        ) : (
+          <DashboardStatCard
+            title="Open shifts"
+            value={activeToday}
+            description="Currently clocked in"
+            tone="gold"
+            icon={<Gauge className="portal-stat-icon-svg" />}
+          />
+        )}
       </section>
 
       <section className="app-panel rounded-[18px] px-3 py-3.5 sm:rounded-[20px] sm:px-5 sm:py-4">
@@ -424,8 +455,7 @@ export default async function DashboardPage({
               Executive overview
             </div>
             <p className="mt-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
-              Pipeline, revenue
-              {isAdminViewer ? ", and live attendance" : ""} in one view.
+              Team size, attendance snapshot, and booked revenue in one strip.
             </p>
           </div>
           <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
@@ -463,7 +493,7 @@ export default async function DashboardPage({
                 })}
               </div>
               <div className="mt-1.5 h-1 rounded-full bg-slate-200/70 dark:bg-slate-700/60">
-                <div className="h-full w-2/3 rounded-full bg-brand-500/80" />
+                <div className="h-full w-2/3 rounded-full bg-[var(--brand-orange)]/80" />
               </div>
             </div>
           </div>

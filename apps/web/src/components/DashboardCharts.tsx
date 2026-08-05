@@ -95,26 +95,32 @@ export function DashboardCharts({
 
   return (
     <section className="space-y-3 sm:space-y-4">
-      <div>
-        <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
-          Performance analytics
-        </h2>
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-          Revenue and pipeline
-          {showTeamAttendanceOverview ? " · staffing" : ""}
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">
+            Performance analytics
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            Revenue overview and order-style lead distribution
+            {showTeamAttendanceOverview ? " · staffing" : ""}
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
+        <div className="data-card surface-reveal !p-4 sm:!p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Lead mix</h3>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Hot vs sales split
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white md:text-xl">
+                Lead distribution
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                Hot vs sales pipeline mix
               </p>
             </div>
-            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Pipeline</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">
+              Pipeline
+            </div>
           </div>
           <div className="relative mt-3 h-[220px] w-full min-w-0 sm:h-[240px]">
             {leadMixTotal === 0 ? (
@@ -165,13 +171,19 @@ export function DashboardCharts({
           </div>
         </div>
 
-        <div className="data-card surface-reveal !p-3.5 sm:!p-4">
+        <div className="data-card surface-reveal !p-4 sm:!p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Sales performance</h3>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Last 6 months revenue</p>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white md:text-xl">
+                Revenue overview
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                Last 6 months booked sales
+              </p>
             </div>
-            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">Revenue</div>
+            <div className="glass-chip !px-2 !py-0.5 text-[0.65rem] text-slate-600 dark:text-slate-300">
+              Revenue
+            </div>
           </div>
           <div className="mt-2 flex items-end justify-between gap-3 rounded-xl border border-slate-200/75 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
             <div>
@@ -206,7 +218,7 @@ export function DashboardCharts({
                     labelFormatter={(_, payload) => String(payload?.[0]?.payload?.month ?? "")}
                     contentStyle={tooltipStyle}
                   />
-                  <Bar dataKey="amount" name="Revenue" radius={[8, 8, 0, 0]}>
+                  <Bar dataKey="amount" name="Revenue" fill="#1a7a6d" radius={[6, 6, 0, 0]}>
                     {data.monthlySales.map((row, index) => (
                       <Cell key={row.month} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                     ))}
