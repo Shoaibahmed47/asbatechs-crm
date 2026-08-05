@@ -285,7 +285,7 @@ function buildAttendanceReportDocumentHtml(params: {
 
   const metricItems = isPeriodReport
     ? [
-        { label: "Days in range", value: String(period!.dayCount), accent: "#0ea5e9" },
+        { label: "Days in range", value: String(period!.dayCount), accent: "#1a7a6d" },
         { label: "Days present", value: String(period!.daysWithAttendance), accent: "#22c55e" },
         { label: "Days absent", value: String(period!.daysAbsent), accent: "#ef4444" },
         { label: "Total work", value: formatMinutes(period!.totals.totalWorkMinutes), accent: "#22c55e" },
@@ -295,7 +295,7 @@ function buildAttendanceReportDocumentHtml(params: {
           value: formatMinutes(period!.totals.unscheduledIdleMinutes),
           accent: "#ef4444"
         },
-        { label: "Total sleep", value: formatMinutes(period!.totals.sleepMinutes), accent: "#8b5cf6" },
+        { label: "Total sleep", value: formatMinutes(period!.totals.sleepMinutes), accent: "#e86a17" },
         {
           label: "Avg work / day",
           value:
@@ -308,12 +308,12 @@ function buildAttendanceReportDocumentHtml(params: {
         }
       ]
     : [
-        { label: "Clock In", value: formatAttendanceClock(detail.clockIn), accent: "#0ea5e9" },
-        { label: "Clock Out", value: formatAttendanceClock(detail.clockOut), accent: "#0ea5e9" },
+        { label: "Clock In", value: formatAttendanceClock(detail.clockIn), accent: "#1a7a6d" },
+        { label: "Clock Out", value: formatAttendanceClock(detail.clockOut), accent: "#1a7a6d" },
         { label: "Total Work", value: formatTotalWorkHours(detail), accent: "#22c55e" },
         { label: "Break", value: formatMinutes(detail.totalBreakMinutes), accent: "#f59e0b" },
         { label: "Inactive", value: formatMinutes(detail.unscheduledIdleMinutes), accent: "#ef4444" },
-        { label: "Sleep", value: formatMinutes(detail.sleepMinutes), accent: "#8b5cf6" },
+        { label: "Sleep", value: formatMinutes(detail.sleepMinutes), accent: "#e86a17" },
         {
           label: "Total Hours",
           value: detail.totalHours != null ? `${detail.totalHours} h` : "—",
@@ -411,7 +411,7 @@ function buildAttendanceReportDocumentHtml(params: {
           </tr>
         </table>
 
-        <table width="100%" cellpadding="10" cellspacing="0" style="margin-top:12px;border:1px solid #e2e8f0;border-left:4px solid #0ea5e9;background:#f8fafc;table-layout:fixed;">
+        <table width="100%" cellpadding="10" cellspacing="0" style="margin-top:12px;border:1px solid #e2e8f0;border-left:4px solid #1a7a6d;background:#f8fafc;table-layout:fixed;">
           <tr>
             <td valign="middle" style="word-wrap:break-word;">
               <div style="font-size:13pt;font-weight:700;color:#0f172a;">${escapeHtml(userName)}</div>

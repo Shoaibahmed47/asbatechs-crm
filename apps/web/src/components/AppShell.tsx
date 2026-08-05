@@ -96,7 +96,7 @@ export function AppShell({ children, userRole, welcomeProfile }: AppShellProps) 
             type="button"
             onClick={toggleCollapsed}
             className={cn(
-              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.06] bg-white/70 text-[var(--brand-teal)] shadow-sm transition",
+              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.06] bg-white/70 text-[var(--brand-fg)] shadow-sm transition",
               "hover:bg-[color-mix(in_srgb,var(--teal-60)_80%,white)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--brand-teal-light)_35%,transparent)]",
               "dark:border-white/10 dark:bg-slate-900/70 dark:hover:bg-slate-800"
             )}
@@ -123,7 +123,7 @@ export function AppShell({ children, userRole, welcomeProfile }: AppShellProps) 
         >
           {isCollapsed ? (
             <div
-              className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--teal-60)_88%,white)] text-[var(--brand-teal)] dark:bg-[color-mix(in_srgb,var(--teal-80)_55%,transparent)]"
+              className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--teal-60)_88%,hsl(var(--card)))] text-[var(--brand-fg)] dark:bg-[color-mix(in_srgb,var(--teal-80)_55%,transparent)]"
               title="Daily focus: review leads, attendance, ownership"
             >
               <PanelLeft className="h-4 w-4" aria-hidden />
@@ -150,7 +150,7 @@ export function AppShell({ children, userRole, welcomeProfile }: AppShellProps) 
                 type="button"
                 onClick={toggleCollapsed}
                 className={cn(
-                  "hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/85 text-[var(--brand-teal)] shadow-sm transition",
+                  "hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/85 text-[var(--brand-fg)] shadow-sm transition",
                   "hover:bg-[color-mix(in_srgb,var(--teal-60)_70%,white)] dark:border-slate-700 dark:bg-slate-900/85",
                   isCollapsed ? "xl:inline-flex" : "xl:hidden"
                 )}

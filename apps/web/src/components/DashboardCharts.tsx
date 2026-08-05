@@ -73,10 +73,10 @@ export function DashboardCharts({
   }, []);
 
   const chartAxis = useMemo(
-    () => ({ fill: isDark ? "#b7c2d7" : "#5b6b82", fontSize: 11 }),
+    () => ({ fill: isDark ? "#9ecfc5" : "#3d5c56", fontSize: 11 }),
     [isDark]
   );
-  const gridStroke = isDark ? "#2d3748" : "#d9e5f3";
+  const gridStroke = isDark ? "#1f5249" : "#d4ebe6";
   const tooltipStyle = useMemo(
     () => ({
       borderRadius: 14,

@@ -26,6 +26,7 @@ const config: Config = {
           950: "color-mix(in srgb, var(--brand-teal) 88%, black)",
           teal: "var(--brand-teal)",
           "teal-light": "var(--brand-teal-light)",
+          fg: "var(--brand-fg)",
           orange: "var(--brand-orange)",
           "orange-light": "var(--brand-orange-light)",
           gold: "var(--brand-gold)"

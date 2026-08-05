@@ -13,15 +13,16 @@
     color-scheme: light;
 
     /* Semantic theme (HSL channels for Tailwind / hsl(var(--x))) */
-    --background: 200 28% 97%;
-    --background-muted: 195 24% 94%;
-    --foreground: 200 35% 12%;
-    --foreground-muted: 200 12% 40%;
+    --background: 168 28% 97%;
+    --background-muted: 168 24% 94%;
+    --foreground: 170 35% 12%;
+    --foreground-muted: 170 12% 40%;
     --card: 0 0% 100%;
-    --card-muted: 195 30% 98%;
-    --border: 200 20% 88%;
-    --border-strong: 200 16% 78%;
-    --primary: 199 89% 42%;
+    --card-muted: 168 30% 98%;
+    --border: 168 20% 88%;
+    --border-strong: 168 16% 78%;
+    /* Brand teal — focus rings, date picker, semantic primary */
+    --primary: 174 58% 32%;
     --primary-foreground: 0 0% 100%;
     --accent: 174 58% 38%;
     --success: 160 84% 39%;
@@ -30,10 +31,11 @@
     --shadow-soft: 0 28px 70px rgba(15, 76, 69, 0.12);
     --shadow-card: 0 12px 36px rgba(15, 76, 69, 0.08);
 
-    /* Brand palette (teal / orange / gold — use via var() or utilities) */
+    /* Brand palette — fills stay deep; --brand-fg is for text/icons on surfaces */
     --brand-teal: #0f4c45;
     --brand-teal-light: #1a7a6d;
     --brand-teal-lighter: #2d9b8a;
+    --brand-fg: #0f4c45;
     --brand-orange: #e86a17;
     --brand-orange-light: #f4843a;
     --brand-gold: #c9a227;
@@ -44,8 +46,6 @@
     --teal-500: #2a8f7e;
     --orange-100: #ffe8d6;
 
-    /* Legacy apple tokens (optional accents) */
-    --apple-blue: #007aff;
     --apple-gray: #8e8e93;
     --apple-light-gray: #f2f2f7;
     --apple-dark-gray: #1c1c1e;
@@ -53,33 +53,37 @@
 
   .dark {
     color-scheme: dark;
-    --background: 200 28% 8%;
-    --background-muted: 200 24% 11%;
-    --foreground: 195 25% 96%;
-    --foreground-muted: 195 12% 72%;
-    --card: 200 26% 11%;
-    --card-muted: 200 22% 14%;
-    --border: 200 16% 22%;
-    --border-strong: 200 14% 28%;
-    --primary: 187 72% 52%;
-    --primary-foreground: 200 35% 10%;
-    --accent: 174 55% 48%;
-    --success: 160 84% 45%;
-    --warning: 38 92% 58%;
+    /* Teal-tinted shell (not cool sky/blue) */
+    --background: 170 22% 8%;
+    --background-muted: 170 20% 11%;
+    --foreground: 165 20% 96%;
+    --foreground-muted: 165 10% 70%;
+    --card: 170 24% 11%;
+    --card-muted: 170 20% 14%;
+    --border: 170 14% 22%;
+    --border-strong: 170 12% 28%;
+    --primary: 168 42% 46%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 168 45% 48%;
+    --success: 160 70% 45%;
+    --warning: 32 92% 58%;
     --danger: 0 84% 67%;
     --shadow-soft: 0 30px 90px rgba(2, 20, 18, 0.55);
     --shadow-card: 0 16px 48px rgba(2, 20, 18, 0.42);
 
-    --brand-teal: #7fd4c4;
-    --brand-teal-light: #4db8a6;
+    /* Keep deep fills for buttons / BrandMark parity; lighten only text accent */
+    --brand-teal: #0f4c45;
+    --brand-teal-light: #1a7a6d;
     --brand-teal-lighter: #2d9b8a;
+    --brand-fg: #7fd4c4;
     --brand-orange: #f4843a;
     --brand-orange-light: #ff9a5c;
     --brand-gold: #e0c35a;
     --teal-60: #132a28;
     --teal-80: #163530;
     --teal-100: #1a443d;
-    --teal-150: #1f5249;
+    /* Soft accent readable as text (dark:text-brand-300) while still usable for borders */
+    --teal-150: #6bc4b4;
     --teal-500: #3db8a0;
     --orange-100: #3d2414;
   }
@@ -179,7 +183,7 @@ textarea,
 .brand-scroll::-webkit-scrollbar-track,
 .user-details-scroll::-webkit-scrollbar-track {
   margin: 8px 0;
-  background: color-mix(in srgb, var(--teal-80) 85%, white);
+  background: color-mix(in srgb, var(--teal-80) 85%, hsl(var(--card)));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -189,7 +193,7 @@ textarea,
 .user-details-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--brand-teal-light) 0%, var(--brand-orange) 100%);
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--teal-80) 85%, white);
+  border: 2px solid color-mix(in srgb, var(--teal-80) 85%, hsl(var(--card)));
 }
 
 .brand-scroll::-webkit-scrollbar-thumb:hover,
@@ -284,7 +288,7 @@ textarea,
 
   .dark .apple-sidebar {
     background: color-mix(in srgb, hsl(var(--card)) 88%, transparent);
-    border-right-color: hsl(var(--border));
+    border-right-color: color-mix(in srgb, var(--brand-teal-lighter) 22%, hsl(var(--border)));
     box-shadow: none;
   }
 
@@ -305,7 +309,7 @@ textarea,
 
   .dark .apple-topbar {
     background: color-mix(in srgb, hsl(var(--card)) 82%, transparent);
-    border-bottom-color: hsl(var(--border));
+    border-bottom-color: color-mix(in srgb, var(--brand-teal-lighter) 18%, hsl(var(--border)));
   }
 
   .app-panel {
@@ -341,7 +345,7 @@ textarea,
 
   .app-nav-link-active {
     background: color-mix(in srgb, var(--teal-100) 75%, white);
-    color: var(--brand-teal);
+    color: var(--brand-fg);
     border: none;
     box-shadow: none;
     font-weight: 600;
@@ -349,12 +353,16 @@ textarea,
 
   .dark .app-nav-link-active {
     background: color-mix(in srgb, var(--teal-100) 55%, transparent);
-    color: var(--brand-teal);
+    color: var(--brand-fg);
   }
 
   .app-nav-link-active svg {
     opacity: 1;
     color: var(--brand-teal-light);
+  }
+
+  .dark .app-nav-link-active svg {
+    color: var(--brand-fg);
   }
 
   .app-section-label {
@@ -641,7 +649,7 @@ textarea,
 
   .portal-stat-label--teal,
   .portal-stat-label--teal-deep {
-    color: color-mix(in srgb, var(--brand-teal-light) 80%, transparent);
+    color: color-mix(in srgb, var(--brand-fg) 80%, transparent);
   }
 
   .portal-stat-label--orange {
@@ -661,7 +669,7 @@ textarea,
   }
 
   .portal-stat-value--teal {
-    color: var(--brand-teal);
+    color: var(--brand-fg);
   }
 
   .portal-stat-value--orange {
@@ -684,10 +692,19 @@ textarea,
     box-shadow: 0 1px 3px rgba(15, 76, 69, 0.08);
   }
 
+  .dark .portal-stat-icon {
+    background: color-mix(in srgb, var(--teal-100) 70%, hsl(var(--card)));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+
   .portal-stat-icon-svg {
     width: 1.125rem;
     height: 1.125rem;
     color: var(--brand-teal-light);
+  }
+
+  .dark .portal-stat-icon-svg {
+    color: var(--brand-fg);
   }
 
   .portal-stat-card--orange .portal-stat-icon-svg {
@@ -700,19 +717,29 @@ textarea,
 
   /** Soft link / accent used across CRM pages */
   .link-brand {
-    color: var(--brand-teal-light);
+    color: var(--brand-fg);
     font-weight: 600;
   }
 
   .link-brand:hover {
-    color: var(--brand-teal);
+    color: var(--brand-teal-lighter);
+  }
+
+  .dark .link-brand:hover {
+    color: #a8e8dc;
   }
 
   .chip-brand {
     border: 1px solid color-mix(in srgb, var(--brand-teal-light) 28%, transparent);
-    background: color-mix(in srgb, var(--teal-80) 75%, white);
-    color: var(--brand-teal);
+    background: color-mix(in srgb, var(--teal-80) 75%, hsl(var(--card)));
+    color: var(--brand-fg);
     @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold;
+  }
+
+  .dark .chip-brand {
+    border-color: color-mix(in srgb, var(--brand-teal-lighter) 35%, transparent);
+    background: color-mix(in srgb, var(--teal-100) 55%, hsl(var(--card)));
+    color: var(--brand-fg);
   }
 }
 

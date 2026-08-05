@@ -256,7 +256,7 @@ export function AppHeaderUser() {
             />
             <ChevronDown
               className={cn(
-                "h-4 w-4 shrink-0 text-[var(--brand-teal-light)] transition-transform dark:text-[var(--brand-teal)]",
+                "h-4 w-4 shrink-0 text-[var(--brand-fg)] transition-transform",
                 accountOpen && "rotate-180"
               )}
               aria-hidden

@@ -43,7 +43,7 @@ export default async function DesktopDownloadPage() {
 
       <a
         href={installerUrl}
-        className="inline-flex w-fit items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white hover:bg-brand-700"
+        className="inline-flex w-fit items-center justify-center rounded-xl bg-[var(--brand-teal-light)] px-5 py-3 text-base font-semibold text-white hover:bg-[var(--brand-teal)]"
       >
         Download AsbaTechs CRM for Windows
       </a>
