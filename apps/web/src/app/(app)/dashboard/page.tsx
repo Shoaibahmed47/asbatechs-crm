@@ -388,10 +388,8 @@ export default async function DashboardPage({
       {/* Kalie-style overview header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-3xl">
-            Dashboard overview
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 md:text-base">
+          <h1 className="page-title">Dashboard overview</h1>
+          <p className="page-subtitle">
             Welcome back — pipeline, revenue
             {isAdminViewer ? ", and live attendance" : ""} at a glance.
           </p>

@@ -415,15 +415,12 @@ export default function SalesLeadsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Sales leads
-        </h1>
-        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
-          Closed revenue in the unified <code className="text-sm">leads</code>{" "}
-          table (<code className="text-sm">type = sale</code>) with{" "}
-          <code className="text-sm">sale_amount</code>,{" "}
-          <code className="text-sm">service_purchased</code>, and{" "}
-          <code className="text-sm">sale_date</code>.
+        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
+          Operations
+        </div>
+        <h1 className="page-title mt-2">Sales leads</h1>
+        <p className="page-subtitle">
+          Closed revenue with sale amount, services purchased, and sale date.
         </p>
       </div>
 
@@ -608,7 +605,7 @@ export default function SalesLeadsPage() {
             </div>
           </div>
           <div className="max-h-[min(65vh,560px)] overflow-auto rounded-lg border border-slate-200/40 dark:border-slate-700/40">
-            <table className="w-full min-w-[640px] table-auto text-sm">
+            <table className="crm-table crm-table--fit w-full table-auto text-sm">
               <thead>
                 <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-sm uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400 dark:shadow-[0_1px_0_0_rgba(0,0,0,0.3)]">
                   {sortHead("client_name", "Client")}

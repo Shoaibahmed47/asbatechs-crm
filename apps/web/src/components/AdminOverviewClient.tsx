@@ -536,11 +536,14 @@ export function AdminOverviewClient({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Admin control</h1>
-          <p className="mt-1 max-w-2xl text-base text-slate-600 dark:text-slate-400">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
+            Administration
+          </div>
+          <h1 className="page-title mt-2">Admin control</h1>
+          <p className="page-subtitle">
             Global filtered control view for departments, people, leads, invites, and activity.
           </p>
-          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Snapshot time:{" "}
             <span className="font-medium text-slate-700 dark:text-slate-300">
               {new Date(snapshot.generatedAt).toLocaleString()}
@@ -785,7 +788,7 @@ export function AdminOverviewClient({
             ) : null}
           </div>
           <div className="max-h-[min(20rem,42vh)] overflow-auto">
-            <table className="w-full min-w-[56rem] text-sm">
+            <table className="crm-table crm-table--fit w-full text-sm">
               <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2">Name</th>

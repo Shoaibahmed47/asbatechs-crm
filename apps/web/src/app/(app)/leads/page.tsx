@@ -462,8 +462,11 @@ function AllLeadsPageContent() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">All leads</h1>
-        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
+          Operations
+        </div>
+        <h1 className="page-title mt-2">All leads</h1>
+        <p className="page-subtitle">
           Unified view to manage hot and sales leads from one place.
         </p>
       </div>
@@ -579,7 +582,7 @@ function AllLeadsPageContent() {
         </div>
 
         <div className="max-h-[min(65vh,560px)] overflow-auto rounded-lg border border-slate-200/40 dark:border-slate-700/40">
-          <table className="w-full min-w-[1180px] table-auto text-sm">
+          <table className="crm-table crm-table--fit w-full table-auto text-sm">
             <thead>
               <tr className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 text-sm uppercase text-slate-500 shadow-[0_1px_0_0_rgba(15,23,42,0.06)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-400">
                 <th className="w-10 pb-2 pl-1 pr-0 text-left font-medium">

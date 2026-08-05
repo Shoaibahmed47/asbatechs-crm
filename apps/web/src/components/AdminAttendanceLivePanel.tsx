@@ -78,7 +78,7 @@ export function AdminAttendanceLivePanel({
       </div>
 
       <div className="mt-6 max-h-[min(22rem,45vh)] overflow-auto rounded-2xl border border-slate-200/90 dark:border-slate-800">
-        <table className="w-full min-w-[44rem] text-left text-sm md:min-w-[52rem]">
+        <table className="crm-table crm-table--fit w-full text-left text-sm">
           <thead className="sticky top-0 z-[1] bg-slate-50 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/95 dark:text-slate-400">
             <tr>
               <th className="px-4 py-3">Name</th>

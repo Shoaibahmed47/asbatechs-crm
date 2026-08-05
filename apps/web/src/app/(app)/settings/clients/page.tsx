@@ -87,7 +87,7 @@ export default async function AdminClientsSettingsPage() {
           </h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-left text-sm">
+          <table className="crm-table crm-table--fit w-full text-left text-sm">
             <thead className="bg-slate-50 text-sm font-semibold uppercase text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Name</th>

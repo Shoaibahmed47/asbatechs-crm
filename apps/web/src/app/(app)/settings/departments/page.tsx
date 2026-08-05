@@ -73,11 +73,12 @@ export default async function DepartmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Departments
-        </h1>
-        <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+      <div className="app-panel rounded-[28px] px-6 py-7 sm:px-8">
+        <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-300">
+          Administration
+        </div>
+        <h1 className="page-title mt-3">Departments</h1>
+        <p className="page-subtitle">
           Manage brands and departments used for leads, users, and reports.
         </p>
       </div>

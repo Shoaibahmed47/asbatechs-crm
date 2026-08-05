@@ -214,7 +214,7 @@ export function AppHeaderUser() {
             type="button"
             className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 ${
               theme === "light"
-                ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                ? "bg-[var(--brand-teal)] text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
             onClick={() => setThemeMode("light")}
@@ -226,7 +226,7 @@ export function AppHeaderUser() {
             type="button"
             className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 ${
               theme === "dark"
-                ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                ? "bg-[var(--brand-teal-light)] text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
             onClick={() => setThemeMode("dark")}
