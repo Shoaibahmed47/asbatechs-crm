@@ -165,7 +165,9 @@ export class AttendanceMonitor {
         await this.postEvent("activity");
         this.state.nextActivityPingAt = now + ATTENDANCE_ACTIVITY_PING_SECONDS * 1000;
       }
-    } else if (now >= this.state.nextActivityPingAt) {
+    } else if (!this.state.sessionLocked && now >= this.state.nextActivityPingAt) {
+      // Never heartbeat activity while locked — server treats activity as resume
+      // from sleep/away and would clear a legitimate lock session.
       await this.postEvent("activity");
       this.state.nextActivityPingAt = now + ATTENDANCE_ACTIVITY_PING_SECONDS * 1000;
     }
@@ -191,7 +193,7 @@ export class AttendanceMonitor {
 
     const payload = {
       event,
-      source: "electron",
+      source: "agent",
       awayCause: awayCause ?? undefined,
       observedAt: (observedAt ?? new Date()).toISOString()
     };

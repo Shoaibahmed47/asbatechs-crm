@@ -62,7 +62,19 @@ jest.mock("@asbatechs-crm/database", () => ({
   }
 }));
 
+jest.mock("@/lib/attendance-open-shift", () => ({
+  resolveOpenAttendanceLogForUser: jest.fn()
+}));
+
 const auth = jest.requireMock("@/lib/auth") as { verifyAuthToken: jest.Mock };
+const openShift = jest.requireMock("@/lib/attendance-open-shift") as {
+  resolveOpenAttendanceLogForUser: jest.Mock;
+};
+const away = jest.requireMock("@/lib/attendance-away-compliance") as {
+  endComplianceAway: jest.Mock;
+  startComplianceAway: jest.Mock;
+  checkOpenComplianceAwayAlerts: jest.Mock;
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -91,6 +103,7 @@ describe("attendance activity route", () => {
   it("ignores legacy idle_start events", async () => {
     auth.verifyAuthToken.mockResolvedValueOnce({ userId: 5 });
     selectLimit.mockResolvedValueOnce([{ name: "Test User" }]);
+    openShift.resolveOpenAttendanceLogForUser.mockResolvedValueOnce(null);
 
     const res = await POST(req({ event: "idle_start", source: "browser" }));
     const data = await res.json();
@@ -98,5 +111,63 @@ describe("attendance activity route", () => {
     expect(res.status).toBe(200);
     expect(data.ignored).toBe(true);
     expect(txInsertValues).not.toHaveBeenCalled();
+  });
+
+  it("resumes sleep away on browser activity but not agent activity", async () => {
+    const openLog = {
+      id: 42,
+      clockIn: new Date("2026-08-07T14:00:00.000Z"),
+      clockOut: null,
+      status: "idle"
+    };
+    const openSleep = {
+      id: 9,
+      breakType: "unscheduled",
+      unscheduledCause: "sleep",
+      breakStart: new Date("2026-08-07T16:00:00.000Z"),
+      returnReason: null
+    };
+
+    auth.verifyAuthToken.mockResolvedValue({ userId: 5 });
+    selectLimit.mockResolvedValue([{ name: "Test User" }]);
+    openShift.resolveOpenAttendanceLogForUser.mockResolvedValue({
+      log: openLog,
+      logDate: "2026-08-07"
+    });
+    selectWhere.mockImplementation(() => {
+      whereInvocation += 1;
+      if (whereInvocation % 2 === 1) {
+        return { limit: selectLimit };
+      }
+      return Promise.resolve([openSleep]);
+    });
+    away.endComplianceAway.mockResolvedValue({
+      ok: true,
+      awaySeconds: 120,
+      addedMinutes: 2,
+      autoReason: "activity_resume"
+    });
+
+    const agentRes = await POST(
+      req({ event: "activity", source: "electron", observedAt: "2026-08-07T17:00:00.000Z" })
+    );
+    const agentData = await agentRes.json();
+    expect(agentRes.status).toBe(200);
+    expect(agentData.needsAwayEnd).toBe(true);
+    expect(away.endComplianceAway).not.toHaveBeenCalled();
+
+    const browserRes = await POST(
+      req({ event: "activity", source: "browser", observedAt: "2026-08-07T17:00:00.000Z" })
+    );
+    const browserData = await browserRes.json();
+    expect(browserRes.status).toBe(200);
+    expect(browserData.resumed).toBe(true);
+    expect(away.endComplianceAway).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cause: "sleep",
+        forceCloseExisting: true,
+        source: "browser"
+      })
+    );
   });
 });

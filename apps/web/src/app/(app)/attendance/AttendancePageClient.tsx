@@ -226,7 +226,7 @@ function AttendanceAwayNotice({
           {AWAY_EMPLOYEE_NOTICE[cause]}
         </p>
         <p className="mt-2 text-base leading-relaxed text-slate-500 dark:text-slate-400">
-          Move your mouse or click anywhere to continue. No typing required.
+          Move your mouse, click anywhere, or tap <strong>I’m back</strong> to return to Active.
         </p>
       </div>
     </div>
@@ -929,7 +929,7 @@ export default function AttendancePageClient({
   }, [attendance?.date, isEmployeeViewer, selectedDate, shiftOpen]);
 
   useEffect(() => {
-    if (!isEmployeeViewer || !canManageLiveShift || isDesktopApp) return;
+    if (!isEmployeeViewer || !canManageLiveShift) return;
     if (!shiftOpen) {
       sleepAwayPendingRef.current = false;
       /* FUTURE: cursorAwayActiveRef.current = false; */
@@ -955,23 +955,7 @@ export default function AttendancePageClient({
       void refresh();
     };
 
-    /* FUTURE: mouse/keyboard idle startAway
-    const startAway = async (cause: AwayCause) => {
-      if (cause === UNSCHEDULED_CAUSE.TAB_CLOSE) return;
-      if (cause === "cursor_idle" && !cursorIdleEnabled) return;
-      await postActivityEvent("away_start", { awayCause: cause });
-      if (cause === "cursor_idle") cursorAwayActiveRef.current = true;
-    };
-    */
-
     const resumeFromAway = () => {
-      /* FUTURE: cursor idle
-      if (cursorIdleEnabled && cursorAwayActiveRef.current) {
-        void endAway("cursor_idle");
-      } else if (sleepAwayPendingRef.current) {
-        void endAway(UNSCHEDULED_CAUSE.SLEEP);
-      }
-      */
       if (sleepAwayPendingRef.current) {
         void endAway(UNSCHEDULED_CAUSE.SLEEP);
       }
@@ -983,8 +967,37 @@ export default function AttendancePageClient({
       if (sleepAwayPendingRef.current) {
         resumeFromAway();
       }
-      /* FUTURE: if (cursorAwayActiveRef.current) resumeFromAway(); */
     };
+
+    const markCursor = () => {
+      lastCursorAtRef.current = Date.now();
+      if (sleepAwayPendingRef.current) {
+        resumeFromAway();
+      }
+    };
+
+    // Desktop + browser: mouse/focus resumes stuck sleep/away (Electron unlock can miss).
+    const cursorEvents: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "click",
+      "focus"
+    ];
+    for (const eventName of cursorEvents) {
+      window.addEventListener(eventName, markCursor, { passive: true });
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (isDesktopApp) {
+      return () => {
+        for (const eventName of cursorEvents) {
+          window.removeEventListener(eventName, markCursor);
+        }
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      };
+    }
 
     const onPageHide = () => {
       /* Disabled: tab close tracking off (Desktop CRM). Re-enable with ATTENDANCE_TAB_CLOSE_ENABLED. */
@@ -1004,25 +1017,6 @@ export default function AttendancePageClient({
       });
     };
 
-    const markCursor = () => {
-      lastCursorAtRef.current = Date.now();
-      if (sleepAwayPendingRef.current) {
-        resumeFromAway();
-      }
-      /* FUTURE: if (cursorAwayActiveRef.current) resumeFromAway(); */
-    };
-
-    const cursorEvents: Array<keyof WindowEventMap> = [
-      "mousemove",
-      "mousedown",
-      "keydown",
-      "touchstart",
-      "click"
-    ];
-    for (const eventName of cursorEvents) {
-      window.addEventListener(eventName, markCursor, { passive: true });
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
     /* Tab close listener — no-op while ATTENDANCE_TAB_CLOSE_ENABLED is false */
     if (ATTENDANCE_TAB_CLOSE_ENABLED) {
       window.addEventListener("pagehide", onPageHide);
@@ -1124,11 +1118,21 @@ export default function AttendancePageClient({
   }
 
   const status = attendance?.status ?? "offline";
+  const openAwayCause =
+    attendance?.breakSessions?.find(
+      (session) => !session.breakEnd && session.breakType === "unscheduled"
+    )?.unscheduledCause ?? null;
   const statusLabel =
     status === "active"
       ? "Active (working)"
       : status === "idle"
-        ? "Inactive (unscheduled)"
+        ? openAwayCause === UNSCHEDULED_CAUSE.SLEEP
+          ? "Away (laptop sleep/lock)"
+          : openAwayCause === UNSCHEDULED_CAUSE.TAB_CLOSE
+            ? "Away (tab closed)"
+            : openAwayCause === UNSCHEDULED_CAUSE.CURSOR_IDLE
+              ? "Away (no input)"
+              : "Inactive (unscheduled)"
       : status === "break"
         ? "On break"
         : "Offline";
@@ -1190,6 +1194,33 @@ export default function AttendancePageClient({
 
   const canStartBreak = canManageLiveShift && shiftOpen && status === "active";
   const canEndBreak = canManageLiveShift && status === "break";
+  const canResumeAway =
+    canManageLiveShift &&
+    shiftOpen &&
+    status === "idle" &&
+    openBreakSession?.breakType === "unscheduled";
+
+  async function resumeAwayAction() {
+    if (!canResumeAway || !openBreakSession?.unscheduledCause) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const cause = openBreakSession.unscheduledCause as AwayCause;
+      await postActivityEvent("away_end", { awayCause: cause });
+      sleepAwayPendingRef.current = false;
+      setAwayNotice(null);
+      toast.success("Back to active status");
+      await refresh();
+    } catch (error) {
+      if (error instanceof ApiFetchError && error.status !== 401) {
+        setError(error.message);
+      } else if (!(error instanceof ApiFetchError)) {
+        setError("Could not resume from away status.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function prepareInstallCommand() {
     try {
@@ -1854,7 +1885,7 @@ export default function AttendancePageClient({
                 !canStartBreak
                   ? shiftOpen
                     ? status === "idle"
-                      ? "Return to active status first; inactive time is auto-classified."
+                      ? "Tap I’m back first — inactive/away time is auto-classified."
                       : "End your current break before starting another."
                     : "Clock in to start a break."
                   : undefined
@@ -1874,6 +1905,17 @@ export default function AttendancePageClient({
             >
               End break
             </Button>
+            {canResumeAway ? (
+              <Button
+                size="sm"
+                variant="default"
+                disabled={loading}
+                title="Clear auto-away (sleep/lock) and return to Active"
+                onClick={() => void resumeAwayAction()}
+              >
+                I’m back
+              </Button>
+            ) : null}
           </div>
           <div className="mt-4">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

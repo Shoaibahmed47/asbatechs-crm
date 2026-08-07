@@ -359,6 +359,11 @@ export async function endComplianceAway(params: {
   eventAt: Date;
   reason: string | null;
   source: "browser" | "agent";
+  /**
+   * Close an already-open away session even when that cause’s tracking flag is off
+   * (e.g. legacy stuck tab_close rows, or activity-heartbeat resume).
+   */
+  forceCloseExisting?: boolean;
 }): Promise<{
   ok: boolean;
   awaySeconds?: number;
@@ -366,12 +371,20 @@ export async function endComplianceAway(params: {
   autoReason?: string;
 }> {
   /* FUTURE: mouse/keyboard idle — remove this guard when ATTENDANCE_CURSOR_IDLE_ENABLED is true */
-  if (!ATTENDANCE_CURSOR_IDLE_ENABLED && params.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE) {
+  if (
+    !params.forceCloseExisting &&
+    !ATTENDANCE_CURSOR_IDLE_ENABLED &&
+    params.cause === UNSCHEDULED_CAUSE.CURSOR_IDLE
+  ) {
     return { ok: true, addedMinutes: 0 };
   }
 
   /* Disabled: employees use Desktop CRM — set ATTENDANCE_TAB_CLOSE_ENABLED true to re-enable */
-  if (!ATTENDANCE_TAB_CLOSE_ENABLED && params.cause === UNSCHEDULED_CAUSE.TAB_CLOSE) {
+  if (
+    !params.forceCloseExisting &&
+    !ATTENDANCE_TAB_CLOSE_ENABLED &&
+    params.cause === UNSCHEDULED_CAUSE.TAB_CLOSE
+  ) {
     return { ok: true, addedMinutes: 0 };
   }
 

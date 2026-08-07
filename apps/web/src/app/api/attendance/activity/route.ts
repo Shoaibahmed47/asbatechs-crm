@@ -57,7 +57,8 @@ function normalizeEvent(value: unknown): ActivityEvent {
 }
 
 function normalizeSource(value: unknown): SourceType {
-  return value === "agent" ? "agent" : "browser";
+  // Desktop Electron monitor historically sent "electron"; treat as agent.
+  return value === "agent" || value === "electron" ? "agent" : "browser";
 }
 
 function normalizeObservedAt(value: unknown): Date {
@@ -224,7 +225,8 @@ export async function POST(req: NextRequest) {
       cause: endCause,
       eventAt,
       reason,
-      source
+      source,
+      forceCloseExisting: true
     });
     return NextResponse.json({
       ok: true,
@@ -294,6 +296,55 @@ export async function POST(req: NextRequest) {
 
   if (hasOpenUnscheduledBreak && openSession) {
     if (isComplianceCause(openSession.unscheduledCause)) {
+      /**
+       * Heartbeat `activity` / `idle_end` while compliance-away is open means the
+       * employee is back (desktop must not ping activity while the OS is locked).
+       * Previously we returned needsAwayEnd and left them stuck on Inactive forever
+       * when unlock/away_end was missed.
+       */
+      if (eventType === "activity" || eventType === "idle_end") {
+        /**
+         * Agent activity pings continue while the OS is locked on older desktop builds.
+         * Do not treat those as resume for sleep/lock away — unlock/away_end/I'm back do.
+         * Browser/webview activity means the employee is interacting again → resume.
+         */
+        if (
+          source === "agent" &&
+          openSession.unscheduledCause === UNSCHEDULED_CAUSE.SLEEP
+        ) {
+          await checkOpenComplianceAwayAlerts({
+            employeeUserId: userId,
+            employeeName,
+            attendanceLogId: log.id,
+            now: eventAt
+          });
+          return NextResponse.json({
+            ok: true,
+            status: "idle",
+            openAwayCause: openSession.unscheduledCause,
+            needsAwayEnd: true
+          });
+        }
+
+        const ended = await endComplianceAway({
+          attendanceLogId: log.id,
+          employeeUserId: userId,
+          employeeName,
+          cause: openSession.unscheduledCause,
+          eventAt,
+          reason,
+          source,
+          forceCloseExisting: true
+        });
+        return NextResponse.json({
+          ok: true,
+          resumed: true,
+          awaySeconds: ended.awaySeconds,
+          addedMinutes: ended.addedMinutes,
+          autoReason: ended.autoReason ?? "activity_resume"
+        });
+      }
+
       await checkOpenComplianceAwayAlerts({
         employeeUserId: userId,
         employeeName,
