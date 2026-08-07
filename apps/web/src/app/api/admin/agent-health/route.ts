@@ -30,6 +30,11 @@ export async function GET(req: NextRequest) {
     departmentRaw && /^\d+$/.test(departmentRaw) ? Number(departmentRaw) : null;
   const stateFilter = parseAgentState(req.nextUrl.searchParams.get("state"));
   const alertsOnly = req.nextUrl.searchParams.get("alerts") === "1";
+  const statusRaw = (req.nextUrl.searchParams.get("status") ?? "").toLowerCase();
+  const statusFilter =
+    statusRaw === "present" || statusRaw === "working" || statusRaw === "absent"
+      ? statusRaw
+      : "all";
   const dateRaw = req.nextUrl.searchParams.get("date");
   const date =
     dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : getLocalDateString();
@@ -43,6 +48,7 @@ export async function GET(req: NextRequest) {
     search,
     departmentFilter,
     stateFilter,
+    statusFilter,
     alertsOnly
   });
 

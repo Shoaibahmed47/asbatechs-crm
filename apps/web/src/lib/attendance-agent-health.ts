@@ -78,12 +78,23 @@ export type AttendanceAgentHealthRow = {
   attendanceExempt: boolean;
 };
 
+function attendanceStatusBucket(row: {
+  clockIn: string | null;
+  clockOut: string | null;
+}): "present" | "working" | "absent" {
+  if (!row.clockIn) return "absent";
+  if (row.clockIn && !row.clockOut) return "working";
+  return "present";
+}
+
 export async function getAttendanceAgentHealth(params: {
   date: string;
   scope: { role: "admin" | "manager"; departmentId: number | null };
   search?: string;
   departmentFilter?: number | null;
   stateFilter?: AgentHealthState | "all";
+  /** Daily attendance presence filter (present / still working / absent). */
+  statusFilter?: "all" | "present" | "working" | "absent";
   alertsOnly?: boolean;
 }): Promise<{
   rows: AttendanceAgentHealthRow[];
@@ -95,6 +106,7 @@ export async function getAttendanceAgentHealth(params: {
     search = "",
     departmentFilter = null,
     stateFilter = "all",
+    statusFilter = "all",
     alertsOnly = false
   } = params;
 
@@ -474,7 +486,17 @@ export async function getAttendanceAgentHealth(params: {
         departmentFilter == null || row.departmentId === departmentFilter;
       const matchesState = matchesAgentHealthFilter(row.state, effectiveStateFilter);
       const matchesAlerts = !alertsOnly || row.needsAttention;
-      return matchesSearch && matchesDepartment && matchesState && matchesAlerts;
+      const matchesAttendanceStatus =
+        statusFilter === "all" ||
+        row.attendanceExempt ||
+        attendanceStatusBucket(row) === statusFilter;
+      return (
+        matchesSearch &&
+        matchesDepartment &&
+        matchesState &&
+        matchesAlerts &&
+        matchesAttendanceStatus
+      );
     })
     .sort((a, b) => {
       const aAdmin = isAdminRole(roleByUserId.get(a.userId)) ? 0 : 1;

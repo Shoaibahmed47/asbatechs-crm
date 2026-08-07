@@ -134,6 +134,9 @@ export default async function DashboardPage({
     (toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? toRaw : reportDate);
   const normalizedFrom = fromDate <= toDate ? fromDate : toDate;
   const normalizedTo = fromDate <= toDate ? toDate : fromDate;
+  /** Attendance monitor date — daily picker or range end. */
+  const monitorDate = reportMode === "daily" ? reportDate : normalizedTo;
+  const isViewingLiveToday = reportMode === "daily" && reportDate === today;
 
   const months = monthKeysLast(6);
   const saleFrom = startOfRollingMonthsAgo(5);
@@ -149,6 +152,7 @@ export default async function DashboardPage({
     userCountResult,
     openShiftCountResult,
     liveAttendanceResult,
+    monitorAttendanceResult,
     departmentsResult,
     agentHealthResult,
     assignedClientProjectsResult,
@@ -185,6 +189,9 @@ export default async function DashboardPage({
         )
       ),
     isAdminViewer ? getAttendanceStatusForDate(today) : Promise.resolve(null),
+    isAdminViewer && !isViewingLiveToday
+      ? getAttendanceStatusForDate(monitorDate)
+      : Promise.resolve(null),
     isAdminViewer
       ? db
           .select({ id: schema.departments.id, name: schema.departments.name })
@@ -193,11 +200,12 @@ export default async function DashboardPage({
       : Promise.resolve([]),
     isAdminViewer
       ? getAttendanceAgentHealth({
-          date: reportDate,
+          date: monitorDate,
           scope: adminScope,
           search: reportSearch,
           departmentFilter,
           stateFilter: agentStateFilter,
+          statusFilter: reportMode === "daily" ? statusFilter : "all",
           alertsOnly
         })
       : Promise.resolve(null),
@@ -298,6 +306,16 @@ export default async function DashboardPage({
     dashboardLoadErrors.push("Live attendance status could not be loaded.");
   }
 
+  let monitorAttendance: Awaited<ReturnType<typeof getAttendanceStatusForDate>> | null = null;
+  if (isViewingLiveToday) {
+    monitorAttendance = liveAttendanceToday;
+  } else if (monitorAttendanceResult.status === "fulfilled") {
+    monitorAttendance = monitorAttendanceResult.value;
+  } else if (isAdminViewer && monitorAttendanceResult.status === "rejected") {
+    console.error("[dashboard] monitor attendance", monitorAttendanceResult.reason);
+    attendanceLoadErrors.push("Selected-day attendance snapshot could not be loaded.");
+  }
+
   let attendanceDepartments: { id: number; name: string }[] = [];
   let attendanceAgentHealth: Awaited<ReturnType<typeof getAttendanceAgentHealth>> | null = null;
 
@@ -348,6 +366,18 @@ export default async function DashboardPage({
     onBreak: liveAttendanceToday?.people.filter((p) => p.status === "break").length ?? 0,
     offline: liveAttendanceToday?.people.filter((p) => p.status === "offline").length ?? 0,
     openShifts: activeToday
+  };
+
+  const monitorOpenShifts =
+    monitorAttendance != null
+      ? monitorAttendance.people.filter((person) => person.clockIn && !person.clockOut).length
+      : activeToday;
+
+  const initialMonitorAttendanceCounts: LiveAttendanceCounts = {
+    active: monitorAttendance?.people.filter((p) => p.status === "active").length ?? 0,
+    onBreak: monitorAttendance?.people.filter((p) => p.status === "break").length ?? 0,
+    offline: monitorAttendance?.people.filter((p) => p.status === "offline").length ?? 0,
+    openShifts: monitorOpenShifts
   };
 
   const attendanceBaseQueryParams = new URLSearchParams();
@@ -506,7 +536,10 @@ export default async function DashboardPage({
                     Clock-in, breaks, agent health, sleep — double-click a row for detail.
                   </p>
                 </div>
-                <DashboardLiveAttendanceCommandCards initial={initialLiveAttendanceCounts} />
+                <DashboardLiveAttendanceCommandCards
+                  initial={initialMonitorAttendanceCounts}
+                  freezeToInitial={!isViewingLiveToday}
+                />
               </div>
             </div>
 

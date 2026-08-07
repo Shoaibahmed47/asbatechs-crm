@@ -120,11 +120,15 @@ export function DashboardLiveAttendanceSummary({
 }
 
 export function DashboardLiveAttendanceCommandCards({
-  initial
+  initial,
+  /** When true, keep counts tied to the selected report date (no live today poll). */
+  freezeToInitial = false
 }: {
   initial: LiveAttendanceCounts;
+  freezeToInitial?: boolean;
 }) {
-  const counts = useLiveAttendanceCounts(initial);
+  const live = useLiveAttendanceCounts(initial);
+  const counts = freezeToInitial ? initial : live;
 
   return (
     <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[22rem]">
