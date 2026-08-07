@@ -6,14 +6,37 @@ import {
   formatAttendanceDateLabel,
   getLocalDateString
 } from "@/lib/attendance-date";
+import { addAttendanceCalendarDays } from "@/lib/attendance-working-days";
 import {
-  addAttendanceCalendarDays,
-} from "@/lib/attendance-working-days";
-import { isExplanationPromptDueForEmployee, isEmployeeWorkingDay } from "@/lib/attendance-employee-working-day";
+  getEmployeeScheduleBundle,
+  resolveEmployeeScheduleForDate,
+  type EmployeeScheduleBundle
+} from "@/lib/attendance-employee-schedule";
 
 export type { PendingAbsenceExplanation } from "@/lib/attendance-absence-types";
 
 const ABSENCE_LOOKBACK_DAYS = 90;
+
+function isWorkingDayWithBundle(bundle: EmployeeScheduleBundle, date: string): boolean {
+  return resolveEmployeeScheduleForDate(bundle.user, bundle.office, date).isWorkingDay;
+}
+
+function isExplanationPromptDueWithBundle(
+  bundle: EmployeeScheduleBundle,
+  logDate: string,
+  today: string
+): boolean {
+  if (logDate >= today) return false;
+  let due = addAttendanceCalendarDays(logDate, 1);
+  const maxDays = 14;
+  for (let i = 0; i < maxDays; i += 1) {
+    if (isWorkingDayWithBundle(bundle, due)) {
+      return today >= due;
+    }
+    due = addAttendanceCalendarDays(due, 1);
+  }
+  return today >= due;
+}
 
 export async function findPendingAbsenceExplanation(
   userId: number
@@ -23,49 +46,50 @@ export async function findPendingAbsenceExplanation(
   const yesterday = addAttendanceCalendarDays(today, -1);
   if (lookback > yesterday) return null;
 
-  const [user] = await db
-    .select({ createdAt: schema.users.createdAt })
-    .from(schema.users)
-    .where(eq(schema.users.id, userId));
+  const [userRow, presentRows, explainedRows, bundle] = await Promise.all([
+    db
+      .select({ createdAt: schema.users.createdAt })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .then((rows) => rows[0]),
+    db
+      .select({ date: schema.attendanceLogs.date })
+      .from(schema.attendanceLogs)
+      .where(
+        and(
+          eq(schema.attendanceLogs.userId, userId),
+          gte(schema.attendanceLogs.date, lookback as any),
+          lte(schema.attendanceLogs.date, yesterday as any),
+          isNotNull(schema.attendanceLogs.clockIn)
+        )
+      ),
+    db
+      .select({ date: schema.attendanceAbsenceRecords.date })
+      .from(schema.attendanceAbsenceRecords)
+      .where(
+        and(
+          eq(schema.attendanceAbsenceRecords.userId, userId),
+          gte(schema.attendanceAbsenceRecords.date, lookback as any),
+          lte(schema.attendanceAbsenceRecords.date, yesterday as any)
+        )
+      ),
+    getEmployeeScheduleBundle(userId)
+  ]);
 
-  const employmentStart = user?.createdAt
-    ? getLocalDateString(new Date(user.createdAt as Date))
+  const employmentStart = userRow?.createdAt
+    ? getLocalDateString(new Date(userRow.createdAt as Date))
     : lookback;
   const scanFrom = employmentStart > lookback ? employmentStart : lookback;
   if (scanFrom > yesterday) return null;
 
-  const presentRows = await db
-    .select({ date: schema.attendanceLogs.date })
-    .from(schema.attendanceLogs)
-    .where(
-      and(
-        eq(schema.attendanceLogs.userId, userId),
-        gte(schema.attendanceLogs.date, scanFrom as any),
-        lte(schema.attendanceLogs.date, yesterday as any),
-        isNotNull(schema.attendanceLogs.clockIn)
-      )
-    );
-
   const presentDates = new Set(presentRows.map((row) => String(row.date)));
-
-  const explainedRows = await db
-    .select({ date: schema.attendanceAbsenceRecords.date })
-    .from(schema.attendanceAbsenceRecords)
-    .where(
-      and(
-        eq(schema.attendanceAbsenceRecords.userId, userId),
-        gte(schema.attendanceAbsenceRecords.date, scanFrom as any),
-        lte(schema.attendanceAbsenceRecords.date, yesterday as any)
-      )
-    );
-
   const explainedDates = new Set(explainedRows.map((row) => String(row.date)));
 
   for (const date of enumerateLocalDates(scanFrom, yesterday)) {
-    if (!(await isEmployeeWorkingDay(userId, date))) continue;
+    if (!isWorkingDayWithBundle(bundle, date)) continue;
     if (presentDates.has(date)) continue;
     if (explainedDates.has(date)) continue;
-    if (!(await isExplanationPromptDueForEmployee(userId, date, today))) continue;
+    if (!isExplanationPromptDueWithBundle(bundle, date, today)) continue;
 
     return {
       date,
@@ -94,21 +118,29 @@ async function notifyAdminsAbsenceExplanation(params: {
 
   const message = `${params.employeeName} submitted an absence explanation for ${params.dateLabel}: ${params.reason.slice(0, 200)}`;
 
-  for (const admin of admins) {
-    await db.insert(schema.notifications).values({
-      userId: admin.id,
-      type: "attendance_absence_explanation",
-      leadId: null,
-      message
-    });
+  const writes: Promise<unknown>[] = [
+    db.insert(schema.activityLogs).values({
+      userId: params.employeeUserId,
+      action: "attendance_absence_explanation",
+      entityType: "attendance_absence",
+      entityId: 0
+    })
+  ];
+
+  if (admins.length > 0) {
+    writes.push(
+      db.insert(schema.notifications).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "attendance_absence_explanation",
+          leadId: null,
+          message
+        }))
+      )
+    );
   }
 
-  await db.insert(schema.activityLogs).values({
-    userId: params.employeeUserId,
-    action: "attendance_absence_explanation",
-    entityType: "attendance_absence",
-    entityId: 0
-  });
+  await Promise.all(writes);
 }
 
 export async function submitAbsenceExplanation(params: {
@@ -132,26 +164,28 @@ export async function submitAbsenceExplanation(params: {
 
   const now = new Date();
 
-  await db
-    .insert(schema.attendanceAbsenceRecords)
-    .values({
-      userId: params.userId,
-      date: params.date as any,
-      reason: reason.slice(0, 500),
-      reasonSubmittedAt: now
-    })
-    .onConflictDoUpdate({
-      target: [schema.attendanceAbsenceRecords.userId, schema.attendanceAbsenceRecords.date],
-      set: {
+  const [, employee] = await Promise.all([
+    db
+      .insert(schema.attendanceAbsenceRecords)
+      .values({
+        userId: params.userId,
+        date: params.date as any,
         reason: reason.slice(0, 500),
         reasonSubmittedAt: now
-      }
-    });
-
-  const [employee] = await db
-    .select({ name: schema.users.name })
-    .from(schema.users)
-    .where(eq(schema.users.id, params.userId));
+      })
+      .onConflictDoUpdate({
+        target: [schema.attendanceAbsenceRecords.userId, schema.attendanceAbsenceRecords.date],
+        set: {
+          reason: reason.slice(0, 500),
+          reasonSubmittedAt: now
+        }
+      }),
+    db
+      .select({ name: schema.users.name })
+      .from(schema.users)
+      .where(eq(schema.users.id, params.userId))
+      .then((rows) => rows[0])
+  ]);
 
   await notifyAdminsAbsenceExplanation({
     employeeUserId: params.userId,

@@ -2,8 +2,9 @@ import "server-only";
 
 import { getLocalDateString } from "@/lib/attendance-date";
 import {
+  getEmployeeScheduleBundle,
   getExpectedScheduleForEmployeeOnDate,
-  promoteAllDueEmployeeSchedules
+  resolveEmployeeScheduleForDate
 } from "@/lib/attendance-employee-schedule";
 import {
   addAttendanceCalendarDays,
@@ -40,10 +41,11 @@ export async function getExplanationPromptDueDateForEmployee(
   userId: number,
   logDate: string
 ): Promise<string> {
+  const bundle = await getEmployeeScheduleBundle(userId);
   let due = addAttendanceCalendarDays(logDate, 1);
   const maxDays = 14;
   for (let i = 0; i < maxDays; i += 1) {
-    if (await isEmployeeWorkingDay(userId, due)) {
+    if (resolveEmployeeScheduleForDate(bundle.user, bundle.office, due).isWorkingDay) {
       return due;
     }
     due = addAttendanceCalendarDays(due, 1);
@@ -66,11 +68,11 @@ export async function enumerateEmployeeWorkingDaysInclusive(
   from: string,
   to: string
 ): Promise<string[]> {
-  await promoteAllDueEmployeeSchedules();
+  const bundle = await getEmployeeScheduleBundle(userId);
   const dates: string[] = [];
   let cursor = from;
   while (cursor <= to) {
-    if (await isEmployeeWorkingDay(userId, cursor)) {
+    if (resolveEmployeeScheduleForDate(bundle.user, bundle.office, cursor).isWorkingDay) {
       dates.push(cursor);
     }
     cursor = addAttendanceCalendarDays(cursor, 1);
@@ -82,10 +84,11 @@ export async function previousEmployeeWorkingDay(
   userId: number,
   dateStr: string
 ): Promise<string> {
+  const bundle = await getEmployeeScheduleBundle(userId);
   let cursor = addAttendanceCalendarDays(dateStr, -1);
   const maxDays = 14;
   for (let i = 0; i < maxDays; i += 1) {
-    if (await isEmployeeWorkingDay(userId, cursor)) {
+    if (resolveEmployeeScheduleForDate(bundle.user, bundle.office, cursor).isWorkingDay) {
       return cursor;
     }
     cursor = addAttendanceCalendarDays(cursor, -1);
