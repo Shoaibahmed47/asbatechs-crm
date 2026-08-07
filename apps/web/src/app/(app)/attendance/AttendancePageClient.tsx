@@ -381,10 +381,11 @@ export default function AttendancePageClient({
 
   const refresh = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const data = await apiFetch<{ attendance?: Attendance | null }>(
         `/api/attendance/me?date=${encodeURIComponent(selectedDate)}`,
-        { timeoutMs: 45_000 }
+        { timeoutMs: 15_000 }
       );
       setAttendance(data.attendance ?? null);
       setLastUpdated(new Date());
@@ -394,6 +395,8 @@ export default function AttendancePageClient({
       } else if (!(error instanceof ApiFetchError)) {
         setError("Unable to load attendance for this date.");
       }
+    } finally {
+      setLoading(false);
     }
   }, [selectedDate]);
 
@@ -865,6 +868,9 @@ export default function AttendancePageClient({
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
     void refreshMyProfile();
     if (isDesktopApp) {
       runAfterFirstPaint(() => {
@@ -873,7 +879,7 @@ export default function AttendancePageClient({
       return;
     }
     void refreshAgentHealth({ silent: true });
-  }, [refresh, refreshAgentHealth, refreshMyProfile, isEmployeeViewer, isDesktopApp]);
+  }, [refreshAgentHealth, refreshMyProfile, isDesktopApp]);
 
   useEffect(() => {
     if (!isEmployeeViewer) return;

@@ -67,10 +67,13 @@ export async function PATCH(
     );
   }
 
-  const update: any = { ...parsed.data };
-  if (update.password) {
-    update.passwordHash = await hashPassword(update.password);
+  const update: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+  const plainPassword = parsed.data.password;
+  if (plainPassword) {
+    update.passwordHash = await hashPassword(plainPassword);
     delete update.password;
+    update.resetToken = null;
+    update.resetTokenExpiry = null;
   }
 
   const shouldSyncLeadDepartments = "departmentId" in parsed.data;
@@ -99,6 +102,18 @@ export async function PATCH(
 
   if (!user) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (plainPassword) {
+    const { ensureSupabaseIdentityForLogin } = await import("@/lib/supabase-user-link");
+    void ensureSupabaseIdentityForLogin(
+      {
+        id: user.id,
+        email: user.email,
+        supabaseAuthId: user.supabaseAuthId
+      },
+      plainPassword
+    );
   }
 
   return NextResponse.json({

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { schema } from "@asbatechs-crm/database";
 import { hashPassword } from "@/lib/auth";
+import { ensureSupabaseIdentityForLogin } from "@/lib/supabase-user-link";
 
 const bodySchema = z.object({
   token: z.string().min(1),
@@ -52,6 +53,16 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date()
     })
     .where(eq(schema.users.id, user.id));
+
+  // Best-effort: keep Supabase Auth password in sync when configured.
+  void ensureSupabaseIdentityForLogin(
+    {
+      id: user.id,
+      email: user.email,
+      supabaseAuthId: user.supabaseAuthId
+    },
+    password
+  );
 
   return NextResponse.json({ success: true });
 }

@@ -48,7 +48,12 @@ export async function POST(req: NextRequest) {
 
   const resetToken = randomBytes(32).toString("hex");
   const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const appUrl = (
+    process.env.APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.CRM_APP_URL?.trim() ||
+    req.nextUrl.origin
+  ).replace(/\/$/, "");
 
   try {
     await db
@@ -71,8 +76,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("reset-password:", error);
+    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to send reset email. Check SMTP settings and logs." },
+      {
+        error:
+          detail.includes("SMTP")
+            ? detail
+            : "Failed to send reset email. Check SMTP settings and logs."
+      },
       { status: 500 }
     );
   }

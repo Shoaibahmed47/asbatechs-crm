@@ -51,7 +51,11 @@ export async function sendClientInviteEmail(to: string, signupUrl: string) {
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  if (!transporter) return;
+  if (!transporter) {
+    throw new Error(
+      "SMTP is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS, then redeploy."
+    );
+  }
 
   await transporter.sendMail({
     from: `"AsbaTechs CRM" <${user}>`,

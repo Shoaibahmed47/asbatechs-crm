@@ -89,6 +89,14 @@ export default function LoginPage() {
         err instanceof ApiFetchError ? err.message : "Something went wrong. Please try again.";
       if (
         err instanceof ApiFetchError &&
+        err.status === 401 &&
+        /invalid email or password/i.test(msg)
+      ) {
+        msg =
+          "Invalid email or password. Use Forgot? to reset, or ask an admin to set a new password.";
+      }
+      if (
+        err instanceof ApiFetchError &&
         err.details &&
         typeof err.details === "object" &&
         err.details !== null &&

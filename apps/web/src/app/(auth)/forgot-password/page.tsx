@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Forgot password</h2>
           <p className="mt-1 text-base text-slate-500">
-            Enter your email and we&apos;ll send you a reset link through Supabase Auth.
+            Enter your email and we&apos;ll send a password reset link to your inbox.
           </p>
         </div>
 
