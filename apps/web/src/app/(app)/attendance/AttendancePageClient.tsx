@@ -1188,7 +1188,11 @@ export default function AttendancePageClient({
     !pendingAbsenceExplanation &&
     (!attendance || !attendance.clockIn || Boolean(attendance.clockOut));
   const shouldShowLateExplanationModal = Boolean(pendingLateExplanation && shiftOpen);
-  const canClockOut = canEditShift && shiftOpen;
+  /**
+   * Always allow clock-out while a shift is open — including overnight into a
+   * scheduled day-off (e.g. Fri 7pm–Sat 3am). Day-off only blocks new clock-ins.
+   */
+  const canClockOut = canManageLiveShift && shiftOpen;
   const openBreakSession = attendance?.breakSessions?.find((session) => !session.breakEnd);
   const isManualBreakOpen = openBreakSession?.breakType === "manual";
 
@@ -1457,8 +1461,10 @@ export default function AttendancePageClient({
           <div className="min-w-0 text-base text-slate-700 dark:text-slate-300">
             <p className="font-semibold text-slate-900 dark:text-slate-100">Day off</p>
             <p className="mt-1 text-base leading-relaxed text-slate-600 dark:text-slate-400">
-              {dayOffMessage ?? "Today is not a working day on your schedule."} Review past days
-              below; clock-in is available on your next scheduled working day.
+              {dayOffMessage ?? "Today is not a working day on your schedule."}
+              {shiftOpen
+                ? " Your overnight shift is still open — use Clock out when you finish."
+                : " Review past days below; clock-in is available on your next scheduled working day."}
             </p>
           </div>
         </div>
@@ -1867,8 +1873,12 @@ export default function AttendancePageClient({
                 disabled={loading || !canClockOut}
                 title={
                   !canClockOut
-                    ? "Clock in first, while your shift is open."
-                    : undefined
+                    ? shiftOpen
+                      ? "Open this attendance page for your active shift date to clock out."
+                      : "Clock in first, while your shift is open."
+                    : attendance?.carriedOvernight
+                      ? `Closes your open shift from ${attendance.date}.`
+                      : undefined
                 }
                 onClick={() => action("/api/attendance/clock-out")}
               >
