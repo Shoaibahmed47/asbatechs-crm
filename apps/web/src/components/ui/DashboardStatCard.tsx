@@ -33,7 +33,7 @@ const valueClass: Record<NonNullable<DashboardStatCardProps["tone"]>, string> = 
 };
 
 /**
- * Kalie-style KPI card — icon + label + value. Presentation only.
+ * Partner-style KPI card — icon + label + value. Presentation only.
  */
 export function DashboardStatCard({
   title,
@@ -45,20 +45,22 @@ export function DashboardStatCard({
   children
 }: DashboardStatCardProps) {
   return (
-    <div className={cn("portal-stat-card p-3.5 sm:p-4", toneClass[tone], className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className={cn("portal-stat-label", labelClass[tone])}>{title}</div>
-          <div className={cn("portal-stat-value text-2xl sm:text-3xl", valueClass[tone])}>
-            {value}
+    <div className={cn("portal-stat-card", toneClass[tone], className)}>
+      <div className="portal-stat-card-body">
+        <div className="portal-stat-card-row">
+          <div className="min-w-0">
+            <div className={cn("portal-stat-label", labelClass[tone])}>{title}</div>
+            <div className={cn("portal-stat-value", valueClass[tone])}>{value}</div>
+            {description ? (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                {description}
+              </p>
+            ) : null}
+            {children}
           </div>
-          {description ? (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{description}</p>
-          ) : null}
-          {children}
-        </div>
-        <div className="portal-stat-icon shrink-0 text-[var(--brand-fg)]" aria-hidden>
-          {icon}
+          <div className="portal-stat-icon" aria-hidden>
+            {icon}
+          </div>
         </div>
       </div>
     </div>

@@ -385,10 +385,11 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      {/* Kalie-style overview header */}
+      {/* Partner-style overview header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="page-title">Dashboard overview</h1>
+          <div className="dash-kicker">Overview</div>
+          <h1 className="page-title mt-1.5">Dashboard overview</h1>
           <p className="page-subtitle">
             Welcome back — pipeline, revenue
             {isAdminViewer ? ", and live attendance" : ""} at a glance.
@@ -400,7 +401,7 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* KPI row — icon cards (Kalie StatCard pattern, brand tones) */}
+      {/* KPI row — partner portal-stat structure */}
       <section className="portal-stat-grid" data-testid="dashboard-stat-cards">
         <DashboardStatCard
           title="Total leads"
@@ -424,14 +425,16 @@ export default async function DashboardPage({
           icon={<TrendingUp className="portal-stat-icon-svg" />}
         />
         {isAdminViewer ? (
-          <div className="portal-stat-card portal-stat-card--gold p-3.5 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
-                <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
-              </div>
-              <div className="portal-stat-icon shrink-0 text-[var(--brand-fg)]" aria-hidden>
-                <Gauge className="portal-stat-icon-svg" />
+          <div className="portal-stat-card portal-stat-card--gold">
+            <div className="portal-stat-card-body">
+              <div className="portal-stat-card-row">
+                <div className="min-w-0">
+                  <div className="portal-stat-label portal-stat-label--gold">Open shifts</div>
+                  <DashboardLiveOpenShiftsMetric initialOpenShifts={activeToday} />
+                </div>
+                <div className="portal-stat-icon" aria-hidden>
+                  <Gauge className="portal-stat-icon-svg" />
+                </div>
               </div>
             </div>
           </div>

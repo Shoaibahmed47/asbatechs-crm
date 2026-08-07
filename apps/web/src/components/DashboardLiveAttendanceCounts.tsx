@@ -170,7 +170,7 @@ export function DashboardLiveOpenShiftsMetric({
 
   return (
     <>
-      <div className="portal-stat-value portal-stat-value--gold mt-1 text-2xl font-semibold tabular-nums sm:text-3xl">
+      <div className="portal-stat-value portal-stat-value--gold tabular-nums">
         {counts.openShifts}
       </div>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Currently clocked in</p>

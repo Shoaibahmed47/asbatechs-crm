@@ -2,4 +2,4 @@
 # Used when building the Windows installer and as a bundled fallback at runtime.
 #
 # Example:
-# https://crm.asbatechs.com
+# https://asbatechs-crm-web.vercel.app
