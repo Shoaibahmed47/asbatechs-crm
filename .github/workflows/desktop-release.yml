@@ -3,7 +3,8 @@
 #
 # How to run:
 # 1. Repo Settings → Secrets → Actions → add CRM_APP_URL
-#    (e.g. https://your-crm.vercel.app — live CRM origin, no trailing slash)
+#    Must be: https://asbatechs-crm-web.vercel.app
+#    (live Vercel CRM origin, no trailing slash — wrong URL ships old UI to employees)
 # 2. Actions → "Desktop Release" → Run workflow
 #    OR: git tag desktop-v0.1.1 && git push origin desktop-v0.1.1
 #

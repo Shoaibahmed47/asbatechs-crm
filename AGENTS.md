@@ -60,6 +60,14 @@ Exception: desktop native package changes still need **Desktop Release** Action 
 - Prefer / verify: `https://asbatechs-crm-web.vercel.app` for current Vercel production.
 - Custom host (e.g. `app-asbatech-crm.betaserver.host`) only after Domains assign that host to **this** project Production — otherwise you may see stale deploys.
 
+### Desktop UI mismatch (critical)
+
+- **Download page new UI ≠ employee desktop UI.** The page is hosted on Vercel; the `.exe` loads whatever CRM origin was **baked** at release time (`CRM_APP_URL` secret → `apps/desktop/crm-app.url`).
+- GitHub Actions secret **`CRM_APP_URL` must be** `https://asbatechs-crm-web.vercel.app` (no trailing slash) for employee installs to show current UI.
+- After **Desktop Release** succeeds, **verify the baked URL inside the latest Setup `.exe`** (scan for `asbatechs-crm-web.vercel.app`). Action green alone is not enough — a wrong secret still ships old UI (`betaserver` / stale host).
+- Developer PC may look “fixed” via local `userData/crm-app.url` while employees still get the old baked installer — always re-check Releases + employee reinstall.
+- Legacy PowerShell/`ASBA Attendance Agent`: **disable**, do not delete, when Desktop CRM monitoring is in use (re-enable later if needed).
+
 ## Playwright / e2e
 
 ```bash
@@ -80,5 +88,6 @@ PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
 
 ## GitHub Actions
 
-- Desktop build: Actions → **Desktop Release** (needs secret `CRM_APP_URL`, clean HTTPS origin, no trailing slash).
+- Desktop build: Actions → **Desktop Release** (needs secret `CRM_APP_URL` = `https://asbatechs-crm-web.vercel.app`, no trailing slash).
+- After each release: confirm latest `.exe` contains that Vercel origin (not `betaserver` / stale hosts).
 - Do not store large installers in git; use Releases artifacts only.

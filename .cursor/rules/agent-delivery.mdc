@@ -29,3 +29,10 @@ Skip commit/push only for pure Q&A, or if the user says not to publish.
 If Playwright or build fails: fix first, re-run the failing step, then commit/push.
 
 Desktop shell code changes still require GitHub Action **Desktop Release** for a new employee `.exe`.
+
+Before declaring a desktop fix shipped to employees:
+
+1. Confirm GitHub secret `CRM_APP_URL` is `https://asbatechs-crm-web.vercel.app`
+2. Run **Desktop Release** and wait for success
+3. Verify the new Setup `.exe` bakes that Vercel URL (not `betaserver` / stale host)
+4. Tell employees to reinstall from `/download/desktop`
