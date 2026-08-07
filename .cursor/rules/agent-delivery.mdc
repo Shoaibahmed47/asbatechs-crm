@@ -1,38 +1,38 @@
 ---
-description: After code changes run Playwright, build, commit, and push
+description: After code changes auto-run tests, build, commit, push (no repeated prompts)
 alwaysApply: true
 ---
 
-# Delivery: Playwright → build → commit → push
+# Delivery: auto after every change
 
-When completing **implementation** work for AsbaTechs CRM (features, fixes, UI, APIs, attendance):
+When completing **implementation** work for AsbaTechs CRM (features, fixes, UI, APIs, attendance, desktop):
 
-## Required order
+**Do the full pipeline yourself. Do not ask the user each time** whether to test, build, commit, push, or redeploy — unless they explicitly said “don’t commit/push” or this is pure Q&A.
+
+## Required order (mandatory)
 
 1. **Playwright (or unit) checks**
-   - Default suite against production/current deploy when verifying live APIs/UI:
-     - `npm run test:e2e`
-     - or targeted: `npm run test:e2e:desktop` / `npm run test:e2e:api`
-   - Local app changes: run web `dev`/`start` if needed, then
-     `PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e`
-   - Prefer host with latest deploy: `https://asbatechs-crm-web.vercel.app`
+   - Default: `npm run test:e2e` (prefer `https://asbatechs-crm-web.vercel.app`)
+   - Targeted: `test:e2e:desktop` / `test:e2e:api` / pages UI when relevant
    - Unit: `npm --workspace apps/web test` when server logic changed
-2. **Build**
-   - `npm run build` or `npm --workspace apps/web run build` (must pass before push for web changes)
-3. **Commit** — short message (why); exclude secrets and local noise (`next-env.d.ts`, `test-results/`)
-4. **Push** — `git push origin HEAD` so Vercel can deploy `main`
+2. **Build** — `npm run build` or `npm --workspace apps/web run build` (must pass for web)
+3. **Commit** — short why-message; exclude secrets / `next-env.d.ts` / `test-results/`
+4. **Push** — `git push origin HEAD` so Vercel picks up `main`
 
-Do **not** force-push, do **not** skip hooks, do **not** amend commits already on remote.
+Do **not** force-push, skip hooks, or amend already-pushed commits.
 
-Skip commit/push only for pure Q&A, or if the user says not to publish.
+If tests/build/hooks fail: fix → re-run → **new** commit → push.
 
-If Playwright or build fails: fix first, re-run the failing step, then commit/push.
+## Desktop (when `apps/desktop` / installer / baked URL changes)
 
-Desktop shell code changes still require GitHub Action **Desktop Release** for a new employee `.exe`.
+Auto-complete employee ship path — don’t leave “you should run Desktop Release” as the only step:
 
-Before declaring a desktop fix shipped to employees:
+1. Ensure secret expectation: `CRM_APP_URL` = `https://asbatechs-crm-web.vercel.app`
+2. Trigger **Desktop Release** when possible (`gh workflow run` / guide only if no auth)
+3. Wait for success, then **scan latest Setup `.exe`** for that Vercel URL
+4. Only then tell the user employees can reinstall from `/download/desktop`
 
-1. Confirm GitHub secret `CRM_APP_URL` is `https://asbatechs-crm-web.vercel.app`
-2. Run **Desktop Release** and wait for success
-3. Verify the new Setup `.exe` bakes that Vercel URL (not `betaserver` / stale host)
-4. Tell employees to reinstall from `/download/desktop`
+## User communication
+
+- After work: brief status (done / URL / what employees must reinstall if any)
+- Do **not** repeatedly ask “should I commit?” / “should I push?” / “should I redeploy?” after implementation — just do it

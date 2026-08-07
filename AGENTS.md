@@ -26,6 +26,8 @@ Monorepo: `apps/web`, `apps/desktop`, `packages/*`. pnpm-style workspaces via ro
 
 **Order is mandatory:** Playwright (or unit) → build → commit → push.
 
+**Auto by default:** After implementation, run this pipeline **without asking** the user each time (no “should I commit/push/redeploy?”). Only skip commit/push for pure Q&A or if the user said not to publish.
+
 When the user asked for a feature/fix/UI/API work (not pure Q&A), finish with:
 
 1. **Playwright / tests**
@@ -38,10 +40,9 @@ When the user asked for a feature/fix/UI/API work (not pure Q&A), finish with:
 3. **Commit** — stage only intended files; skip secrets and noise (`next-env.d.ts`, `test-results/`)
 4. **Push** — `git push origin HEAD` so Vercel / CI can pick up `main`
 
-If the user only asked a question or said “do not commit/push”, skip that step.
 If Playwright, build, or hooks fail: fix, re-run, then create a **new** commit (do not amend pushed commits).
 
-Exception: desktop native package changes still need **Desktop Release** Action for the `.exe`; web push alone does not update employee installers.
+Exception: desktop native package changes still need **Desktop Release** Action for the `.exe`; web push alone does not update employee installers. When desktop installers are affected, **trigger/wait/verify** the release (baked Vercel URL in `.exe`) as part of delivery — don’t only remind the user.
 
 ## Attendance (critical product rules)
 
